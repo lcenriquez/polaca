@@ -1,0 +1,106 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main] # staging
+  workflow_dispatch: # producción
+    inputs:
+      environment:
+        type: choice
+        options: [staging, production]
+        default: production
+      ref:
+        description: Etiqueta a desplegar (vX.Y.Z)
+        required: true
+
+concurrency:
+  group: deploy-${{ inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+  # Pre-MVP: no despliega nada hasta que existan los Dockerfiles.
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.d.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - id: d
+        run: |
+          if [ -f code/backend/Dockerfile ] && [ -f code/frontend/Dockerfile ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: detect
+    if: needs.detect.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: code/${{ matrix.app }}
+          push: true
+          tags: ${{ env.REGISTRY }}/polaca-${{ matrix.app }}:${{ inputs.ref || github.sha }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }} # production exige aprobación
+    env:
+      PROJECT: ${{ inputs.environment == 'production' && 'polaca' || 'polaca-staging' }}
+      COMPOSE_FILE: ${{ inputs.environment == 'production' && 'compose.prod.yml' || 'compose.staging.yml' }}
+      IMAGE_TAG: ${{ inputs.ref || github.sha }}
+    steps:
+      - name: Configurar SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519
+      - name: Desplegar
+        run: |
+          ssh deploy@${{ secrets.DEPLOY_HOST }} bash -s <<SCRIPT
+          set -euo pipefail
+          cd /srv/polaca
+          dc="docker compose -p $PROJECT -f $COMPOSE_FILE"
+          PREV=\$(cat .tag-$PROJECT 2>/dev/null || true)
+          export IMAGE_TAG=$IMAGE_TAG
+          \$dc pull
+          \$dc run --rm backend npm run migrate
+          \$dc up -d --remove-orphans
+          for i in \$(seq 1 10); do
+            if curl -fsS ${{ vars.HEALTH_URL }} >/dev/null; then
+              echo "$IMAGE_TAG" > .tag-$PROJECT
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "Health check falló; regresando a \$PREV"
+          if [ -n "\$PREV" ]; then IMAGE_TAG=\$PREV \$dc up -d; fi
+          exit 1
+          SCRIPT

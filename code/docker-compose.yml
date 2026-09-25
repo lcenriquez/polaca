@@ -1,0 +1,24 @@
+# Servicios para desarrollo local. Uso: docker compose up -d
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: polaca
+      POSTGRES_PASSWORD: polaca
+      POSTGRES_DB: polaca
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "polaca"]
+      interval: 5s
+
+  mail:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # bandeja web: http://localhost:8025
+
+volumes:
+  pgdata:

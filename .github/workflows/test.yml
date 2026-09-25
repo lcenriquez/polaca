@@ -1,0 +1,78 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Pre-MVP: omite frontend/backend hasta que tengan package-lock.json.
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.d.outputs.backend }}
+      frontend: ${{ steps.d.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: d
+        run: |
+          for app in backend frontend; do
+            [ -f "code/$app/package-lock.json" ] && echo "$app=true" >> "$GITHUB_OUTPUT" || echo "$app=false" >> "$GITHUB_OUTPUT"
+          done
+
+  backend:
+    needs: detect
+    if: needs.detect.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: code/backend
+    services:
+      db:
+        image: postgres:18
+        env:
+          POSTGRES_USER: polaca
+          POSTGRES_PASSWORD: polaca
+          POSTGRES_DB: polaca
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U polaca" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://polaca:polaca@localhost:5432/polaca
+      VOTE_SECRET: ci-only-secret
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: code/backend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run migrate
+      - run: npm test # el umbral de 70 % vive en vitest.config.ts
+
+  frontend:
+    needs: detect
+    if: needs.detect.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: code/frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: code/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm test
+      - run: npm run build
