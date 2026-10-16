@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^24",
+    "@types/node": "^26",
     "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "@vitest/coverage-v8": "^5.0.2",
