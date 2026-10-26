@@ -143,6 +143,56 @@ def extraer_tramo(archivo: str, reader: PdfReader, inicio: int, fin: int) -> lis
     return acuerdos
 
 
+# Palabras que no distinguen un acuerdo de otro.
+VACIAS = set("""a al con de del el en la las lo los o para por que se su sus un una y
+             municipio ayuntamiento atlixco puebla reglamento cabildo regula aprobo aprueba aprobado aprobacion expide emitio""".split())
+
+
+def plano(texto: str | None) -> str:
+    """Sin acentos, minúsculas y espacios colapsados."""
+    texto = unicodedata.normalize("NFKD", texto or "")
+    texto = "".join(c for c in texto if not unicodedata.combining(c)).lower()
+    return re.sub(r"\s+", " ", texto).strip()
+
+
+def palabras(texto: str | None) -> set[str]:
+    return set(re.findall(r"\w+", plano(texto))) - VACIAS
+
+
+def parecido(a: str, b: str) -> float:
+    """Fracción de palabras del texto más corto que aparecen en el otro."""
+    pa, pb = palabras(a), palabras(b)
+    return len(pa & pb) / min(len(pa), len(pb)) if pa and pb else 0.0
+
+
+def agrupar(con):
+    """Agrupa menciones del mismo acuerdo (índice, dictamen, cierre) sin llamar a la API.
+
+    Misma fecha de sesión (o mismo documento si alguna fecha es null) y ≥80 % de palabras en común.
+    La mención canónica es la de fragmento verificado con más campos llenos.
+    """
+    filas = con.execute("""SELECT id, documento_id, fecha_sesion, acuerdo, verificacion = 'ok',
+                                  (tipo_sesion IS NOT NULL) + (fecha_sesion IS NOT NULL) + (monto_mxn IS NOT NULL)
+                                  + (proveedor IS NOT NULL) + (resultado_votacion IS NOT NULL) + (propuesto_por != '[]')
+                           FROM acuerdos ORDER BY id""").fetchall()
+    # ponytail: heurística de palabras; si junta acuerdos distintos, pedirle a Muse que agrupe con cita.
+    grupos = []  # [{"fecha", "docs", "miembros"}]
+    for f in filas:
+        id_, doc, fecha, texto = f[:4]
+        for g in grupos:
+            compatible = fecha == g["fecha"] if fecha and g["fecha"] else doc in g["docs"]
+            if compatible and any(parecido(texto, m[3]) >= 0.8 for m in g["miembros"]):
+                g["miembros"].append(f)
+                g["docs"].add(doc)
+                g["fecha"] = g["fecha"] or fecha
+                break
+        else:
+            grupos.append({"fecha": fecha, "docs": {doc}, "miembros": [f]})
+    for g in grupos:
+        canonico = max(g["miembros"], key=lambda m: (m[4], m[5], -m[0]))[0]
+        con.executemany("UPDATE acuerdos SET grupo_id = ? WHERE id = ?", [(canonico, m[0]) for m in g["miembros"]])
+
+
 def conectar() -> sqlite3.Connection:
     DB.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(DB)
@@ -168,8 +218,13 @@ def conectar() -> sqlite3.Connection:
             fragmento TEXT NOT NULL,
             verificacion TEXT NOT NULL CHECK (verificacion IN ('ok', 'sin_texto', 'no_encontrado')),
             modelo TEXT NOT NULL,
-            extraido TEXT NOT NULL
+            extraido TEXT NOT NULL,
+            grupo_id INTEGER                  -- id de la mención canónica del mismo acuerdo
         );
+        -- Un acuerdo por grupo; sus citas son las filas de acuerdos con ese grupo_id.
+        CREATE VIEW IF NOT EXISTS acuerdos_canonicos AS
+            SELECT a.*, (SELECT count(*) FROM acuerdos m WHERE m.grupo_id = a.id) AS menciones
+            FROM acuerdos a WHERE a.id = a.grupo_id;
     """)
     return con
 
@@ -190,6 +245,7 @@ def guardar(con, archivo: str, paginas: int, acuerdos: list[dict], rango: tuple[
                       json.dumps(a["propuesto_por"], ensure_ascii=False), a["monto_mxn"], a["proveedor"],
                       a["resultado_votacion"], a["pagina"], a["fragmento"], a["verificacion"],
                       llm.MODELO_PUBLICO, ahora) for a in acuerdos])
+    agrupar(con)
     con.commit()
 
 

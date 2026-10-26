@@ -49,6 +49,56 @@ def test_guardar_reemplaza_rango():
             assert con.execute("SELECT count(*) FROM acuerdos").fetchone()[0] == 1
 
 
+def test_agrupar():
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        base = {"tipo_sesion": None, "propuesto_por": [], "monto_mxn": None, "proveedor": None,
+                "resultado_votacion": None, "fragmento": "f", "verificacion": "ok"}
+        menciones = [
+            ("Se aprobó el Reglamento de Mercados, Tianguis, Centrales de Abasto o de Acopio y Comercio en Vía Pública",
+             "2025-02-24", 4),
+            ("Se aprueba el reglamento que regula los mercados, tianguis, centrales de abasto y de acopio",
+             "2025-02-24", 134),
+            ("Se aprobó el Reglamento de Mercados, Tianguis, Centrales de Abasto o de Acopio", "2024-01-01", 9),
+            ("Se aprueba la modificación de la Estructura Orgánica de la Secretaría del Ayuntamiento", None, 5),
+            ("Se aprueba la modificación de la Estructura Orgánica de la Contraloría Municipal del Ayuntamiento", None, 11),
+        ]
+        acuerdos = [{**base, "acuerdo": t, "fecha_sesion": f, "pagina": p} for t, f, p in menciones]
+        acuerdos[1]["verificacion"] = "sin_texto"
+        with extraer.conectar() as con:
+            extraer.guardar(con, "doc.pdf", 200, acuerdos, (1, 200))
+            grupos = [g for (g,) in con.execute("SELECT grupo_id FROM acuerdos ORDER BY id")]
+            assert grupos == [1, 1, 3, 4, 5], grupos  # otra fecha y otra dependencia no se agrupan
+            assert con.execute("SELECT id, menciones FROM acuerdos_canonicos WHERE id = 1").fetchone() == (1, 2)
+
+
+def test_evaluar():
+    import evaluar
+    assert evaluar.traslapan(extraer.normalizar("se apruebe el Reglamento de Espectáculos del Municipio, Puebla."),
+                             extraer.normalizar("Espectáculos del Municipio, Puebla. (Aprobado en la Sesión)"))
+    assert not evaluar.traslapan("fragmentouno" * 3, "otracosadistinta" * 3)
+    assert evaluar.traslapan("", "") and not evaluar.traslapan("algo", "")
+
+    ex = {"id": 1, "grupo_id": 1, "archivo": "g.pdf", "pagina": 4, "acuerdo": "Se aprobó el Bando de Policía y Gobierno",
+          "tipo_sesion": "extraordinaria", "fecha_sesion": "2025-02-24", "monto_mxn": None, "proveedor": None,
+          "resultado_votacion": "aprobado", "fragmento": "el Bando de Policía y Gobierno del Municipio",
+          "propuesto_por": json.dumps([{"nombre": "Iván Cortés Ambrosio", "cargo": "Síndico Municipal"},
+                                       {"nombre": "Ariadna Ayala Camarillo", "cargo": "Presidenta Municipal"}])}
+    otro = {**ex, "id": 2, "grupo_id": 2, "acuerdo": "Reglamento de Espectáculos", "pagina": 5}
+    et = {"archivo": "g.pdf", "pagina": "5", "acuerdo": "Aprobación del Bando de Policía y Gobierno",
+          "tipo_sesion": "Extraordinaria", "fecha_sesion": "2025-02-24", "monto_mxn": "", "proveedor": "null",
+          "resultado_votacion": "unanimidad", "fragmento": "Bando de Policía y Gobierno",
+          "propuesto_por": "ariadna ayala camarillo; IVAN CORTES AMBROSIO", "cargo": "Presidenta Municipal"}
+    perdida = {**et, "pagina": "40"}
+    r = evaluar.evaluar([et, perdida], [ex, otro])
+    assert (r["emparejadas"], r["recall"], r["precision_acuerdos"]) == (1, 0.5, 0.5)
+    bien = {c: b for c, (b, _) in r["campos"].items()}
+    assert bien == {"pagina": 0, "tipo_sesion": 1, "fecha_sesion": 1, "propuesto_por": 1, "cargo": 0,
+                    "monto_mxn": 1, "proveedor": 1, "resultado_votacion": 0, "fragmento": 1}, bien
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):

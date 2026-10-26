@@ -43,7 +43,12 @@ Todo lo de `spec/`, `design/`, `code/` y `.github/`: especificación, brief de d
 | `auditor/descargar.py` | Descarga las fuentes oficiales a `datos/raw/` con URL, fecha y sha256 |
 | `auditor/llm.py` | Cliente de Meta Model API con caché en disco y registro de tokens y costo (`datos/costos.jsonl`) |
 | `auditor/extraer.py` | Manda el PDF a Muse Spark en tramos de 20 páginas, con salida JSON por esquema, y coteja cada fragmento contra el texto de la página |
+| `auditor/evaluar.py` | Compara la extracción contra `datos/eval/etiquetado.csv` (etiquetado a mano): recall de acuerdos y precisión por campo |
 | `auditor/test_auditor.py` | Pruebas sin red ni costo |
+
+Un mismo acuerdo suele aparecer varias veces (índice, dictamen y cierre). Cada aparición se guarda como mención con su cita y se agrupa, sin llamar a la API, en un acuerdo canónico (`grupo_id`, vista `acuerdos_canonicos`).
+
+**Etiquetado para evaluar:** llena `datos/eval/etiquetado.csv`, una fila por acuerdo. Varias personas en `propuesto_por` y `cargo` van separadas por `;` y en el mismo orden; un campo vacío o `null` es null. Las filas con `es_ejemplo=1` se ignoran salvo con `--ejemplos`.
 
 Reglas: los hallazgos son discrepancias verificables, no acusaciones; un dato que no está en la fuente es `null`; un fragmento que no aparece literalmente en la página citada queda marcado `no_encontrado`.
 
@@ -54,6 +59,7 @@ cd auditor
 ../.venv/bin/python descargar.py
 ../.venv/bin/python extraer.py GACETA_AGOSTO-DICIEMBRE_2025.pdf --paginas 4-6   # prueba chica
 ../.venv/bin/python llm.py costos
+../.venv/bin/python evaluar.py
 ../.venv/bin/python test_auditor.py
 ```
 
