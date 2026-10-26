@@ -3,3 +3,11 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Auditor (hackathon)
+.venv/
+__pycache__/
+datos/raw/
+datos/cache/
+datos/costos.jsonl
+datos/*.db

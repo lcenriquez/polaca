@@ -28,6 +28,35 @@ POLACA reúne en un solo lugar quién gobierna tu municipio, qué reporta la ciu
 | [`code/`](code/README.md) | Código y documentación técnica (arquitectura, API, base de datos, setup y deploy) |
 | [`.github/`](.github/) | Plantillas de issues y PR, y workflows de CI/CD |
 
+## Hackathon Meta Global AI Developer (26 oct – 4 nov 2026)
+
+### Lo que existía antes del 26 de octubre de 2026
+
+Todo lo de `spec/`, `design/`, `code/` y `.github/`: especificación, brief de diseño y el andamiaje técnico (Next.js + Fastify + PostgreSQL) sin código ejecutable.
+
+### Lo construido durante el hackathon (rama `hackathon-meta`)
+
+**Auditor autónomo de Atlixco** en [`auditor/`](auditor/): lee documentos públicos del Ayuntamiento con **Muse Spark** (Meta Model API), extrae acuerdos de Cabildo en datos estructurados y guarda cada uno con su cita (archivo, página y fragmento textual).
+
+| Archivo | Qué hace |
+|---|---|
+| `auditor/descargar.py` | Descarga las fuentes oficiales a `datos/raw/` con URL, fecha y sha256 |
+| `auditor/llm.py` | Cliente de Meta Model API con caché en disco y registro de tokens y costo (`datos/costos.jsonl`) |
+| `auditor/extraer.py` | Manda el PDF a Muse Spark en tramos de 20 páginas, con salida JSON por esquema, y coteja cada fragmento contra el texto de la página |
+| `auditor/test_auditor.py` | Pruebas sin red ni costo |
+
+Reglas: los hallazgos son discrepancias verificables, no acusaciones; un dato que no está en la fuente es `null`; un fragmento que no aparece literalmente en la página citada queda marcado `no_encontrado`.
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r auditor/requirements.txt
+echo "META_API_KEY=..." > .env
+cd auditor
+../.venv/bin/python descargar.py
+../.venv/bin/python extraer.py GACETA_AGOSTO-DICIEMBRE_2025.pdf --paginas 4-6   # prueba chica
+../.venv/bin/python llm.py costos
+../.venv/bin/python test_auditor.py
+```
+
 ## Contribuir
 
 Toda ayuda cuenta: código, diseño, datos, revisión jurídica o difusión. Lee [`CONTRIBUTING.md`](CONTRIBUTING.md) y el [Código de Conducta](CODE_OF_CONDUCT.md).
