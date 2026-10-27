@@ -35,103 +35,164 @@ import gobierno
 import municipios
 from extraer import plano
 
-app = FastAPI(title="Auditor de Atlixco")
+app = FastAPI(title="POLACA")
 
 CSS = """
-:root { color-scheme: light; --bg:#f6f5fb; --card:#fff; --ink:#1d1b2e; --muted:#59556f; --line:#e4e1f0;
-  --accent:#5b3fd1; --accent-tx:#5b3fd1; --accent-soft:#ece8fc; --ok:#1f7a4d; --r:20px;
-  --aviso-bg:#fef9c3; --aviso-line:#a16207; --aviso-ink:#713f12; --copy-bg:#f1effa; --dash:#c9c3e6;
+:root { color-scheme: light; --bg:#f7f6fb; --surface:#fff; --surface-2:#f0eef8; --ink:#1c1a2b; --muted:#5d5a73; --line:#e3e0ef;
+  --accent:#5b3fd1; --accent-ink:#fff; --accent-soft:#ece8fc; --ok:#1e7a4c; --ok-soft:#e3f4ea; --warn:#8a5a00; --warn-soft:#fdf3dc;
+  --shadow:0 1px 2px #1c1a2b0f,0 8px 24px #1c1a2b0f; --r:18px;
+  --card:#fff; --accent-tx:#5b3fd1; --aviso-bg:#fdf3dc; --aviso-line:#8a5a00; --aviso-ink:#5c3d00; --copy-bg:#f0eef8; --dash:#c9c3e6;
   --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; }
 @media (prefers-color-scheme: dark) {
-:root:not([data-theme="light"]) { color-scheme: dark; --bg:#141126; --card:#211c3a; --ink:#f4f2fc; --muted:#c2bde0; --line:#3d3866;
-  --accent:#7a5af5; --accent-tx:#c4b5fd; --accent-soft:#2e2857; --ok:#5ec98a; --r:20px;
-  --aviso-bg:#38300f; --aviso-line:#a58a2e; --aviso-ink:#fde9a8; --copy-bg:#2a2450; --dash:#574f92;
+:root:not([data-theme="light"]) { color-scheme: dark; --bg:#121019; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --line:#2f2c40;
+  --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:none; --r:18px;
+  --card:#1c1a27; --accent-tx:#9d8cff; --aviso-bg:#352a12; --aviso-line:#f2c46b; --aviso-ink:#f7e3ac; --copy-bg:#252233; --dash:#4a4568;
   --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; } }
-:root[data-theme="dark"] { color-scheme: dark; --bg:#141126; --card:#211c3a; --ink:#f4f2fc; --muted:#c2bde0; --line:#3d3866;
-  --accent:#7a5af5; --accent-tx:#c4b5fd; --accent-soft:#2e2857; --ok:#5ec98a; --r:20px;
-  --aviso-bg:#38300f; --aviso-line:#a58a2e; --aviso-ink:#fde9a8; --copy-bg:#2a2450; --dash:#574f92;
+:root[data-theme="dark"] { color-scheme: dark; --bg:#121019; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --line:#2f2c40;
+  --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:none; --r:18px;
+  --card:#1c1a27; --accent-tx:#9d8cff; --aviso-bg:#352a12; --aviso-line:#f2c46b; --aviso-ink:#f7e3ac; --copy-bg:#252233; --dash:#4a4568;
   --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; }
-* { box-sizing: border-box; }
-body { margin: 0; font: 18px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); overflow-x: clip; }
-header.top, main, footer { max-width: 430px; margin: 0 auto; padding: 16px; }
-header.top { display: flex; align-items: center; gap: 12px; padding-bottom: 8px; flex-wrap: wrap; }
-nav.topmenu { display: none; }
-.prog { flex: 1; display: flex; gap: 6px; } .prog i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); } .prog i.on { background: var(--accent); }
-.back, .listen { width: 44px; height: 44px; border-radius: 50%; background: var(--card); border: 1px solid var(--line); display: inline-grid; place-items: center; color: var(--accent-tx); cursor: pointer; flex: none; }
-.a11y { position: relative; margin-left: auto; }
-.a11y-panel { position: absolute; right: 0; top: 52px; z-index: 20; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; width: 280px; max-width: 86vw; box-shadow: 0 12px 32px rgba(0,0,0,.25); }
-.a11y-panel .btn { min-height: 48px; margin-bottom: 8px; }
-.tema-btns { display: flex; gap: 6px; } .tema-btns button { flex: 1; min-height: 44px; border-radius: 10px; border: 2px solid var(--line); background: var(--card); color: var(--ink); font-weight: 600; cursor: pointer; }
-a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible, select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
-h1 { font-size: 30px; line-height: 1.15; margin: .4rem 0; } h2 { font-size: 24px; line-height: 1.2; margin: 1.2rem 0 .5rem; } h3 { font-size: 19px; margin: .2rem 0; }
-main { display: flex; flex-direction: column; gap: 16px; padding-top: 8px; }
-.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.cols { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.tarjeta, .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
-button, .boton, nav a { cursor: pointer; }
-.btn, .boton { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; border-radius: 16px; background: var(--accent); color: #fff; font-weight: 700; font-size: 18px; border: 0; width: 100%; text-decoration: none; padding: .6rem 1rem; }
-.btn.ghost, .boton.ghost { background: var(--card); color: var(--accent-tx); border: 2px solid var(--accent-tx); }
-.hero { background: var(--accent); color: #fff; border-radius: var(--r); padding: 24px; display: flex; flex-direction: column; gap: 12px; }
-.hero svg.h { width: 100%; height: auto; }
-.search { display: flex; align-items: center; gap: 10px; background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 0 14px; min-height: 56px; }
-.list a { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 4px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
-.list a:last-child { border: 0; }
-.ring { position: relative; width: 100%; aspect-ratio: 1; max-width: 330px; margin: 0 auto; }
-.ring .c { position: absolute; border-radius: 50%; border: 2px dashed var(--dash); inset: 0; }
-.ring .c2 { inset: 16%; } .ring .c3 { inset: 32%; border-style: solid; background: var(--accent-soft); }
-.ring .p { position: absolute; transform: translate(-50%,-50%); text-align: center; font-size: 12px; width: 88px; line-height: 1.2; }
-.av, .avatar { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; margin: 0 auto 4px; font-size: 17px; background: var(--accent); flex: none; }
-.av.you { background: var(--ink); } .av.a2 { background: #0e7490; } .av.a3 { background: #475569; }
+* { box-sizing: border-box; margin: 0; }
+body { font: 18px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); overflow-x: clip; padding-bottom: 84px; }
+@media (min-width: 768px) { body { padding-bottom: 0; } }
+a { color: inherit; }
+h1 { font-size: clamp(32px,6vw,56px); line-height: 1.05; letter-spacing: -.02em; margin: .4rem 0; }
+h2 { font-size: clamp(24px,3.4vw,34px); line-height: 1.15; letter-spacing: -.01em; margin: 1.2rem 0 .5rem; }
+h3 { font-size: 19px; line-height: 1.25; margin: .2rem 0; }
+.muted, .sub, .debil { color: var(--muted); } .small, .debil { font-size: 15px; } .sub { font-size: 17px; }
+.wrap, main, footer.cola { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 768px) { .wrap, main, footer.cola { padding: 0 32px; } }
+main { display: flex; flex-direction: column; gap: 16px; padding-top: 24px; padding-bottom: 32px; }
+footer.cola { padding-bottom: 24px; font-size: 15px; color: var(--muted); }
+svg.i { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+header.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; gap: 16px; height: 64px; }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 900; letter-spacing: .04em; font-size: 20px; text-decoration: none; }
+.logo b { width: 34px; height: 34px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 18px; }
+nav.topmenu, .topnav { display: none; gap: 4px; margin-left: 24px; }
+nav.topmenu a, .topnav a { padding: 10px 14px; border-radius: 12px; text-decoration: none; font-weight: 600; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+nav.topmenu a.on, .topnav a.on { color: var(--ink); background: var(--surface-2); }
+@media (min-width: 768px) { nav.topmenu, .topnav { display: flex; } }
+.place { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); text-decoration: none; }
+.place svg.i { width: 18px; height: 18px; color: var(--accent); }
+.iconbtn { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); display: grid; place-items: center; cursor: pointer; }
+.a11y { position: relative; }
+.a11y summary { list-style: none; } .a11y summary::-webkit-details-marker { display: none; }
+.menu, .a11y-panel { position: absolute; right: 0; top: 52px; width: 290px; max-width: 86vw; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 16px; display: flex; flex-direction: column; gap: 14px; z-index: 20; }
+.seg { display: grid; grid-template-columns: repeat(3,1fr); background: var(--surface-2); border-radius: 12px; padding: 4px; gap: 4px; }
+.seg button { min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: 600 15px system-ui; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.seg svg.i { width: 18px; height: 18px; }
+.row { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+nav.bottom { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: var(--surface); border-top: 1px solid var(--line); z-index: 10; }
+nav.bottom a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 12px; font-size: 12px; font-weight: 600; color: var(--muted); text-decoration: none; }
+nav.bottom a.on { color: var(--accent); }
+nav.bottom a svg.i { width: 24px; height: 24px; }
+@media (min-width: 768px) { nav.bottom { display: none; } }
+.lbl { font: 700 12px/1 system-ui; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+.card, .tarjeta { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; box-shadow: var(--shadow); }
+.btn, .boton { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 22px; border-radius: 14px; background: var(--accent); color: var(--accent-ink); font: 700 17px system-ui; border: 0; text-decoration: none; cursor: pointer; }
+.btn.ghost, .boton.ghost { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+main .btn, main .boton { display: flex; width: 100%; }
+@media (min-width: 768px) { main .btn, main .boton { width: auto; } .btnrow { display: flex; gap: 10px; flex-wrap: wrap; } }
+.chip, .tag, .marca { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px; font-size: 14px; font-weight: 600; background: var(--accent-soft); color: var(--accent); margin-right: .35rem; }
+.chip.ok { background: var(--ok-soft); color: var(--ok); } .chip.warn { background: var(--warn-soft); color: var(--warn); }
+.chip svg.i, .tag svg.i { width: 16px; height: 16px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.grid { display: grid; gap: 16px; }
+@media (min-width: 768px) { .g2 { grid-template-columns: 1fr 1fr; } .g3 { grid-template-columns: repeat(3,1fr); } .g-side { grid-template-columns: 1.4fr 1fr; align-items: start; } }
+.hero { display: grid; gap: 28px; align-items: center; }
+@media (min-width: 900px) { .hero { grid-template-columns: 1.1fr .9fr; } }
+.search { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 2px solid var(--accent); border-radius: 16px; padding: 6px 6px 6px 16px; box-shadow: var(--shadow); }
+.search input { flex: 1; border: 0; background: transparent; font: 18px system-ui; color: var(--ink); min-height: 48px; outline: none; min-width: 0; width: auto; }
+.sugg { margin-top: 8px; padding: 6px; }
+.sugg a { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; text-decoration: none; }
+.sugg a:hover { background: var(--surface-2); }
+.sugg small { margin-left: auto; }
+.mx { width: 100%; height: auto; }
+.mx .st { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.5; }
+.mx .on { fill: var(--accent); }
+.meter { height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; } .meter i { display: block; height: 100%; background: var(--accent); min-width: 6px; }
+.step { display: flex; gap: 14px; } .n, .num { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; flex: none; }
+.steps { display: flex; flex-direction: column; gap: 12px; }
+.live { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--ok); }
+.live i { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); animation: p 1.4s infinite; }
+@keyframes p { 50% { opacity: .25; } }
+.feed { display: flex; flex-direction: column; }
+.ev { display: grid; grid-template-columns: 40px 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); animation: entrar .45s ease; }
+.ev:last-child { border: 0; }
+@keyframes entrar { from { opacity: 0; transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .live i, .ev { animation: none; } }
+.dot { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
+.dot svg.i { width: 22px; height: 22px; }
+.dot.ok { background: var(--ok-soft); color: var(--ok); } .dot.warn { background: var(--warn-soft); color: var(--warn); } .dot.now { background: var(--accent); color: var(--accent-ink); }
+.ev time { font-size: 13px; color: var(--muted); }
+.kpis { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.kpi { background: var(--surface-2); border-radius: 14px; padding: 12px; text-align: center; } .kpi b { display: block; font-size: 26px; }
+.doc { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 14px; background: var(--surface-2); }
+.thumb { width: 44px; height: 56px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); flex: none; }
+.ring { position: relative; width: 100%; max-width: 420px; aspect-ratio: 1; margin: 0 auto; }
+.ring .c { position: absolute; border-radius: 50%; border: 2px dashed var(--line); inset: 0; } .ring .c2 { inset: 17%; } .ring .c3 { inset: 34%; border-style: solid; background: var(--accent-soft); border-color: transparent; }
+.ring .p { position: absolute; transform: translate(-50%,-50%); text-align: center; font-size: 13px; font-weight: 600; width: 96px; line-height: 1.2; }
+.av, .avatar { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; margin: 0 auto 4px; flex: none; background: var(--accent); font-size: 17px; }
+.av.l { width: 84px; height: 84px; font-size: 28px; }
+.av.you, .v4 { background: var(--ink); } .v1, .av { background: #5b3fd1; } .v2, .av.a2 { background: #0e7490; } .v3, .av.a3 { background: #475569; }
+.tier { display: flex; flex-direction: column; gap: 10px; }
+.tier h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.tier h3 svg.i { width: 18px; height: 18px; }
 .person, .persona { display: flex; gap: 14px; align-items: center; }
-.tag, .marca { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 4px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-tx); font-weight: 600; margin-right: .35rem; }
-.grid2, .temas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.tile, .tema { background: var(--card); border: 2px solid var(--line); border-radius: var(--r); min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-weight: 700; text-align: center; padding: 12px; color: var(--ink); text-decoration: none; }
-.tile.on, .tema.on { border-color: var(--accent); background: var(--accent-soft); }
-.reggrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.regcard { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; }
-.regcard summary { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; min-height: 44px; text-align: center; font-weight: 700; list-style: none; }
+.reg, .reggrid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
+@media (min-width: 600px) { .reg, .reggrid { grid-template-columns: repeat(3,1fr); } }
+@media (min-width: 1000px) { .reg, .reggrid { grid-template-columns: repeat(4,1fr); } }
+.reg.filtrando .regcard:not(.on), .reggrid.filtrando .regcard:not(.on) { opacity: .45; }
+.rg, .regcard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; font-size: 14px; line-height: 1.25; }
+.rg.on, .regcard.on { border: 2px solid var(--accent); background: var(--accent-soft); }
+.regcard summary { display: flex; gap: 10px; align-items: center; cursor: pointer; min-height: 44px; font-weight: 700; list-style: none; }
 .regcard summary::-webkit-details-marker { display: none; }
-svg.i, .icono { width: 28px; height: 28px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; color: var(--accent-tx); }
+.regcard .av { width: 38px; height: 38px; font-size: 14px; margin: 0; }
+.filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.filters button { flex: none; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 600 15px system-ui; cursor: pointer; }
+.filters button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.filters svg.i { width: 18px; height: 18px; }
+.sticky { position: sticky; top: 84px; }
+.tl { border-left: 3px solid var(--line); margin-left: 8px; padding-left: 20px; display: flex; flex-direction: column; gap: 16px; }
+.tl div { position: relative; } .tl div:before { content: ""; position: absolute; left: -29px; top: 5px; width: 15px; height: 15px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); }
+.src { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); }
+.src svg.i { width: 16px; height: 16px; color: var(--ok); }
+.zero { display: flex; gap: 14px; align-items: flex-start; background: var(--warn-soft); border-radius: 14px; padding: 14px; color: var(--ink); }
+.zero b { font-size: 34px; line-height: 1; color: var(--warn); }
+.list a { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 4px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
+.list a:last-child { border: 0; }
+.grid2, .temas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (min-width: 768px) { .grid2, .temas { grid-template-columns: repeat(3,1fr); } }
+.tile, .tema { background: var(--surface); border: 2px solid var(--line); border-radius: var(--r); min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-weight: 700; text-align: center; padding: 12px; color: var(--ink); text-decoration: none; }
+.tile.on, .tema.on { border-color: var(--accent); background: var(--accent-soft); }
 .tile svg.i { width: 44px; height: 44px; }
-.stat { display: flex; gap: 12px; } .stat .card { flex: 1; text-align: center; padding: 14px 8px; } .stat b { display: block; font-size: 30px; color: var(--accent-tx); }
-.tl { border-left: 3px solid var(--line); margin-left: 10px; padding-left: 18px; display: flex; flex-direction: column; gap: 14px; }
-.tl div { position: relative; } .tl div:before { content: ""; position: absolute; left: -27px; top: 6px; width: 15px; height: 15px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); }
+.stat { display: flex; gap: 12px; } .stat .card { flex: 1; text-align: center; padding: 14px 8px; } .stat b { display: block; font-size: 30px; color: var(--accent); }
 .coins { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; } .coins i { aspect-ratio: 1; border-radius: 50%; display: block; }
 .leg { display: flex; flex-direction: column; gap: 10px; } .leg div { display: flex; align-items: center; gap: 12px; }
 .leg .sw { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; flex: none; } .leg .sw svg.i { color: #fff; width: 22px; height: 22px; } .leg b { margin-left: auto; font-size: 20px; }
-.big { font-size: 44px; font-weight: 800; line-height: 1; color: var(--accent-tx); }
-.steps { display: flex; flex-direction: column; gap: 12px; } .step { display: flex; gap: 14px; align-items: flex-start; }
-.n { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-tx); display: grid; place-items: center; font-weight: 800; flex: none; }
-.copy { background: var(--copy-bg); border: 2px dashed var(--dash); border-radius: 16px; padding: 14px; font-size: 16px; }
-nav.bottom { display: flex; border-top: 1px solid var(--line); background: var(--card); max-width: 1100px; margin: 0 auto; position: sticky; bottom: 0; }
-nav.bottom a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 0 14px; font-size: 13px; color: var(--muted); text-decoration: none; font-weight: 600; min-height: 56px; }
-nav.bottom a.on { color: var(--accent-tx); }
+.big { font-size: 44px; font-weight: 800; line-height: 1; color: var(--accent); }
+.cols { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (min-width: 768px) { .cols { display: grid; grid-template-columns: 1fr 1fr; align-items: start; } }
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .aviso { background: var(--aviso-bg); border: 1px solid var(--aviso-line); color: var(--aviso-ink); border-radius: 16px; padding: .75rem; }
 .fuente, details.fuente { font-size: 14px; color: var(--muted); background: transparent; border: 0; padding: 0; margin-top: .5rem; overflow-wrap: anywhere; }
-details.fuente summary, details.why summary { color: var(--accent-tx); font-weight: 600; min-height: 44px; cursor: pointer; display: flex; align-items: center; }
-details.ayuda { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: .6rem .8rem; margin: .5rem 0; font-size: 16px; }
-details.ayuda summary { min-height: 44px; cursor: pointer; font-weight: 600; display: flex; align-items: center; color: var(--accent-tx); }
+details.fuente summary, details.why summary { color: var(--accent); font-weight: 600; min-height: 44px; cursor: pointer; display: flex; align-items: center; }
+details.ayuda { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: .6rem .8rem; margin: .5rem 0; font-size: 16px; }
+details.ayuda summary { min-height: 44px; cursor: pointer; font-weight: 600; display: flex; align-items: center; color: var(--accent); }
 .sencillo { border-left: 4px solid var(--accent); }
 img.foto { max-width: 100%; height: auto; border-radius: var(--r); }
 label { display: block; margin: .75rem 0 .25rem; font-weight: 600; }
-input[type=text], input[type=file], input[type=search], select, textarea { width: 100%; min-height: 48px; font-size: 1rem; }
+input[type=text], input[type=file], input[type=search], input[type=password], select, textarea { width: 100%; min-height: 48px; font-size: 1rem; }
 textarea { min-height: 88px; }
 table { border-collapse: collapse; width: 100%; } th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
-.debil, .sub { color: var(--muted); } .debil { font-size: .92rem; }
-u.term { text-decoration: underline dotted var(--accent-tx) 2px; text-underline-offset: 4px; }
-@media (min-width: 640px) {
-  header.top, main, footer { max-width: 1100px; padding: 20px 32px; }
-  nav.bottom { display: none; }
-  nav.topmenu { display: flex; gap: 4px; margin-left: auto; }
-  nav.topmenu a { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; min-height: 44px; border-radius: 12px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: 16px; }
-  nav.topmenu a.on { color: var(--accent-tx); background: var(--accent-soft); }
-  .a11y { margin-left: 0; }
-  .cols { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
-  .grid2, .temas { grid-template-columns: repeat(3, 1fr); }
-  .reggrid { grid-template-columns: repeat(4, 1fr); }
-  .ring { position: sticky; top: 16px; }
-  h1 { font-size: 36px; }
-}
+.copy { background: var(--copy-bg); border: 2px dashed var(--dash); border-radius: 16px; padding: 14px; font-size: 16px; }
+.prog { display: flex; gap: 6px; max-width: 300px; } .prog i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); } .prog i.on { background: var(--accent); }
+.back, .listen { width: 44px; height: 44px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); display: inline-grid; place-items: center; color: var(--accent); cursor: pointer; flex: none; }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible, select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.tema-btns { display: flex; gap: 6px; } .tema-btns button { flex: 1; min-height: 44px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 600; cursor: pointer; }
+u.term { text-decoration: underline dotted var(--accent) 2px; text-underline-offset: 4px; }
 """
 
 
@@ -150,47 +211,65 @@ function filtrar(input, id){ var q = input.value.toLowerCase(); document.querySe
 function filtrarTema(sel){ document.querySelectorAll('[data-tema]').forEach(function(el){ el.style.display = (!sel.value || el.getAttribute('data-tema') === sel.value) ? '' : 'none'; }); }
 function menuA11y(){ var m = document.getElementById('menu-a11y'); if(m) m.hidden = !m.hidden; }
 function ponerTema(t){ try{ if(t === 'system'){ localStorage.removeItem('tema'); document.documentElement.removeAttribute('data-theme'); } else { localStorage.setItem('tema', t); document.documentElement.dataset.theme = t; } }catch(err){} }
+function filtrarTemaBtn(btn, tema){ document.querySelectorAll('.filters button').forEach(function(b){ b.classList.toggle('on', b === btn); }); var g = document.querySelector('.reggrid'); if(!g) return; g.classList.toggle('filtrando', !!tema); g.querySelectorAll('[data-tema]').forEach(function(el){ el.classList.toggle('on', !!tema && el.getAttribute('data-tema') === tema); }); }
+function verMasRegidores(btn){ document.querySelectorAll('.regcard.mas').forEach(function(el){ el.hidden = false; }); btn.remove(); }
 async function compartir(url, texto){ try{ var r = await fetch(url); var b = await r.blob(); var f = new File([b], 'tarjeta.png', {type: 'image/png'}); if(navigator.canShare && navigator.canShare({files: [f]})){ await navigator.share({files: [f], text: texto}); return; } }catch(err){} var a = document.createElement('a'); a.href = url; a.download = 'tarjeta.png'; a.click(); }
+</script>"""
+
+# Script de tema del mockup nacional, tal cual: claro / sistema / oscuro, guardado por persona.
+TEMA_JS = """<script>
+// Tema: claro / sistema / oscuro, guardado por persona en este navegador.
+const btns=[...document.querySelectorAll('.seg button')];
+function setTheme(t){
+  if(t==='system')document.documentElement.removeAttribute('data-theme');else document.documentElement.dataset.theme=t;
+  btns.forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t));
+  try{localStorage.setItem('tema',t)}catch(e){}
+}
+btns.forEach(b=>b.onclick=()=>setTheme(b.dataset.t));
+try{setTheme(localStorage.getItem('tema')||'system')}catch(e){setTheme('system')}
 </script>"""
 
 
 def pagina(titulo: str, cuerpo: str, paso: int | None = None, seccion: str | None = None,
-           sin_titulo: bool = False) -> HTMLResponse:
-    if paso:
-        prog = "".join(f'<i class="{"on" if i < paso else ""}"></i>' for i in range(4))
-        top = (f'<button class="back" type="button" onclick="history.back()" aria-label="Volver">'
-               f'<svg class="i" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button><div class="prog">{prog}</div>')
-    else:
-        top = '<b style="font-size:18px">Atlixco a la vista</b>'
-    items = [("/", "home", "Inicio", "inicio"), ("/representantes", "ppl", "Gobierno", "gobierno"),
+           sin_titulo: bool = False, lugar: str | None = None) -> HTMLResponse:
+    items = [("/", "home", "Inicio", "inicio"), ("/representantes", "ppl", "Tu gobierno", "gobierno"),
              ("/gastos", "coin", "Gastos", "gastos"), ("/actua", "mega", "Actúa", "actua")]
-    topmenu = '<nav class="topmenu" aria-label="Secciones">' + "".join(
-        f'<a href="{h}" class="{"on" if k == seccion else ""}"><svg class="i" aria-hidden="true"><use href="#i-{ic}"/></svg>{t}</a>'
+    topmenu = '<nav class="topmenu" aria-label="Principal">' + "".join(
+        f'<a href="{h}" class="{"on" if k == seccion else ""}">{t}</a>'
         for h, ic, t, k in items) + "</nav>"
-    a11y = ('<div class="a11y"><button class="listen" type="button" onclick="menuA11y()" aria-label="Accesibilidad: escuchar esta página y cambiar el tema">'
-            '<svg class="i" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg></button>'
-            '<div class="a11y-panel" id="menu-a11y" hidden>'
-            '<button class="btn" type="button" onclick="escuchar()">Escuchar esta página</button>'
-            '<button class="btn ghost" type="button" onclick="detener()">Detener lectura</button>'
-            '<p style="font-size:16px;margin:.4rem 0"><strong>Tema de la pantalla</strong></p>'
-            '<div class="tema-btns"><button type="button" onclick="ponerTema(\'light\')">Claro</button>'
-            '<button type="button" onclick="ponerTema(\'system\')">Sistema</button>'
-            '<button type="button" onclick="ponerTema(\'dark\')">Oscuro</button></div></div></div>')
-    top += topmenu + a11y
+    chip = (f'<a class="place" href="/"><svg class="i" aria-hidden="true"><use href="#i-pin"/></svg>{e(lugar)}</a>'
+            if lugar else '<a class="place" href="/"><svg class="i" aria-hidden="true"><use href="#i-pin"/></svg>¿Dónde vives?</a>')
+    a11y = ('<details class="a11y"><summary class="iconbtn" aria-label="Accesibilidad y tema">'
+            '<svg class="i" aria-hidden="true"><use href="#i-a11y"/></svg></summary>'
+            '<div class="menu" id="menu-a11y"><b>Ver y escuchar</b>'
+            '<button class="btn" type="button" style="width:100%" onclick="escuchar()">'
+            '<svg class="i" aria-hidden="true"><use href="#i-spk"/></svg>Escuchar esta página</button>'
+            '<button class="btn ghost" type="button" style="width:100%" onclick="detener()">Detener lectura</button>'
+            '<div><span class="small muted">Tema</span>'
+            '<div class="seg" role="group" aria-label="Tema">'
+            '<button data-t="light" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="#i-sun"/></svg>Claro</button>'
+            '<button data-t="system" aria-pressed="true"><svg class="i" aria-hidden="true"><use href="#i-sys"/></svg>Sistema</button>'
+            '<button data-t="dark" aria-pressed="false"><svg class="i" aria-hidden="true"><use href="#i-moon"/></svg>Oscuro</button>'
+            '</div></div></div></details>')
     nav = ""
     if seccion:
-        nav = '<nav class="bottom">' + "".join(
+        nav = '<nav class="bottom" aria-label="Principal">' + "".join(
             f'<a href="{h}" class="{"on" if k == seccion else ""}"><svg class="i" aria-hidden="true"><use href="#i-{ic}"/></svg>{t}</a>'
             for h, ic, t, k in items) + "</nav>"
+    volver = ""
+    if paso:
+        prog = "".join(f'<i class="{"on" if i < paso else ""}"></i>' for i in range(4))
+        volver = (f'<div style="display:flex;align-items:center;gap:12px"><button class="back" type="button" onclick="history.back()" aria-label="Volver">'
+                  f'<svg class="i" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button><div class="prog" style="flex:1">{prog}</div></div>')
     simbolos = "".join(f'<symbol id="i-{k}" viewBox="0 0 24 24">{v}</symbol>' for k, v in _ICONOS.items())
     return HTMLResponse(f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>{e(titulo)} — Atlixco a la vista</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>{e(titulo)} — POLACA</title>
 <script>try{{ var t = localStorage.getItem('tema'); if(t && t !== 'system') document.documentElement.dataset.theme = t; }}catch(err){{}}</script>
 <style>{CSS}</style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>{simbolos}</defs></svg>
-<header class="top">{top}</header>
-<main>{'' if sin_titulo else f'<h1>{e(titulo)}</h1>'}{cuerpo}</main>
-<footer class="debil">Datos de documentos públicos oficiales, mostrados con su fuente.</footer>{nav}{JS}</body></html>""")
+<header class="top"><div class="wrap"><a class="logo" href="/"><b>P</b>POLACA</a>{topmenu}{chip}{a11y}</div></header>
+<main class="wrap">{volver}{'' if sin_titulo else f'<h1>{e(titulo)}</h1>'}{cuerpo}</main>
+<footer class="cola">POLACA · Datos de documentos públicos oficiales, mostrados con su fuente. La política no te ignora. ¿La ignoras tú?</footer>{nav}{JS}{TEMA_JS}</body></html>""")
 
 
 def _con() -> sqlite3.Connection:
@@ -340,6 +419,19 @@ _ICONOS = {
     "copy": '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/>',
     "cal": '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
     "otros": '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+    "a11y": '<circle cx="12" cy="4.5" r="1.8"/><path d="M5 8l7 1.5L19 8M12 9.5V14l-3 6M12 14l3 6"/>',
+    "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>',
+    "moon": '<path d="M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z"/>',
+    "sys": '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+    "globe": '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/>',
+    "read": '<path d="M3 5h7a2 2 0 012 2v12a2 2 0 00-2-2H3zM21 5h-7a2 2 0 00-2 2v12a2 2 0 012-2h7z"/>',
+    "chk": '<path d="M5 12l5 5L20 7"/>',
+    "alert": '<path d="M12 3l9 16H3zM12 10v4M12 17v.5"/>',
+    "spark": '<path d="M12 3l2 5.5L19.5 10 14 12l-2 5.5L10 12 4.5 10 10 8.5z"/>',
+    "share": '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>',
+    "book": '<path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 5v16"/>',
+    "leaf": '<path d="M5 19c0-9 6-14 15-14 0 9-5 15-14 15M5 19l7-7"/>',
+    "heart": '<path d="M12 20s-8-4.5-8-10.5A4.5 4.5 0 0112 7a4.5 4.5 0 018 2.5C20 15.5 12 20 12 20z"/>',
 }
 # Alias usados por las pantallas anteriores.
 _ICONOS.update({"casa": _ICONOS["home"], "personas": _ICONOS["ppl"], "calle": _ICONOS["road"],
@@ -441,7 +533,7 @@ def _tarjeta_png(dato: str, nombre: str, cargo: str, fuente: str) -> bytes:
     grande = ImageFont.load_default(size=88)
     medio = ImageFont.load_default(size=56)
     chico = ImageFont.load_default(size=40)
-    d.text((70, 90), "Atlixco a la vista", font=titulo, fill="#ffffff")
+    d.text((70, 90), "POLACA", font=titulo, fill="#ffffff")
     d.text((70, 180), "Datos de documentos públicos, con su fuente", font=chico, fill="#ddd3ff")
     y = 380
     for linea in _envolver(d, dato, grande, 940)[:6]:
@@ -640,28 +732,41 @@ def representantes(junta: int = 0, m: str = "21019"):
               '<p class="sub" style="font-size:16px">Primero ves a quien tienes más cerca de tu casa y al final a quien '
               'gobierna para todo el municipio. Todas deciden juntas en el Cabildo.</p>')
     temas_unicos = sorted({f["comision"] for f in regidores})
-    opciones = "".join(f'<option value="{e(t)}">{e(t)}</option>' for t in temas_unicos)
+    botones = ('<button class="on" type="button" onclick="filtrarTemaBtn(this, \'\')">Todos</button>' + "".join(
+        f'<button type="button" onclick="filtrarTemaBtn(this, \'{e(t)}\')">{icono(_icono_tema(t), "Icono del tema " + t)}{e(t)}</button>'
+        for t in temas_unicos))
     hace_reg = f_reg["funcion"] if f_reg else "Participa en las decisiones del Cabildo."
-    reggrid = "".join(
-        f'<details class="regcard" data-tema="{e(f["comision"])}"><summary>'
-        f'<span class="av a2" aria-hidden="true">{e(_iniciales(f["nombre"]))}</span>'
-        f'{icono(_icono_tema(f["comision"]), "Icono del tema " + f["comision"])}<span>{e(f["nombre"])}</span>'
-        f'<span class="sub" style="font-size:14px;font-weight:400">{e(f["comision"])}</span></summary>'
-        f'<p style="font-size:16px">{e(f["cargo"])}</p>'
-        f'<p style="font-size:16px"><strong>Qué hace:</strong> {e(hace_reg)}</p>{_fuente_de(f, urls)}'
-        f'<p><a class="btn ghost" href="/revisar/{f["id"]}">Ver su trabajo</a></p></details>' for f in regidores)
-    derecha = ('<div class="stack"><h2>Tu comunidad</h2>' + "".join(nivel_comunidad)
-               + '<h2>Cabildo: regidoras y regidores</h2>'
-                 '<label for="filtro-tema">¿De qué se encarga?</label>'
-                 f'<select id="filtro-tema" onchange="filtrarTema(this)"><option value="">Todos los temas</option>{opciones}</select>'
-               + f'<div class="reggrid">{reggrid}</div>'
-                 '<h2>Presidencia</h2>' + "".join(nivel_presidencia)
-               + """<div class="card"><h3>El Cabildo completo</h3>
+    tarjetas_reg = []
+    for i, f in enumerate(regidores):
+        tarjetas_reg.append(
+            f'<details class="regcard{" mas" if i >= 6 else ""}" data-tema="{e(f["comision"])}"{" hidden" if i >= 6 else ""}><summary>'
+            f'<span class="av a2" aria-hidden="true">{e(_iniciales(f["nombre"]))}</span>'
+            f'<span>{e(f["nombre"])}<br><span class="small muted" style="font-weight:400">{icono(_icono_tema(f["comision"]), "Icono del tema " + f["comision"])} {e(f["comision"])}</span></span></summary>'
+            f'<p style="font-size:15px;margin-top:8px">{e(f["cargo"])}</p>'
+            f'<p style="font-size:15px"><strong>Qué hace:</strong> {e(hace_reg)}</p>{_fuente_de(f, urls)}'
+            f'<p><a class="btn ghost" href="/revisar/{f["id"]}">Ver su trabajo</a></p></details>')
+    reggrid = "".join(tarjetas_reg)
+    ver_mas = (f'<p><button class="btn ghost" type="button" onclick="verMasRegidores(this)">Ver las otras {len(regidores) - 6}</button></p>'
+               if len(regidores) > 6 else "")
+    izquierda = ('<div style="display:flex;flex-direction:column;gap:20px">'
+                 f'<div class="tier"><h3>{icono("pin", "Dibujo de un pin de mapa")}Tu comunidad</h3>'
+                 + "".join(nivel_comunidad) + '</div>'
+                 f'<div class="filters" role="group" aria-label="¿De qué se encarga?">{botones}</div>'
+                 f'<div class="tier"><h3>{icono("ppl", "Dibujo de personas")}Cabildo · {len(regidores)} regidurías</h3>'
+                 f'<div class="reggrid">{reggrid}</div>{ver_mas}</div>'
+                 f'<div class="tier"><h3>{icono("home", "Dibujo de una casa")}Presidencia</h3>'
+                 + "".join(nivel_presidencia)
+                 + """<div class="card"><h3>El Cabildo completo</h3>
 <p style="font-size:16px">Presidenta, síndico y regidores se reúnen, discuten y votan. Lo que acuerdan queda en documentos públicos.</p>
 <p><a class="btn" href="/temas">¿Qué te preocupa?</a></p>
-<p><a class="btn ghost" href="/acuerdos">Ver los acuerdos</a></p></div></div>""")
-    cuerpo = f'<div class="cols"><div>{visual}</div>{derecha}</div>'
-    return pagina("Estas personas trabajan para ti", cuerpo, paso=2)
+<p><a class="btn ghost" href="/acuerdos">Ver los acuerdos</a></p></div></div></div>""")
+    derecha = (f'<div class="card sticky" style="text-align:center">{visual}'
+               '<p class="small muted">Más cerca del centro = más cerca de ti.</p></div>')
+    cuerpo = f'<div class="grid g-side">{izquierda}{derecha}</div>'
+    with _con() as con:
+        mun = _filas(con, "SELECT nombre, estado FROM municipios WHERE clave_inegi = ?", (m,))
+    lugar = f'{mun[0]["nombre"]}, {mun[0]["estado"]}' if mun else None
+    return pagina("Estas personas trabajan para ti", cuerpo, paso=2, lugar=lugar)
 
 
 def _temas_grid(seleccion=""):
@@ -755,27 +860,38 @@ def revisar_persona(id_: int):
                       f'<p><a href="/evidencia/{ev["id"]}">Ver la evidencia completa</a></p></div>' for ev in evidencias)
     tag = (f'<span class="tag">{icono("road" if "desarrollo urbano" in plano(f["comision"] or "") else "doc", "Icono del tema")} '
            f'{e(f["comision"])}</span>' if f["comision"] else f'<span class="tag">{e(f["cargo"])}</span>')
-    cuerpo = (f'<div style="text-align:center"><div class="av a2" style="width:84px;height:84px;font-size:28px;margin:0 auto" aria-hidden="true">{e(_iniciales(f["nombre"]))}</div>'
-              f'<h2>{e(f["nombre"])}</h2>{tag}{_fuente_de(f, urls)}</div>'
-              f'<div class="card"><h3>¿Qué hace?</h3><p style="font-size:16px">{e(f_fun["funcion"]) if f_fun else ""}</p>'
-              f'{_fuente_de(f_fun, urls) if f_fun else ""}</div>'
-              f'<div class="stat"><div class="card"><b>{len(acuerdos)}</b><span style="font-size:15px">propuestas en los acuerdos revisados</span></div>'
-              f'<div class="card"><b>{hallazgos_n}</b><span style="font-size:15px">diferencias encontradas en los {n_docs} documentos revisados hasta hoy</span></div></div>'
-              f'<p style="font-size:16px">Esto solo cubre los {n_docs} documentos públicos revisados hasta hoy. '
-              f'Si falta revisar más, el número puede cambiar.</p>'
-              f'<p><a class="btn ghost" href="/evidencia">Ayúdanos a revisar más: sube una foto</a></p>'
-              f'<div class="card"><h3 style="margin-bottom:12px">Lo que ha propuesto</h3>'
-              + (f'<div class="tl">{linea}</div>' if acuerdos else
-                 '<p style="font-size:16px">En los acuerdos revisados no aparece como proponente. Esto solo cubre los documentos cargados hasta hoy.</p>')
-              + '</div>'
-              + '<div class="card"><h3>Lo que reportan vecinos</h3>'
-              + (fotos or '<p style="font-size:16px">Todavía no hay fotos ciudadanas registradas.</p>')
-              + f'<p><a class="btn ghost" href="/evidencia">{icono("cam", "Dibujo de una cámara")} Subir una foto</a></p></div>'
-              + f'<p><a class="btn" href="/actua?para={e(f["nombre"])}">{icono("mega", "Dibujo de un megáfono")} Pregúntale o pide información</a></p>'
-              + _compartir_html(f"/compartir/funcionario/{f['id']}.png",
-                                f"{f['nombre']} ({f['cargo']}): {len(acuerdos)} propuestas en los acuerdos revisados; "
-                                f"{hallazgos_n} diferencias en los {n_docs} documentos revisados. Fuente: {f['archivo']}, p. {f['pagina']}"))
-    return pagina(f["nombre"], cuerpo, paso=4)
+    n_fotos = len(evidencias)
+    izquierda = (f'<div style="display:flex;flex-direction:column;gap:16px">'
+                 f'<div class="person"><div class="av a2 l" aria-hidden="true">{e(_iniciales(f["nombre"]))}</div>'
+                 f'<div><h2 style="margin:0">{e(f["nombre"])}</h2>{tag}{_fuente_de(f, urls)}</div></div>'
+                 f'<div class="card"><h3>¿Qué hace?</h3><p style="font-size:16px">{e(f_fun["funcion"]) if f_fun else ""}</p>'
+                 f'{_fuente_de(f_fun, urls) if f_fun else ""}</div>'
+                 f'<div class="card"><h3 style="margin-bottom:14px">Lo que ha propuesto</h3>'
+                 + (f'<div class="tl">{linea}</div>' if acuerdos else
+                    '<p style="font-size:16px">En los acuerdos revisados no aparece como proponente. Esto solo cubre los documentos cargados hasta hoy.</p>')
+                 + '</div>'
+                 + '<div class="card"><h3>Lo que reportan vecinos</h3>'
+                 + (fotos or '<p style="font-size:16px">Todavía no hay fotos ciudadanas registradas.</p>')
+                 + f'<p><a class="btn ghost" href="/evidencia">{icono("cam", "Dibujo de una cámara")} Subir una foto</a></p></div></div>')
+    derecha = (f'<div style="display:flex;flex-direction:column;gap:16px" class="sticky">'
+               f'<div class="kpis"><div class="kpi"><b>{len(acuerdos)}</b><span class="small">propuestas en los acuerdos revisados</span></div>'
+               f'<div class="kpi"><b>{n_fotos}</b><span class="small">fotos de vecinos</span></div>'
+               f'<div class="kpi"><b>{hallazgos_n}</b><span class="small">diferencias*</span></div></div>'
+               f'<div class="zero"><b>{hallazgos_n}</b><span class="small">diferencias encontradas '
+               f'<b style="font-size:inherit;color:inherit">en los {n_docs} documentos revisados hasta hoy</b>. '
+               'Eso no significa que todo esté bien: faltan documentos. '
+               '<a href="/evidencia">Ayúdanos a revisar más</a></span></div>'
+               f'<p><a class="btn" href="/actua?para={e(f["nombre"])}">{icono("mega", "Dibujo de un megáfono")} Pregúntale o pide información</a></p>'
+               + _compartir_html(f"/compartir/funcionario/{f['id']}.png",
+                                 f"{f['nombre']} ({f['cargo']}): {len(acuerdos)} propuestas en los acuerdos revisados; "
+                                 f"{hallazgos_n} diferencias en los {n_docs} documentos revisados. Fuente: {f['archivo']}, p. {f['pagina']}")
+               + '</div>')
+    cuerpo = f'<div class="grid g-side">{izquierda}{derecha}</div>'
+    with _con() as con:
+        mun = _filas(con, "SELECT nombre, estado FROM municipios WHERE clave_inegi = ?",
+                     (f["municipio_id"],)) if f.get("municipio_id") else []
+    lugar = f'{mun[0]["nombre"]}, {mun[0]["estado"]}' if mun else "Atlixco, Puebla"
+    return pagina(f["nombre"], cuerpo, paso=4, sin_titulo=True, lugar=lugar)
 
 
 @app.get("/actua", response_class=HTMLResponse)
@@ -820,23 +936,70 @@ def actua(para: str = "", tema: str = ""):
     return pagina("Pide información", cuerpo, seccion="actua")
 
 
+def _chip_estado(estado_indexacion: str) -> tuple[str, str]:
+    return {"indexado": ("Revisado", "ok"), "indexando": ("Revisando", ""),
+            "solicitado": ("Solicitud en espera", "warn"), "error": ("Sin revisar", "warn"),
+            }.get(estado_indexacion, ("Sin revisar", "warn"))
+
+
+def _buscador_html(q: str, resultados: list[dict], action: str = "/") -> tuple[str, str]:
+    """Buscador nacional con sugerencias y el estado de cada municipio. Devuelve (buscador, sugerencias)."""
+    sugg = ""
+    if q:
+        items = ""
+        for r in resultados:
+            texto_chip, clase = _chip_estado(r["estado_indexacion"])
+            enlace = (f'/representantes?m={e(r["clave_mun"])}' if r["estado_indexacion"] == "indexado"
+                      else f'/municipio/{e(r["clave_mun"])}')
+            items += (f'<a href="{enlace}" data-nombre="{e(r["nom_loc"])}">{icono("pin", "Dibujo de un pin de mapa")}'
+                      f'<span><b>{e(r["nom_loc"])}</b><br><span class="small muted">{e(r["nom_mun"])}, {e(r["nom_ent"])}</span></span>'
+                      f'<small class="chip {clase}">{texto_chip}</small></a>')
+        sugg = (f'<div class="card sugg" id="lista-resultados">{items}</div>' if items else
+                '<p class="sub">No encontramos esa localidad en el catálogo de INEGI. '
+                'Revisa cómo se escribe o busca tu municipio.</p>')
+    buscador = (f'<form method="get" action="{action}"><label class="search">{icono("srch", "Dibujo de una lupa")}'
+                f'<input name="q" type="search" value="{e(q)}" placeholder="Escribe tu localidad o municipio" '
+                'aria-label="Busca tu localidad o municipio">'
+                '<button class="btn" type="submit" style="min-height:48px;width:auto">Buscar</button></label></form>')
+    return buscador, sugg
+
+
 @app.get("/", response_class=HTMLResponse)
-def inicio():
-    hero_svg = """<svg class="h" viewBox="0 0 300 150" role="img" aria-label="Una persona frente al Ayuntamiento, con una lupa">
-<rect x="150" y="40" width="130" height="90" rx="6" fill="#ffffff22"/><path d="M140 44 215 12l75 32z" fill="#ffffff33"/>
-<g fill="#ffffff44"><rect x="165" y="60" width="16" height="70"/><rect x="200" y="60" width="16" height="70"/><rect x="235" y="60" width="16" height="70"/></g>
-<circle cx="70" cy="58" r="20" fill="#fff"/><path d="M38 140c0-30 14-52 32-52s32 22 32 52z" fill="#fff"/>
-<circle cx="122" cy="74" r="16" fill="none" stroke="#fff" stroke-width="6"/><path d="M110 86 96 100" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg>"""
-    cuerpo = f"""<section id="bienvenida" class="hero">{hero_svg}
-<h1>Conoce a quienes gobiernan tu comunidad</h1>
-<p>Te mostramos quiénes son, qué hacen y cómo revisar su trabajo. Toma 2 minutos.</p></section>
-<div class="card" style="display:flex;gap:12px;align-items:center">{icono("doc", "Dibujo de un documento")}
-<span style="font-size:16px">Todo sale de documentos públicos del Ayuntamiento. Siempre te mostramos de dónde.</span></div>
+def inicio(q: str = ""):
+    with _con() as con:
+        resultados = municipios.buscar_localidades(con, q) if q else []
+        total_mun = con.execute("SELECT count(*) FROM municipios").fetchone()[0]
+        revisados = con.execute("SELECT count(*) FROM municipios WHERE estado_indexacion = 'indexado'").fetchone()[0]
+        indexados = _filas(con, "SELECT * FROM municipios WHERE estado_indexacion = 'indexado' ORDER BY nombre")
+    buscador, sugg = _buscador_html(q, resultados)
+    pct = round(100 * revisados / total_mun) if total_mun else 0
+    ya = "".join(f'<a href="/representantes?m={e(m["clave_inegi"])}">{icono("pin", "Dibujo de un pin de mapa")}'
+                 f'{e(m["nombre"])}, {e(m["estado"])}<small class="chip ok">Revisado</small></a>' for m in indexados)
+    cuerpo = f"""<div class="hero">
+<div style="display:flex;flex-direction:column;gap:18px">
+<span class="chip" style="align-self:flex-start">{icono("globe", "Dibujo de un globo terráqueo")}Para todo México</span>
+<h1>¿Quién gobierna donde vives?</h1>
+<p class="muted" style="font-size:20px">Conoce a tus autoridades, revisa lo que hacen con documentos oficiales y aprende qué puedes hacer tú. La política no te ignora. ¿La ignoras tú?</p>
+<div>{buscador}{sugg}</div>
 <p class="aviso">Los hallazgos son discrepancias verificables entre documentos públicos, no acusaciones.</p>
-<div style="display:flex;flex-direction:column;gap:10px">
-<a class="btn" href="/donde" onclick="empezar()">Empezar</a>
-<a class="btn ghost" href="/representantes">Ya conozco, ir al inicio</a></div>"""
-    return pagina("Atlixco a la vista", cuerpo, sin_titulo=True)
+</div>
+<div class="card" style="display:flex;flex-direction:column;gap:14px">
+<svg class="mx" viewBox="0 0 320 200" role="img" aria-label="Mapa estilizado de México con los municipios revisados resaltados">
+<path class="st" d="M10 30l60-8 40 30 30 10 20 30 30 10 20 25 40 5 30-20 25 5-5 25-35 15-40 0-25 20-40 10-30-15-15-25-35-15-20-30-25-20-10-30z"/>
+<path class="st" d="M20 40l10 50 15 35" fill="none"/>
+<circle class="on" cx="190" cy="132" r="7"/><circle class="on" cx="205" cy="122" r="5" opacity=".6"/>
+</svg>
+<div><b style="font-size:28px">{revisados}</b> <span class="muted">de {total_mun:,} municipios revisados</span><div class="meter" style="margin-top:8px"><i style="width:{pct}%"></i></div></div>
+<p class="small muted">¿No está el tuyo? Pídele a Muse que lo revise: busca tu localidad aquí arriba.</p>
+</div></div>
+<div class="grid g3" style="margin-top:8px">
+<div class="step"><span class="num">1</span><div><h3>Busca dónde vives</h3><p class="small muted">Cualquier localidad del país, del catálogo oficial de INEGI. No guardamos tu respuesta.</p></div></div>
+<div class="step"><span class="num">2</span><div><h3>Conoce a quien te representa</h3><p class="small muted">De la autoridad más cercana a la más lejana.</p></div></div>
+<div class="step"><span class="num">3</span><div><h3>Revisa y actúa</h3><p class="small muted">Con documentos oficiales y pasos claros.</p></div></div>
+</div>
+<h2>Municipios que ya revisamos</h2>
+<div class="card list">{ya}</div>"""
+    return pagina("¿Quién gobierna donde vives?", cuerpo, sin_titulo=True, seccion="inicio")
 
 
 @app.get("/donde", response_class=HTMLResponse)
@@ -875,11 +1038,9 @@ def donde(q: str = ""):
     tecnicos = "".join(_tec(m) for m in _manifiesto())
     ya = "".join(f'<a href="/representantes?m={e(m["clave_inegi"])}">{icono("pin", "Dibujo de un pin de mapa")}'
                  f'{e(m["nombre"])}, {e(m["estado"])}</a>' for m in indexados)
+    buscador, sugg = _buscador_html(q, resultados, action="/donde")
     cuerpo = f"""<p class="sub">Busca tu localidad en todo México (catálogo oficial de INEGI). Así te mostramos primero a las personas más cercanas a ti. No guardamos tu respuesta.</p>
-<form method="get" action="/donde"><div class="search">{icono("srch", "Dibujo de una lupa")}
-<input id="buscar-loc" name="q" type="search" value="{e(q)}" placeholder="Escribe tu localidad o municipio" aria-label="Escribe tu localidad o municipio" style="border:0;outline:none"></div>
-<p><button class="btn" type="submit">Buscar</button></p></form>
-{resultados_html}
+{buscador}{sugg}
 <h2>Municipios que ya revisamos</h2>
 <div class="card list">{ya}</div>
 <h2>Si vives en Atlixco, elige tu junta auxiliar</h2>
@@ -899,21 +1060,43 @@ def municipio(clave: str):
             return HTMLResponse("<p>No se encontró el municipio.</p>", status_code=404)
         m = filas[0]
         pendiente = _filas(con, "SELECT * FROM solicitudes WHERE clave_inegi = ? AND estado = 'pendiente' ORDER BY id DESC", (clave,))
+    despues = ('<div class="card"><h3>¿Qué pasa después?</h3><div class="tl" style="margin-top:14px">'
+               '<div><b>Una persona del equipo revisa tu solicitud</b><p class="small muted">Para cuidar que solo se usen fuentes oficiales.</p></div>'
+               '<div><b>Muse busca y lee los documentos</b><p class="small muted">Puedes verlo trabajar en vivo.</p></div>'
+               '<div><b>Publicamos lo que encontró</b><p class="small muted">Con la fuente de cada dato.</p></div></div></div>')
+    lugar = f'{m["nombre"]}, {m["estado"]}'
     if m["estado_indexacion"] == "indexado":
-        cuerpo = (f'<p>Ya revisamos este municipio.</p><p><a class="btn" href="/representantes?m={e(clave)}">'
-                  'Ver quién te representa</a></p>')
+        cuerpo = (f'<div class="grid g-side"><div class="card" style="display:flex;flex-direction:column;gap:16px">'
+                  '<span class="chip ok" style="align-self:flex-start">Revisado</span>'
+                  f'<h2>Ya revisamos {e(m["nombre"])}</h2>'
+                  '<p class="muted">Conoce a las personas que gobiernan tu municipio y revisa su trabajo con documentos oficiales, cada dato con su fuente.</p>'
+                  f'<p><a class="btn" href="/representantes?m={e(clave)}">Ver quién te representa</a></p></div>{despues}</div>')
     elif pendiente:
-        cuerpo = ('<p><strong>Ya hay una solicitud para revisar este municipio.</strong> '
+        cuerpo = (f'<div class="grid g-side"><div class="card" style="display:flex;flex-direction:column;gap:16px">'
+                  '<span class="chip warn" style="align-self:flex-start">Solicitud en espera</span>'
+                  f'<h2>Aún no revisamos {e(m["nombre"])}</h2>'
+                  '<p class="muted"><strong>Ya hay una solicitud para revisar este municipio.</strong> '
                   'Una persona del equipo debe aprobarla antes de que Muse empiece a leer documentos. '
                   'Nada se hace sin esa aprobación.</p>'
-                  f'<p><a class="btn ghost" href="/indexando/{e(clave)}">Ver el avance</a></p>')
+                  f'<p><a class="btn ghost" href="/indexando/{e(clave)}">Ver el avance</a></p></div>{despues}</div>')
     else:
-        cuerpo = ('<p><strong>Todavía no revisamos este municipio.</strong></p>'
-                  '<p>Muse puede buscar sus documentos públicos (portal de transparencia, gaceta, presupuesto y directorio de cabildo), '
-                  'leerlos y guardar cada dato con su fuente, igual que hicimos con Atlixco. Primero una persona del equipo debe aprobar la solicitud.</p>'
-                  f'<form method="post" action="/solicitar/{e(clave)}">'
-                  '<button class="btn" type="submit">Pídele a Muse que lo revise</button></form>')
-    return pagina(f'{m["nombre"]}, {m["estado"]}', cuerpo, seccion="inicio")
+        aviso_previo = ('<p class="muted">Una revisión anterior se detuvo antes de terminar; puedes pedirla de nuevo.</p>'
+                        if m["estado_indexacion"] == "error" else "")
+        cuerpo = (f'<div class="grid g-side"><div class="card" style="display:flex;flex-direction:column;gap:16px">'
+                  '<span class="chip warn" style="align-self:flex-start">Todavía sin revisar</span>'
+                  f'<h2>Aún no revisamos {e(m["nombre"])}</h2>'
+                  '<p class="muted">Muse, nuestro asistente de inteligencia artificial, puede buscar los documentos '
+                  'oficiales del municipio, leerlos y mostrarte quién gobierna y en qué se gasta. Cada dato llevará su fuente.</p>'
+                  '<div class="grid g3" style="gap:10px">'
+                  f'<div class="kpi">{icono("globe", "Dibujo de un globo terráqueo")}<div class="small">Busca en sitios .gob.mx</div></div>'
+                  f'<div class="kpi">{icono("read", "Dibujo de un libro abierto")}<div class="small">Lee gacetas y presupuesto</div></div>'
+                  f'<div class="kpi">{icono("chk", "Dibujo de una palomita")}<div class="small">Verifica cada cita</div></div></div>'
+                  + aviso_previo
+                  + f'<div class="btnrow"><form method="post" action="/solicitar/{e(clave)}">'
+                    f'<button class="btn" type="submit">{icono("spark", "Dibujo de una estrella")}Pídele a Muse que lo revise</button></form>'
+                    '<a class="btn ghost" href="/representantes?m=21019">Ver un ejemplo: Atlixco</a></div>'
+                    '</div>' + despues + '</div>')
+    return pagina(f'{m["nombre"]}, {m["estado"]}', cuerpo, seccion="inicio", sin_titulo=True, lugar=lugar)
 
 
 @app.post("/solicitar/{clave}")
@@ -1002,6 +1185,45 @@ def admin_decision(token: str = Form(""), solicitud: int = Form(0), decision: st
     return RedirectResponse(f"/admin?token={quote(token)}", status_code=303)
 
 
+def _evento_presentacion(paso: str, mensaje: str) -> tuple[str, str]:
+    """(icono, clase del punto) según el tipo de evento, como en el mockup nacional."""
+    texto = plano(mensaje)
+    if paso in ("correccion", "descartado", "tope") or texto.startswith("no encontre") or texto.startswith("no pude"):
+        return "alert", "warn"
+    if paso == "verificacion":
+        return "chk", "ok"
+    if paso == "descarga":
+        return "doc", "ok"
+    if paso == "portal":
+        return "globe", "ok" if texto.startswith("encontre") else "now"
+    if paso == "lectura":
+        return "read", "now"
+    if paso == "aprobada":
+        return "ppl", ""
+    if paso == "fin":
+        return "chk", "ok"
+    return "spark", "now" if paso in ("inicio", "gaceta", "presupuesto", "directorio") else ""
+
+
+def _evento_html(ev: dict) -> str:
+    ic, clase = _evento_presentacion(ev["paso"], ev["mensaje"])
+    return (f'<div class="ev"><span class="dot {clase}">{icono(ic, "Icono del paso " + ev["paso"])}</span>'
+            f'<div><b>{e(ev["mensaje"])}</b><br><time>{e(ev["ts"])}</time></div></div>')
+
+
+def _costo_indexacion(clave: str) -> float:
+    import llm
+    if not llm.LOG_COSTOS.exists():
+        return 0.0
+    total = 0.0
+    for linea in llm.LOG_COSTOS.read_text().splitlines():
+        if linea.strip():
+            g = json.loads(linea)
+            if clave in g.get("etiqueta", ""):
+                total += g.get("usd", 0.0)
+    return total
+
+
 @app.get("/indexando/{clave}", response_class=HTMLResponse)
 def indexando(clave: str):
     with _con() as con:
@@ -1010,26 +1232,78 @@ def indexando(clave: str):
             return HTMLResponse("<p>No se encontró el municipio.</p>", status_code=404)
         m = filas[0]
         eventos = _filas(con, "SELECT * FROM eventos_indexacion WHERE clave_inegi = ? ORDER BY id", (clave,))
-    lista = "".join(f'<li><strong>{e(ev["paso"])}</strong> · {e(ev["mensaje"])} '
-                    f'<span class="debil">{e(ev["ts"])}</span></li>' for ev in eventos)
+        docs = _filas(con, "SELECT archivo FROM documentos WHERE municipio_id = ? ORDER BY id", (clave,))
+        citas_ok = citas_total = 0
+        for tabla in ("acuerdos", "partidas", "funcionarios"):
+            try:
+                f = con.execute(f"SELECT count(*), sum(verificacion = 'ok') FROM {tabla} WHERE municipio_id = ?",
+                                (clave,)).fetchone()
+                citas_total += f[0] or 0
+                citas_ok += f[1] or 0
+            except sqlite3.OperationalError:
+                pass
+    feed = "".join(_evento_html(ev) for ev in reversed(eventos)) or '<p class="sub">Todavía no hay eventos.</p>'
     estado = {"indexado": "Ya terminamos de revisar este municipio.",
               "indexando": "Muse está leyendo los documentos públicos de este municipio…",
               "solicitado": "Solicitud registrada. Falta que una persona del equipo la apruebe.",
               "error": "La revisión se detuvo. Esto es lo que pasó:"}.get(
                   m["estado_indexacion"], "Todavía no se ha pedido revisar este municipio.")
+    en_vivo = '<span class="live"><i></i>En vivo</span>' if m["estado_indexacion"] == "indexando" else ""
     enlace = (f'<p><a class="btn" href="/representantes?m={e(clave)}">Ver quién te representa</a></p>'
               if m["estado_indexacion"] == "indexado" else "")
-    cuerpo = (f'<p class="sub">{e(estado)}</p><div class="card"><h3>Así va la revisión</h3>'
-              f'<ul id="eventos" style="font-size:16px">{lista}</ul>'
-              '<p class="debil" id="en-vivo">Conectando con el avance en vivo…</p></div>' + enlace
+    nombres_doc = [("gaceta", "Gaceta municipal"), ("presupuesto", "Presupuesto de egresos"),
+                   ("directorio", "Directorio del Cabildo"), ("portal", "Portal de transparencia")]
+    encontrados = {p for p, _ in nombres_doc for ev in eventos
+                   if ev["paso"] == p and plano(ev["mensaje"]).startswith("encontre")}
+    no_encontrados = {p for p, _ in nombres_doc for ev in eventos
+                      if ev["paso"] == p and plano(ev["mensaje"]).startswith("no encontre")}
+    docs_html = ""
+    vistos = set()
+    for nombre_paso, etiqueta in nombres_doc:
+        if nombre_paso in encontrados:
+            chip_, estado_doc = '<span class="chip ok">Encontrado</span>', ""
+        elif nombre_paso in no_encontrados:
+            chip_, estado_doc = '<span class="chip warn">No encontrado</span>', ' style="opacity:.6"'
+        elif m["estado_indexacion"] == "indexando":
+            chip_, estado_doc = '<span class="chip warn">Buscando…</span>', ' style="opacity:.6"'
+        else:
+            continue
+        vistos.add(nombre_paso)
+        docs_html += (f'<div class="doc"{estado_doc}><span class="thumb">{icono("doc", "Dibujo de un documento")}</span>'
+                      f'<div><b>{etiqueta}</b><br>{chip_}</div></div>')
+    costo = _costo_indexacion(clave)
+    cuerpo = (f'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px">'
+              f'<h2 style="margin:0">Revisando {e(m["nombre"])}</h2>{en_vivo}</div>'
+              f'<p class="sub">{e(estado)}</p>'
+              f'<div class="grid g-side"><div class="card"><div class="feed" id="eventos">{feed}</div>'
+              '<p class="debil" id="en-vivo">Conectando con el avance en vivo…</p></div>'
+              '<div style="display:flex;flex-direction:column;gap:16px" class="sticky">'
+              f'<div class="card"><div class="kpis"><div class="kpi"><b>{len(docs)}</b><span class="small">documentos</span></div>'
+              f'<div class="kpi"><b style="color:var(--ok)">{citas_ok}/{citas_total}</b><span class="small">citas verificadas</span></div>'
+              f'<div class="kpi"><b>${costo:.2f}</b><span class="small">costo</span></div></div></div>'
+              f'<div class="card" style="display:flex;flex-direction:column;gap:10px"><h3>Documentos buscados</h3>{docs_html or "<p class=small>Aún no empieza la búsqueda.</p>"}</div>'
+              + enlace + '</div></div>'
               + f"""<script>
 var fuente = new EventSource('/indexando/{e(clave)}/eventos');
-fuente.onmessage = function(ev){{ var d = JSON.parse(ev.data); var li = document.createElement('li');
-  li.innerHTML = '<strong></strong> · <span></span> '; li.querySelector('strong').textContent = d.paso;
-  li.querySelector('span').textContent = d.mensaje; document.getElementById('eventos').appendChild(li); }};
+var ultimoEv = {eventos[-1]["id"] if eventos else 0};
+fuente.onmessage = function(ev){{ var d = JSON.parse(ev.data); if(d.id <= ultimoEv) return; ultimoEv = d.id;
+  fetch('/indexando/{e(clave)}/evento/' + d.id).then(function(r){{ return r.text(); }}).then(function(html_){{
+  var tmp = document.createElement('div'); tmp.innerHTML = html_;
+  document.getElementById('eventos').prepend(tmp.firstChild); }}); }};
 fuente.onerror = function(){{ document.getElementById('en-vivo').textContent = 'La conexión en vivo se cerró. Recarga la página para ver el avance.'; }};
 </script>""")
-    return pagina(f'Revisando {m["nombre"]}, {m["estado"]}', cuerpo, seccion="inicio")
+    return pagina(f'Revisando {m["nombre"]}, {m["estado"]}', cuerpo, seccion="inicio", sin_titulo=True,
+                  lugar=f'{m["nombre"]}, {m["estado"]}')
+
+
+@app.get("/indexando/{clave}/evento/{id_}", response_class=HTMLResponse)
+def indexando_evento(clave: str, id_: int):
+    """Un evento ya renderizado, para insertarlo arriba del feed sin recargar."""
+    with municipios.conectar() as con:
+        filas = _filas(con, "SELECT * FROM eventos_indexacion WHERE clave_inegi = ? AND id = ?", (clave, id_))
+    if not filas:
+        return HTMLResponse("", status_code=404)
+    return HTMLResponse(_evento_html(filas[0]))
 
 
 @app.get("/indexando/{clave}/eventos")

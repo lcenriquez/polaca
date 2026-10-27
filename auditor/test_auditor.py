@@ -278,7 +278,8 @@ def test_explicar_web():
         presupuesto_html = cliente.get("/presupuesto").text
         assert "sin fuente local" in presupuesto_html  # Capítulo del gasto, marcado, no como dato oficial
         inicio = cliente.get("/").text
-        assert "Escuchar esta página" in inicio and 'id="bienvenida"' in inicio  # se puede saltar y no vuelve (localStorage)
+        assert "Escuchar esta página" in inicio and "POLACA" in inicio  # marca nueva; el menú de accesibilidad va en el encabezado
+        assert "¿Quién gobierna donde vives?" in inicio and "Atlixco a la vista" not in inicio
         for ruta in ["/", "/acuerdos", "/acuerdos/1", "/presupuesto"]:
             texto = cliente.get(ruta).text.lower()
             assert "corrupción" not in texto and "robo" not in texto, ruta
@@ -401,10 +402,10 @@ def test_responsive_y_temas():
     import re
     import web
     css = web.CSS
-    escritorio = css.split("@media (min-width: 640px)", 1)[1]
-    assert "max-width: 1100px" in escritorio  # el contenido crece en tablet y escritorio
+    escritorio = css.split("@media (min-width: 768px)", 1)[1]
+    assert "max-width: 1120px" in escritorio  # el contenido crece en tablet y escritorio
     assert "nav.bottom { display: none; }" in escritorio  # arriba manda el menú, no la barra inferior
-    assert "repeat(4, 1fr)" in escritorio  # regidores: 4 columnas en escritorio
+    assert "repeat(4,1fr)" in escritorio  # regidores: 4 columnas en escritorio
 
     def variables(bloque):
         return set(re.findall(r"(--[a-z0-9-]+)\s*:", bloque))
@@ -480,10 +481,43 @@ def test_buscador_nacional():
         r = cliente.get("/donde", params={"q": "metepec"})
         assert r.status_code == 200 and "/municipio/15054" in r.text
         r = cliente.get("/donde", params={"q": "Atlixco"})
-        assert "/representantes?m=21019" in r.text and "Ya lo revisamos" in r.text
+        assert "/representantes?m=21019" in r.text and "Revisado" in r.text
         r = cliente.get("/municipio/15054")
-        assert "Todavía no revisamos este municipio" in r.text and "Pídele a Muse que lo revise" in r.text
+        assert "Aún no revisamos Metepec" in r.text and "Todavía sin revisar" in r.text
+        assert "Pídele a Muse que lo revise" in r.text
         assert cliente.get("/municipio/99999").status_code == 404
+
+
+def test_marca_polaca_y_conteo_real():
+    """Ninguna página dice 'Atlixco a la vista' y el inicio cuenta los municipios de la tabla, no un ejemplo."""
+    import gobierno
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with municipios.conectar() as con:
+            con.executemany("INSERT INTO municipios VALUES (?, ?, ?, ?)",
+                            [("15054", "México", "Metepec", "sin_revisar"),
+                             ("21019", "Puebla", "Atlixco", "indexado")])
+            con.commit()
+        with gobierno.conectar() as con:
+            gobierno._guardar(con, "funcionarios",
+                              ["nombre", "cargo", "comision", "archivo", "pagina", "fragmento", "verificacion"],
+                              [{"nombre": "Ana Presidenta", "cargo": "Presidenta Municipal", "comision": None,
+                                "archivo": "g.html", "pagina": 1, "fragmento": "Ana Presidenta", "verificacion": "ok"}])
+        cliente = TestClient(web.app)
+        inicio = cliente.get("/").text
+        assert "POLACA" in inicio and "La política no te ignora" in inicio
+        assert "de 2 municipios revisados" in inicio  # 2 en la tabla, 1 indexado: conteo real, no el del mockup
+        for ruta in ["/", "/donde", "/representantes", "/temas", "/gastos", "/actua",
+                     "/municipio/15054", "/indexando/15054", "/revisar/1", "/acuerdos", "/presupuesto"]:
+            r = cliente.get(ruta)
+            assert r.status_code == 200, ruta
+            assert "Atlixco a la vista" not in r.text, ruta
+            assert "POLACA" in r.text, ruta
 
 
 def test_solicitud_sin_aprobacion_no_dispara_agente():
