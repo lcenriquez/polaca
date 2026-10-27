@@ -676,6 +676,12 @@ def test_indexador_filtros_y_topes():
     orden = indexar.elegir_candidatas(confusas, ["gaceta"], pdf=True, nombre="Cuernavaca")
     assert orden[0].startswith("https://cuernavaca.gob.mx") and len(orden) == 2
     assert indexar.elegir(confusas, ["gaceta"], pdf=True, nombre="Cuernavaca") == orden[0]
+    # El dominio propio gana aunque otra candidata repita más palabras clave en su texto.
+    mezcladas = [("https://www.tepalcingomorelos.gob.mx/presupuesto-egresos.pdf",
+                  "Presupuesto de egresos presupuesto egresos aprobado"),
+                 ("https://transparenciacuernavaca.gob.mx/docs/presupuesto.pdf", "Presupuesto")]
+    assert indexar.elegir(mezcladas, ["presupuesto", "egresos"], pdf=True,
+                          nombre="Cuernavaca").startswith("https://transparenciacuernavaca.gob.mx")
     # Un .gob.mx de otro municipio no cuenta: el documento debe mencionar al municipio pedido.
     assert indexar.menciona_municipio("MUNICIPIO DE CUETZALAN DEL PROGRESO, Estado de Puebla", "Cuetzalan del Progreso")
     assert not indexar.menciona_municipio("MUNICIPIO DE PROGRESO, Estado de Yucatán", "Cuetzalan del Progreso")

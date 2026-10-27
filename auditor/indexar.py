@@ -31,7 +31,7 @@ import presupuesto
 
 TOPE_MUNICIPIO = 1.00
 TOPE_DIA = 5.00
-MAX_INTENTOS = 3  # candidatas por fuente: la búsqueda confunde municipios, se prueba hasta dar con el correcto
+MAX_INTENTOS = 5  # candidatas por fuente: la búsqueda confunde municipios, se prueba hasta dar con el correcto
 MAX_PAGINAS_PDF = 40  # ponytail: primera pasada acotada; subir si el tope de gasto lo permite
 
 
@@ -97,6 +97,10 @@ def elegir_candidatas(candidatas: list[tuple[str, str]], palabras: list[str], pd
             continue
         texto = (url + " " + titulo).lower()
         puntos = sum(p in texto for p in palabras) + (3 if nombre and menciona_municipio(texto, nombre) else 0)
+        if nombre:  # el dominio propio del municipio pesa más que cualquier palabra clave suelta
+            palabras_n = [p for p in municipios.sin_acentos(nombre).split() if len(p) >= 4]
+            if palabras_n and max(palabras_n, key=len) in (urlparse(url).hostname or ""):
+                puntos += 5
         vistas[url] = max(vistas.get(url, -1), puntos)
     buenas = sorted((u for u, n in vistas.items() if n > 0), key=lambda u: -vistas[u])
     return buenas
@@ -118,7 +122,7 @@ def buscar(con, clave: str, inicio: str, paso: str, descripcion: str, consulta: 
         f"indexar:{clave}:{paso}", model=llm.MODELO_PUBLICO, reasoning={"effort": "low"},
         input=(f"Busca en la web {descripcion}. Responde solo con la URL oficial (.gob.mx) más directa "
                f"al documento o página. Si no la encuentras, responde NO_ENCONTRADO. Búsqueda sugerida: {consulta}"),
-        tools=[{"type": "web_search", "search_context_size": "low"}],
+        tools=[{"type": "web_search", "search_context_size": "medium"}],
         include=["web_search_call.results"])
     urls = elegir_candidatas(urls_de_respuesta(resp), palabras, pdf=pdf, nombre=nombre)
     if not urls:
@@ -269,11 +273,13 @@ def indexar(clave: str) -> int:
             raiz = urlparse(portal)
             municipios.registrar_evento(con, clave, "portal",
                                         f"El sitio oficial es {raiz.scheme}://{raiz.netloc}; de ahí salen las demás búsquedas.")
+        host_oficial = urlparse(candidatas[0]).netloc if candidatas else ""
         for tipo, descripcion, palabras, modulo in (
                 ("gaceta", f"la gaceta municipal más reciente de {nombre}", ["gaceta"], "gaceta"),
                 ("presupuesto", f"el presupuesto de egresos de {nombre}", ["presupuesto", "egresos"], "presupuesto")):
             urls = buscar(con, clave, inicio, tipo, descripcion,
-                          f'{descripcion} del Ayuntamiento de "{nombre}", {estado} filetype:pdf gob.mx',
+                          f'{descripcion} del Ayuntamiento de "{nombre}", {estado} filetype:pdf'
+                          + (f" publicado en {host_oficial}" if host_oficial else " gob.mx"),
                           palabras, pdf=True, nombre=nombre)
             for url in urls[:MAX_INTENTOS]:  # si el documento es de otro municipio, pruebo la siguiente candidata
                 try:
@@ -290,7 +296,8 @@ def indexar(clave: str) -> int:
                 break
         descripcion = f"el directorio de cabildo de {nombre}"
         urls = buscar(con, clave, inicio, "directorio", descripcion,
-                      f'directorio del Cabildo del Ayuntamiento de "{nombre}", {estado} presidente regidores gob.mx',
+                      f'directorio del Cabildo del Ayuntamiento de "{nombre}", {estado} presidente municipal '
+                      'y regidores, en el sitio oficial del Ayuntamiento',
                       ["cabildo", "directorio", "integrantes"], nombre=nombre)
         for url in urls[:MAX_INTENTOS]:
             try:
