@@ -79,7 +79,7 @@ nav.topmenu a.on, .topnav a.on { color: var(--ink); background: var(--surface-2)
 .a11y { position: relative; }
 .a11y summary { list-style: none; } .a11y summary::-webkit-details-marker { display: none; }
 .menu, .a11y-panel { position: absolute; right: 0; top: 52px; width: 290px; max-width: 86vw; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 16px; display: flex; flex-direction: column; gap: 14px; z-index: 20; }
-.seg { display: grid; grid-template-columns: repeat(3,1fr); background: var(--surface-2); border-radius: 12px; padding: 4px; gap: 4px; }
+.seg { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); background: var(--surface-2); border-radius: 12px; padding: 4px; gap: 4px; }
 .seg button { min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: 600 15px system-ui; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
 .seg svg.i { width: 18px; height: 18px; }
@@ -99,10 +99,10 @@ main .btn, main .boton { display: flex; width: 100%; }
 .chip.ok { background: var(--ok-soft); color: var(--ok); } .chip.warn { background: var(--warn-soft); color: var(--warn); }
 .chip svg.i, .tag svg.i { width: 16px; height: 16px; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
-.grid { display: grid; gap: 16px; }
-@media (min-width: 768px) { .g2 { grid-template-columns: 1fr 1fr; } .g3 { grid-template-columns: repeat(3,1fr); } .g-side { grid-template-columns: 1.4fr 1fr; align-items: start; } }
-.hero { display: grid; gap: 28px; align-items: center; }
-@media (min-width: 900px) { .hero { grid-template-columns: 1.1fr .9fr; } }
+.grid { display: grid; gap: 16px; grid-template-columns: minmax(0,1fr); }
+@media (min-width: 768px) { .g2 { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } .g3 { grid-template-columns: repeat(3,minmax(0,1fr)); } .g-side { grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); align-items: start; } }
+.hero { display: grid; gap: 28px; align-items: center; grid-template-columns: minmax(0,1fr); }
+@media (min-width: 900px) { .hero { grid-template-columns: minmax(0,1.1fr) minmax(0,.9fr); } }
 .search { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 2px solid var(--accent); border-radius: 16px; padding: 6px 6px 6px 16px; box-shadow: var(--shadow); }
 .search input { flex: 1; border: 0; background: transparent; font: 18px system-ui; color: var(--ink); min-height: 48px; outline: none; min-width: 0; width: auto; }
 .sugg { margin-top: 8px; padding: 6px; }
@@ -119,7 +119,7 @@ main .btn, main .boton { display: flex; width: 100%; }
 .live i { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); animation: p 1.4s infinite; }
 @keyframes p { 50% { opacity: .25; } }
 .feed { display: flex; flex-direction: column; }
-.ev { display: grid; grid-template-columns: 40px 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); animation: entrar .45s ease; }
+.ev { display: grid; grid-template-columns: 40px minmax(0,1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); animation: entrar .45s ease; }
 .ev:last-child { border: 0; }
 @keyframes entrar { from { opacity: 0; transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .live i, .ev { animation: none; } }
@@ -127,7 +127,7 @@ main .btn, main .boton { display: flex; width: 100%; }
 .dot svg.i { width: 22px; height: 22px; }
 .dot.ok { background: var(--ok-soft); color: var(--ok); } .dot.warn { background: var(--warn-soft); color: var(--warn); } .dot.now { background: var(--accent); color: var(--accent-ink); }
 .ev time { font-size: 13px; color: var(--muted); }
-.kpis { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.kpis { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
 .kpi { background: var(--surface-2); border-radius: 14px; padding: 12px; text-align: center; } .kpi b { display: block; font-size: 26px; }
 .doc { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 14px; background: var(--surface-2); }
 .thumb { width: 44px; height: 56px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); flex: none; }
@@ -141,9 +141,9 @@ main .btn, main .boton { display: flex; width: 100%; }
 .tier h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .tier h3 svg.i { width: 18px; height: 18px; }
 .person, .persona { display: flex; gap: 14px; align-items: center; }
-.reg, .reggrid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
-@media (min-width: 600px) { .reg, .reggrid { grid-template-columns: repeat(3,1fr); } }
-@media (min-width: 1000px) { .reg, .reggrid { grid-template-columns: repeat(4,1fr); } }
+.reg, .reggrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+@media (min-width: 600px) { .reg, .reggrid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media (min-width: 1000px) { .reg, .reggrid { grid-template-columns: repeat(4,minmax(0,1fr)); } }
 .reg.filtrando .regcard:not(.on), .reggrid.filtrando .regcard:not(.on) { opacity: .45; }
 .rg, .regcard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; font-size: 14px; line-height: 1.25; }
 .rg.on, .regcard.on { border: 2px solid var(--accent); background: var(--accent-soft); }
@@ -163,18 +163,18 @@ main .btn, main .boton { display: flex; width: 100%; }
 .zero b { font-size: 34px; line-height: 1; color: var(--warn); }
 .list a { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 4px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
 .list a:last-child { border: 0; }
-.grid2, .temas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-@media (min-width: 768px) { .grid2, .temas { grid-template-columns: repeat(3,1fr); } }
+.grid2, .temas { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 12px; }
+@media (min-width: 768px) { .grid2, .temas { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 .tile, .tema { background: var(--surface); border: 2px solid var(--line); border-radius: var(--r); min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-weight: 700; text-align: center; padding: 12px; color: var(--ink); text-decoration: none; }
 .tile.on, .tema.on { border-color: var(--accent); background: var(--accent-soft); }
 .tile svg.i { width: 44px; height: 44px; }
 .stat { display: flex; gap: 12px; } .stat .card { flex: 1; text-align: center; padding: 14px 8px; } .stat b { display: block; font-size: 30px; color: var(--accent); }
-.coins { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; } .coins i { aspect-ratio: 1; border-radius: 50%; display: block; }
+.coins { display: grid; grid-template-columns: repeat(10, minmax(0,1fr)); gap: 5px; } .coins i { aspect-ratio: 1; border-radius: 50%; display: block; }
 .leg { display: flex; flex-direction: column; gap: 10px; } .leg div { display: flex; align-items: center; gap: 12px; }
 .leg .sw { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; flex: none; } .leg .sw svg.i { color: #fff; width: 22px; height: 22px; } .leg b { margin-left: auto; font-size: 20px; }
 .big { font-size: 44px; font-weight: 800; line-height: 1; color: var(--accent); }
 .cols { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-@media (min-width: 768px) { .cols { display: grid; grid-template-columns: 1fr 1fr; align-items: start; } }
+@media (min-width: 768px) { .cols { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; } }
 .stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .aviso { background: var(--aviso-bg); border: 1px solid var(--aviso-line); color: var(--aviso-ink); border-radius: 16px; padding: .75rem; }
 .fuente, details.fuente { font-size: 14px; color: var(--muted); background: transparent; border: 0; padding: 0; margin-top: .5rem; overflow-wrap: anywhere; }
@@ -187,6 +187,10 @@ label { display: block; margin: .75rem 0 .25rem; font-weight: 600; }
 input[type=text], input[type=file], input[type=search], input[type=password], select, textarea { width: 100%; min-height: 48px; font-size: 1rem; }
 textarea { min-height: 88px; }
 table { border-collapse: collapse; width: 100%; } th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.grid>*, .hero>*, .kpis>*, .ev>*, .reg>*, .reggrid>*, .grid2>*, .temas>*, .cols>*, .seg>* { min-width: 0; }
+.card, .tarjeta, .doc>div, .person>div, .leg>div, .step>div { min-width: 0; }
+.ev div, .src, .tarjeta, .copy, code, td { overflow-wrap: anywhere; }
+@media (max-width: 767px) { table.cards, table.cards tr, table.cards td { display: block; } table.cards tr:first-child { display: none; } table.cards tr { border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 12px; background: var(--surface); } table.cards td { border: 0; padding: .25rem 0; } }
 .copy { background: var(--copy-bg); border: 2px dashed var(--dash); border-radius: 16px; padding: 14px; font-size: 16px; }
 .prog { display: flex; gap: 6px; max-width: 300px; } .prog i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); } .prog i.on { background: var(--accent); }
 .back, .listen { width: 44px; height: 44px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); display: inline-grid; place-items: center; color: var(--accent); cursor: pointer; flex: none; }
@@ -1071,6 +1075,13 @@ def municipio(clave: str):
                   f'<h2>Ya revisamos {e(m["nombre"])}</h2>'
                   '<p class="muted">Conoce a las personas que gobiernan tu municipio y revisa su trabajo con documentos oficiales, cada dato con su fuente.</p>'
                   f'<p><a class="btn" href="/representantes?m={e(clave)}">Ver quién te representa</a></p></div>{despues}</div>')
+    elif m["estado_indexacion"] == "indexando":
+        cuerpo = (f'<div class="grid g-side"><div class="card" style="display:flex;flex-direction:column;gap:16px">'
+                  '<span class="chip" style="align-self:flex-start">Revisando</span>'
+                  f'<h2>Ya estamos revisando {e(m["nombre"])}</h2>'
+                  '<p class="muted">Una persona del equipo ya aprobó la revisión y Muse está buscando y leyendo '
+                  'los documentos oficiales. Puedes verlo trabajar en vivo, paso a paso.</p>'
+                  f'<p><a class="btn" href="/indexando/{e(clave)}">Ver la revisión en vivo</a></p></div>{despues}</div>')
     elif pendiente:
         cuerpo = (f'<div class="grid g-side"><div class="card" style="display:flex;flex-direction:column;gap:16px">'
                   '<span class="chip warn" style="align-self:flex-start">Solicitud en espera</span>'
@@ -1107,6 +1118,8 @@ def solicitar(clave: str):
             return HTMLResponse("<p>No se encontró el municipio.</p>", status_code=404)
         if filas[0]["estado_indexacion"] == "indexado":
             return RedirectResponse(f"/representantes?m={clave}", status_code=303)
+        if filas[0]["estado_indexacion"] == "indexando":
+            return RedirectResponse(f"/indexando/{clave}", status_code=303)  # ya se está revisando: no duplicar ni pisar el estado
         ya = _filas(con, "SELECT id FROM solicitudes WHERE clave_inegi = ? AND estado = 'pendiente'", (clave,))
         if not ya:
             con.execute("INSERT INTO solicitudes (clave_inegi, estado, creada) VALUES (?, 'pendiente', ?)",
@@ -1451,7 +1464,7 @@ def presupuesto_():
              + ayuda("Partida", glos, urls) + ayuda("Inversión Pública", glos, urls)
              + ayuda("Servicios Personales", glos, urls))
     return pagina("Presupuesto de Egresos 2026",
-                  intro + f"<table><tr><th>Capítulo y partida</th><th>Monto</th><th>Verificación y cita</th></tr>{filas}</table>" + rutas)
+                  intro + f"<table class=\"cards\"><tr><th>Capítulo y partida</th><th>Monto</th><th>Verificación y cita</th></tr>{filas}</table>" + rutas)
 
 
 @app.get("/hallazgos", response_class=HTMLResponse)

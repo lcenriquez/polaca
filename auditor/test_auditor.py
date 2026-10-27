@@ -405,7 +405,7 @@ def test_responsive_y_temas():
     escritorio = css.split("@media (min-width: 768px)", 1)[1]
     assert "max-width: 1120px" in escritorio  # el contenido crece en tablet y escritorio
     assert "nav.bottom { display: none; }" in escritorio  # arriba manda el menú, no la barra inferior
-    assert "repeat(4,1fr)" in escritorio  # regidores: 4 columnas en escritorio
+    assert "repeat(4,minmax(0,1fr))" in escritorio  # regidores: 4 columnas en escritorio, sin desbordar
 
     def variables(bloque):
         return set(re.findall(r"(--[a-z0-9-]+)\s*:", bloque))
@@ -518,6 +518,39 @@ def test_marca_polaca_y_conteo_real():
             assert r.status_code == 200, ruta
             assert "Atlixco a la vista" not in r.text, ruta
             assert "POLACA" in r.text, ruta
+
+
+def test_grid_columnas_siempre_con_minmax():
+    """Ninguna columna grid usa fr sin minmax(0, …): el contenido largo no debe desbordar la página."""
+    import re
+    import web
+    for decl in re.findall(r"grid-template-columns:\s*([^;]+);", web.CSS):
+        resto = re.sub(r"minmax\(\s*0\s*,\s*[\d.]+fr\s*\)", "", decl)
+        assert "fr" not in resto, decl
+    assert "40px minmax(0,1fr)" in web.CSS  # los eventos en vivo, con URLs largas
+
+
+def test_solicitar_en_indexando_no_duplica():
+    """Si Muse ya está revisando, pedir de nuevo no crea otra solicitud ni pisa el estado."""
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with municipios.conectar() as con:
+            con.execute("INSERT INTO municipios VALUES ('15054', 'México', 'Metepec', 'indexando')")
+            con.commit()
+        cliente = TestClient(web.app, follow_redirects=False)
+        r = cliente.post("/solicitar/15054")
+        assert r.status_code == 303 and r.headers["location"] == "/indexando/15054"
+        with municipios.conectar() as con:
+            assert con.execute("SELECT count(*) FROM solicitudes").fetchone()[0] == 0
+            assert con.execute("SELECT estado_indexacion FROM municipios WHERE clave_inegi = '15054'").fetchone()[0] == "indexando"
+        pagina_mun = cliente.get("/municipio/15054").text
+        assert "Ya estamos revisando Metepec" in pagina_mun and "Ver la revisión en vivo" in pagina_mun
+        assert 'action="/solicitar' not in pagina_mun  # sin formulario mientras Muse trabaja
 
 
 def test_solicitud_sin_aprobacion_no_dispara_agente():
