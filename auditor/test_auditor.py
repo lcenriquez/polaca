@@ -553,6 +553,33 @@ def test_solicitar_en_indexando_no_duplica():
         assert 'action="/solicitar' not in pagina_mun  # sin formulario mientras Muse trabaja
 
 
+def test_solicitudes_pendientes_no_se_duplican():
+    """Máximo una solicitud pendiente por municipio: ni doble envío ni inserción directa la duplican."""
+    import sqlite3
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with municipios.conectar() as con:
+            con.execute("INSERT INTO municipios VALUES ('15054', 'México', 'Metepec', 'sin_revisar')")
+            con.commit()
+            con.execute("INSERT INTO solicitudes (clave_inegi, estado, creada) VALUES ('15054', 'pendiente', '2026-01-01')")
+            con.commit()
+            try:
+                con.execute("INSERT INTO solicitudes (clave_inegi, estado, creada) VALUES ('15054', 'pendiente', '2026-01-01')")
+                raise AssertionError("la segunda pendiente debió chocar con el índice único")
+            except sqlite3.IntegrityError:
+                con.rollback()
+        cliente = TestClient(web.app)
+        cliente.post("/solicitar/15054")
+        cliente.post("/solicitar/15054")  # doble envío del formulario
+        with municipios.conectar() as con:
+            assert con.execute("SELECT count(*) FROM solicitudes WHERE estado = 'pendiente'").fetchone()[0] == 1
+
+
 def test_solicitud_sin_aprobacion_no_dispara_agente():
     """Sin token no hay /admin; rechazar nunca lanza el agente; aprobar lo lanza una sola vez."""
     import os

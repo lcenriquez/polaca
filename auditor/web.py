@@ -1122,10 +1122,13 @@ def solicitar(clave: str):
             return RedirectResponse(f"/indexando/{clave}", status_code=303)  # ya se está revisando: no duplicar ni pisar el estado
         ya = _filas(con, "SELECT id FROM solicitudes WHERE clave_inegi = ? AND estado = 'pendiente'", (clave,))
         if not ya:
-            con.execute("INSERT INTO solicitudes (clave_inegi, estado, creada) VALUES (?, 'pendiente', ?)",
-                        (clave, datetime.now(timezone.utc).isoformat(timespec="seconds")))
-            con.execute("UPDATE municipios SET estado_indexacion = 'solicitado' WHERE clave_inegi = ?", (clave,))
-            con.commit()
+            try:
+                con.execute("INSERT INTO solicitudes (clave_inegi, estado, creada) VALUES (?, 'pendiente', ?)",
+                            (clave, datetime.now(timezone.utc).isoformat(timespec="seconds")))
+                con.execute("UPDATE municipios SET estado_indexacion = 'solicitado' WHERE clave_inegi = ?", (clave,))
+                con.commit()
+            except sqlite3.IntegrityError:
+                con.rollback()  # otra petición ganó la carrera: ya quedó una pendiente, no duplicar
     return RedirectResponse(f"/municipio/{clave}", status_code=303)
 
 

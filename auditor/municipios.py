@@ -52,6 +52,14 @@ def conectar() -> sqlite3.Connection:
         CREATE TABLE IF NOT EXISTS eventos_indexacion (
             id INTEGER PRIMARY KEY, clave_inegi TEXT NOT NULL, ts TEXT NOT NULL, paso TEXT NOT NULL, mensaje TEXT NOT NULL);
     """)
+    try:
+        # A lo sumo UNA solicitud pendiente por municipio, garantizado por la base:
+        # ni doble clic ni dos envíos simultáneos pueden duplicarla.
+        con.execute("""CREATE UNIQUE INDEX IF NOT EXISTS ux_solicitudes_pendiente
+                       ON solicitudes(clave_inegi) WHERE estado = 'pendiente'""")
+        con.commit()
+    except sqlite3.IntegrityError:
+        con.rollback()  # ya había pendientes duplicadas de antes del índice; se limpian a mano en /admin
     for tabla in TABLAS_MUNICIPIO:
         cols = [r[1] for r in con.execute(f"PRAGMA table_info({tabla})")]
         if cols and "municipio_id" not in cols:
