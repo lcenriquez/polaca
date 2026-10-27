@@ -2,3 +2,7 @@ openai==3.38.0
 pypdf==6.21.2
 Pillow==13.0.0
 meta-sam-parser==0.1.0
+fastapi==0.162.0
+uvicorn==0.54.0
+python-multipart==0.0.32
+httpx==0.28.1

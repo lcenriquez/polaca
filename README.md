@@ -44,6 +44,10 @@ Todo lo de `spec/`, `design/`, `code/` y `.github/`: especificación, brief de d
 | `auditor/llm.py` | Cliente de Meta Model API con caché en disco y registro de tokens y costo (`datos/costos.jsonl`) |
 | `auditor/extraer.py` | Manda el PDF a Muse Spark en tramos de 20 páginas, con salida JSON por esquema, y coteja cada fragmento contra el texto de la página |
 | `auditor/evaluar.py` | Compara la extracción contra `datos/eval/etiquetado.csv` (etiquetado a mano): recall de acuerdos y precisión por campo |
+| `auditor/presupuesto.py` | Extrae las partidas del Presupuesto de Egresos 2026 con su cita y doble verificación (monto y nombre) |
+| `auditor/cruzar.py` | Genera hallazgos solo cuando ambas fuentes hablan de lo mismo y difieren en un dato comparable; si no, reporta la cobertura y las fuentes que faltan |
+| `auditor/evidencia.py` | Evidencia ciudadana: quita el EXIF de la foto, segmenta el objeto con SAM 3.1 y guarda sugerencias de liga (la confirma la persona) |
+| `auditor/web.py` | Interfaz web de la demo: funcionarios, acuerdos, presupuesto, hallazgos y evidencia, todo con su fuente |
 | `auditor/test_auditor.py` | Pruebas sin red ni costo |
 
 Un mismo acuerdo suele aparecer varias veces (índice, dictamen y cierre). Cada aparición se guarda como mención con su cita y se agrupa, sin llamar a la API, en un acuerdo canónico (`grupo_id`, vista `acuerdos_canonicos`).
@@ -61,6 +65,14 @@ cd auditor
 ../.venv/bin/python llm.py costos
 ../.venv/bin/python evaluar.py
 ../.venv/bin/python test_auditor.py
+```
+
+**Demo web:** con los datos ya extraídos, arranca la interfaz (no llama a la API al navegar; solo la subida de evidencia llama a SAM 3.1 y a Muse Spark privado):
+
+```bash
+cd auditor
+../.venv/bin/python -m uvicorn web:app --host 127.0.0.1 --port 8000
+# abre http://127.0.0.1:8000
 ```
 
 ## Contribuir

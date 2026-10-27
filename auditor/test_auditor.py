@@ -197,6 +197,46 @@ def test_evidencia():
             assert con.execute("SELECT partida_id FROM evidencias WHERE id = ?", (id2,)).fetchone()[0] == 1
 
 
+def test_web():
+    import evidencia
+    import presupuesto
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        evidencia.EVIDENCIA = Path(d) / "evidencia"
+        (Path(d) / "manifiesto.json").write_text(json.dumps(
+            [{"archivo": "g.pdf", "url": "https://ejemplo.gob.mx/g.pdf", "sha256": "abc123",
+              "descargado": "2026-01-01T00:00:00+00:00"}]))
+        (Path(d) / "g.pdf").write_bytes(b"%PDF-1.4 prueba")
+        acuerdo = {"acuerdo": "Se aprobó el Bando de Policía y Gobierno", "tipo_sesion": "ordinaria",
+                   "fecha_sesion": "2025-02-24",
+                   "propuesto_por": [{"nombre": "Ariadna Ayala Camarillo", "cargo": "Presidenta Municipal"}],
+                   "monto_mxn": None, "proveedor": None, "resultado_votacion": "aprobado",
+                   "pagina": 4, "fragmento": "Bando de Policía", "verificacion": "ok"}
+        partida = {"capitulo": "8000", "nombre": "Participaciones y Aportaciones", "monto_mxn": 100.0,
+                   "pagina": 6, "fragmento": "$100.00", "verificacion": "ok", "verificacion_nombre": "no_encontrado"}
+        with evidencia.conectar() as con:
+            extraer.guardar(con, "g.pdf", 9, [acuerdo], (1, 9))
+            presupuesto.guardar(con, "pres.pdf", 10, [partida], (5, 6))
+
+        cliente = TestClient(web.app)
+        for ruta in ["/", "/funcionarios", "/funcionarios/ariadna-ayala-camarillo", "/acuerdos", "/acuerdos/1",
+                     "/presupuesto", "/hallazgos", "/evidencia"]:
+            r = cliente.get(ruta)
+            assert r.status_code == 200, (ruta, r.status_code)
+            texto = r.text.lower()
+            assert "corrupción" not in texto and "robo" not in texto, ruta
+        assert "nombre no verificado" in cliente.get("/presupuesto").text
+        assert "abc123" in cliente.get("/").text  # sha256 del manifiesto en la fuente
+        assert cliente.get("/fuentes/g.pdf").status_code == 200
+        assert cliente.get("/fuentes/manifiesto.json").status_code == 404  # solo PDF de datos/raw
+        assert cliente.get("/fuentes/%2E%2E%2Fweb.py").status_code == 404  # nada fuera de datos/raw
+        r = cliente.post("/evidencia", files={"foto": ("nota.txt", b"hola", "text/plain")}, data={"objeto": "bache"})
+        assert r.status_code == 400, r.status_code  # solo JPEG/PNG: se rechaza sin llamar a la API
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):
