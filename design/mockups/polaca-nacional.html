@@ -1,0 +1,351 @@
+<!doctype html>
+<!--
+  Mockup v2 de POLACA (alcance nacional). Creado con Claude Opus como guía visual para que Muse implemente.
+  Es una página adaptable real: ábrela y cambia el ancho de la ventana (teléfono → escritorio).
+  El selector de tema y el menú de accesibilidad funcionan. Los datos son ejemplos tomados de
+  datos/auditor.db al 27-oct-2026; la app debe leerlos de SQLite. Las cajas "Nota para Muse" no son diseño.
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POLACA · mockup nacional</title>
+<style>
+:root{
+  --bg:#f7f6fb; --surface:#fff; --surface-2:#f0eef8; --ink:#1c1a2b; --muted:#5d5a73; --line:#e3e0ef;
+  --accent:#5b3fd1; --accent-ink:#fff; --accent-soft:#ece8fc; --ok:#1e7a4c; --ok-soft:#e3f4ea; --warn:#8a5a00; --warn-soft:#fdf3dc;
+  --shadow:0 1px 2px #1c1a2b0f,0 8px 24px #1c1a2b0f; --r:18px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121019; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --line:#2f2c40;
+  --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:none}}
+:root[data-theme="dark"]{
+  --bg:#121019; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --line:#2f2c40;
+  --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:none}
+*{box-sizing:border-box;margin:0}
+body{font:18px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg);padding-bottom:84px}
+a{color:inherit}
+h1{font-size:clamp(32px,6vw,56px);line-height:1.05;letter-spacing:-.02em}
+h2{font-size:clamp(24px,3.4vw,34px);line-height:1.15;letter-spacing:-.01em}
+h3{font-size:19px;line-height:1.25}
+.muted{color:var(--muted)} .small{font-size:15px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+@media (min-width:768px){.wrap{padding:0 32px}body{padding-bottom:0}}
+svg.i{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* encabezado */
+header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;gap:16px;height:64px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.04em;font-size:20px;text-decoration:none}
+.logo b{width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:18px}
+.topnav{display:none;gap:4px;margin-left:24px}
+.topnav a{padding:10px 14px;border-radius:12px;text-decoration:none;font-weight:600;color:var(--muted)}
+.topnav a.on{color:var(--ink);background:var(--surface-2)}
+@media (min-width:768px){.topnav{display:flex}}
+.place{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface)}
+.place svg.i{width:18px;height:18px;color:var(--accent)}
+.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer}
+
+/* menú de accesibilidad */
+.a11y{position:relative}
+.a11y summary{list-style:none}.a11y summary::-webkit-details-marker{display:none}
+.menu{position:absolute;right:0;top:52px;width:290px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:14px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface-2);border-radius:12px;padding:4px;gap:4px}
+.seg button{min-height:44px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:600 15px system-ui;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.seg svg.i{width:18px;height:18px}
+.row{display:flex;align-items:center;gap:12px;min-height:44px}
+
+/* barra inferior móvil */
+.bottom{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--surface);border-top:1px solid var(--line);z-index:10}
+.bottom a{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 12px;font-size:12px;font-weight:600;color:var(--muted);text-decoration:none}
+.bottom a.on{color:var(--accent)}
+@media (min-width:768px){.bottom{display:none}}
+
+/* bloques */
+section{padding:40px 0;border-bottom:8px solid var(--surface-2)}
+.lbl{font:700 12px/1 system-ui;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 22px;border-radius:14px;background:var(--accent);color:var(--accent-ink);font:700 17px system-ui;border:0;text-decoration:none;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent);border:2px solid var(--accent)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;font-size:14px;font-weight:600;background:var(--accent-soft);color:var(--accent)}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.note{margin-top:24px;border:2px dashed var(--accent);border-radius:14px;padding:12px 16px;font-size:15px;background:var(--accent-soft)}
+.grid{display:grid;gap:16px}
+@media (min-width:768px){.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g-side{grid-template-columns:1.4fr 1fr;align-items:start}}
+
+/* inicio */
+.hero{display:grid;gap:28px;align-items:center}
+@media (min-width:900px){.hero{grid-template-columns:1.1fr .9fr}}
+.search{display:flex;align-items:center;gap:10px;background:var(--surface);border:2px solid var(--accent);border-radius:16px;padding:6px 6px 6px 16px;box-shadow:var(--shadow)}
+.search input{flex:1;border:0;background:transparent;font:18px system-ui;color:var(--ink);min-height:48px;outline:none;min-width:0}
+.sugg{margin-top:8px}
+.sugg a{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;text-decoration:none}
+.sugg a:hover,.sugg a.on{background:var(--surface-2)}
+.sugg small{margin-left:auto}
+.mx{width:100%;height:auto}
+.mx .st{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}
+.mx .on{fill:var(--accent)}
+.meter{height:10px;border-radius:5px;background:var(--surface-2);overflow:hidden}.meter i{display:block;height:100%;background:var(--accent)}
+.step{display:flex;gap:14px}.num{width:44px;height:44px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:800;flex:none}
+
+/* indexando */
+.live{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:var(--ok)}
+.live i{width:10px;height:10px;border-radius:50%;background:var(--ok);animation:p 1.4s infinite}
+@keyframes p{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.live i{animation:none}}
+.feed{display:flex;flex-direction:column}
+.ev{display:grid;grid-template-columns:40px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.ev:last-child{border:0}
+.dot{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--surface-2);color:var(--muted)}
+.dot.ok{background:var(--ok-soft);color:var(--ok)}.dot.warn{background:var(--warn-soft);color:var(--warn)}.dot.now{background:var(--accent);color:var(--accent-ink)}
+.ev time{font-size:13px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kpi{background:var(--surface-2);border-radius:14px;padding:12px;text-align:center}.kpi b{display:block;font-size:26px}
+.doc{display:flex;gap:12px;align-items:center;padding:12px;border-radius:14px;background:var(--surface-2)}
+.thumb{width:44px;height:56px;border-radius:6px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;color:var(--muted);flex:none}
+
+/* gobierno */
+.ring{position:relative;width:100%;max-width:420px;aspect-ratio:1;margin:0 auto}
+.ring .c{position:absolute;border-radius:50%;border:2px dashed var(--line);inset:0}.ring .c2{inset:17%}.ring .c3{inset:34%;border-style:solid;background:var(--accent-soft);border-color:transparent}
+.ring .p{position:absolute;transform:translate(-50%,-50%);text-align:center;font-size:13px;font-weight:600;width:96px;line-height:1.2}
+.av{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;margin:0 auto 4px;flex:none}
+.av.l{width:84px;height:84px;font-size:28px}
+.v1{background:#5b3fd1}.v2{background:#0e7490}.v3{background:#475569}.v4{background:#1c1a2b}
+.tier{display:flex;flex-direction:column;gap:10px}
+.tier h3{display:flex;align-items:center;gap:8px;font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.person{display:flex;gap:14px;align-items:center}
+.reg{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media (min-width:600px){.reg{grid-template-columns:repeat(3,1fr)}}
+@media (min-width:1000px){.reg{grid-template-columns:repeat(4,1fr)}}
+.rg{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;gap:10px;align-items:center;font-size:14px;line-height:1.25;min-height:64px}
+.rg .av{width:38px;height:38px;font-size:14px;margin:0}
+.rg.on{border:2px solid var(--accent);background:var(--accent-soft)}
+.filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.filters button{flex:none;display:flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:600 15px system-ui}
+.filters button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.filters svg.i{width:18px;height:18px}
+
+/* ficha */
+.sticky{position:sticky;top:84px}
+.tl{border-left:3px solid var(--line);margin-left:8px;padding-left:20px;display:flex;flex-direction:column;gap:16px}
+.tl div{position:relative}.tl div:before{content:"";position:absolute;left:-29px;top:5px;width:15px;height:15px;border-radius:50%;background:var(--accent);border:3px solid var(--surface)}
+.src{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
+.src svg.i{width:16px;height:16px;color:var(--ok)}
+.zero{display:flex;gap:14px;align-items:flex-start;background:var(--warn-soft);border-radius:14px;padding:14px;color:var(--ink)}
+.zero b{font-size:34px;line-height:1;color:var(--warn)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="srch" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-12a7 7 0 0114 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+  <symbol id="a11y" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.8"/><path d="M5 8l7 1.5L19 8M12 9.5V14l-3 6M12 14l3 6"/></symbol>
+  <symbol id="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></symbol>
+  <symbol id="moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z"/></symbol>
+  <symbol id="sys" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+  <symbol id="spk" viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></symbol>
+  <symbol id="txt" viewBox="0 0 24 24"><path d="M4 7V5h10v2M9 5v14M7 19h4M14 13v-2h6v2M17 11v8M15.5 19h3"/></symbol>
+  <symbol id="home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></symbol>
+  <symbol id="ppl" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.9.2 5 2.5 5 5.8"/></symbol>
+  <symbol id="coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.6 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6.5v1.5M12 16v1.5"/></symbol>
+  <symbol id="mega" viewBox="0 0 24 24"><path d="M3 10v4h3l8 4V6L6 10zM18 9a4 4 0 010 6"/></symbol>
+  <symbol id="doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v4h4"/></symbol>
+  <symbol id="chk" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></symbol>
+  <symbol id="alert" viewBox="0 0 24 24"><path d="M12 3l9 16H3zM12 10v4M12 17v.5"/></symbol>
+  <symbol id="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></symbol>
+  <symbol id="read" viewBox="0 0 24 24"><path d="M3 5h7a2 2 0 012 2v12a2 2 0 00-2-2H3zM21 5h-7a2 2 0 00-2 2v12a2 2 0 012-2h7z"/></symbol>
+  <symbol id="road" viewBox="0 0 24 24"><path d="M5 21L9 3M19 21L15 3M12 4v3M12 11v3M12 18v2"/></symbol>
+  <symbol id="drop" viewBox="0 0 24 24"><path d="M12 3s6 7 6 11a6 6 0 01-12 0c0-4 6-11 6-11z"/></symbol>
+  <symbol id="shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
+  <symbol id="heart" viewBox="0 0 24 24"><path d="M12 20s-8-4.5-8-10.5A4.5 4.5 0 0112 7a4.5 4.5 0 018 2.5C20 15.5 12 20 12 20z"/></symbol>
+  <symbol id="book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 5v16"/></symbol>
+  <symbol id="leaf" viewBox="0 0 24 24"><path d="M5 19c0-9 6-14 15-14 0 9-5 15-14 15M5 19l7-7"/></symbol>
+  <symbol id="share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></symbol>
+  <symbol id="spark" viewBox="0 0 24 24"><path d="M12 3l2 5.5L19.5 10 14 12l-2 5.5L10 12 4.5 10 10 8.5z"/></symbol>
+</svg>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="#"><b>P</b>POLACA</a>
+    <nav class="topnav" aria-label="Principal"><a class="on" href="#">Inicio</a><a href="#">Tu gobierno</a><a href="#">Gastos</a><a href="#">Actúa</a></nav>
+    <span class="place"><svg class="i"><use href="#pin"/></svg>Atlixco, Pue.</span>
+    <details class="a11y">
+      <summary class="iconbtn" aria-label="Accesibilidad y tema"><svg class="i"><use href="#a11y"/></svg></summary>
+      <div class="menu">
+        <b>Ver y escuchar</b>
+        <button class="btn" style="width:100%"><svg class="i"><use href="#spk"/></svg>Escuchar esta página</button>
+        <div><span class="small muted">Tema</span>
+          <div class="seg" role="group" aria-label="Tema">
+            <button data-t="light" aria-pressed="false"><svg class="i"><use href="#sun"/></svg>Claro</button>
+            <button data-t="system" aria-pressed="true"><svg class="i"><use href="#sys"/></svg>Sistema</button>
+            <button data-t="dark" aria-pressed="false"><svg class="i"><use href="#moon"/></svg>Oscuro</button>
+          </div></div>
+        <div class="row"><svg class="i"><use href="#txt"/></svg>Letra más grande<span style="margin-left:auto" class="chip">A+</span></div>
+      </div>
+    </details>
+  </div>
+</header>
+
+<!-- A · INICIO -->
+<section><div class="wrap">
+  <p class="lbl">A · Inicio nacional</p>
+  <div class="hero">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <span class="chip" style="align-self:flex-start"><svg class="i" style="width:16px;height:16px"><use href="#globe"/></svg>Para todo México</span>
+      <h1>¿Quién gobierna donde vives?</h1>
+      <p class="muted" style="font-size:20px">Conoce a tus autoridades, revisa lo que hacen con documentos oficiales y aprende qué puedes hacer tú. La política no te ignora. ¿La ignoras tú?</p>
+      <div>
+        <label class="search"><svg class="i" style="color:var(--accent)"><use href="#srch"/></svg><input value="cuetza" aria-label="Busca tu localidad o municipio"><span class="btn" style="min-height:48px">Buscar</span></label>
+        <div class="card sugg" style="padding:6px">
+          <a class="on" href="#"><svg class="i"><use href="#pin"/></svg><span><b>Cuetzalan</b><br><span class="small muted">Cuetzalan del Progreso, Puebla</span></span><small class="chip warn">Sin revisar</small></a>
+          <a href="#"><svg class="i"><use href="#pin"/></svg><span><b>Cuetzalan</b><br><span class="small muted">Tlatlauquitepec, Puebla</span></span><small class="chip warn">Sin revisar</small></a>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;gap:14px">
+      <svg class="mx" viewBox="0 0 320 200" role="img" aria-label="Mapa estilizado de México con los municipios revisados resaltados">
+        <path class="st" d="M10 30l60-8 40 30 30 10 20 30 30 10 20 25 40 5 30-20 25 5-5 25-35 15-40 0-25 20-40 10-30-15-15-25-35-15-20-30-25-20-10-30z"/>
+        <path class="st" d="M20 40l10 50 15 35" fill="none"/>
+        <circle class="on" cx="190" cy="132" r="7"/><circle class="on" cx="205" cy="122" r="5" opacity=".6"/>
+      </svg>
+      <div><b style="font-size:28px">1</b> <span class="muted">de 2,457 municipios revisados</span><div class="meter" style="margin-top:8px"><i style="width:2%"></i></div></div>
+      <p class="small muted">¿No está el tuyo? Pídele a Muse que lo revise.</p>
+    </div>
+  </div>
+  <div class="grid g3" style="margin-top:32px">
+    <div class="step"><span class="num">1</span><div><h3>Busca dónde vives</h3><p class="small muted">Cualquier localidad del país.</p></div></div>
+    <div class="step"><span class="num">2</span><div><h3>Conoce a quien te representa</h3><p class="small muted">De la autoridad más cercana a la más lejana.</p></div></div>
+    <div class="step"><span class="num">3</span><div><h3>Revisa y actúa</h3><p class="small muted">Con documentos oficiales y pasos claros.</p></div></div>
+  </div>
+  <div class="note"><b>Nota para Muse:</b> la marca es POLACA (nombre del proyecto en README y spec), nunca "Atlixco a la vista". El municipio elegido aparece como chip en el encabezado. Buscador con sugerencias instantáneas y estado de cada municipio (Revisado / Revisando / Sin revisar). El mapa es SVG estilizado y liviano; el contador sale de municipios.</div>
+</div></section>
+
+<!-- B · MUNICIPIO SIN REVISAR -->
+<section><div class="wrap">
+  <p class="lbl">B · Municipio sin revisar</p>
+  <div class="grid g-side">
+    <div class="card" style="display:flex;flex-direction:column;gap:16px">
+      <span class="chip warn" style="align-self:flex-start">Todavía sin revisar</span>
+      <h2>Aún no revisamos Cuetzalan del Progreso</h2>
+      <p class="muted">Muse, nuestro asistente de inteligencia artificial, puede buscar los documentos oficiales del municipio, leerlos y mostrarte quién gobierna y en qué se gasta. Cada dato llevará su fuente.</p>
+      <div class="grid g3" style="gap:10px">
+        <div class="kpi"><svg class="i" style="color:var(--accent)"><use href="#globe"/></svg><div class="small">Busca en sitios .gob.mx</div></div>
+        <div class="kpi"><svg class="i" style="color:var(--accent)"><use href="#read"/></svg><div class="small">Lee gacetas y presupuesto</div></div>
+        <div class="kpi"><svg class="i" style="color:var(--accent)"><use href="#chk"/></svg><div class="small">Verifica cada cita</div></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn" href="#"><svg class="i"><use href="#spark"/></svg>Pídele a Muse que lo revise</a><a class="btn ghost" href="#">Ver un ejemplo: Atlixco</a></div>
+    </div>
+    <div class="card"><h3>¿Qué pasa después?</h3>
+      <div class="tl" style="margin-top:14px">
+        <div><b>Una persona del equipo revisa tu solicitud</b><p class="small muted">Para cuidar que solo se usen fuentes oficiales.</p></div>
+        <div><b>Muse busca y lee los documentos</b><p class="small muted">Puedes verlo trabajar en vivo.</p></div>
+        <div><b>Publicamos lo que encontró</b><p class="small muted">Con la fuente de cada dato.</p></div>
+      </div></div>
+  </div>
+  <div class="note"><b>Nota para Muse:</b> en vez de un callejón sin salida, una invitación clara. Explicar en palabras simples qué es Muse y que una persona aprueba. Ofrecer un ejemplo ya revisado.</div>
+</div></section>
+
+<!-- C · MUSE TRABAJANDO EN VIVO -->
+<section><div class="wrap">
+  <p class="lbl">C · Muse revisando en vivo (escena principal del video)</p>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px"><h2>Revisando Cuetzalan del Progreso</h2><span class="live"><i></i>En vivo</span></div>
+  <div class="grid g-side">
+    <div class="card"><div class="feed">
+      <div class="ev"><span class="dot now"><svg class="i"><use href="#read"/></svg></span><div><b>Buscando el directorio del Cabildo…</b><br><time>hace unos segundos</time></div></div>
+      <div class="ev"><span class="dot warn"><svg class="i"><use href="#alert"/></svg></span><div><b>Me corregí:</b> el presupuesto que encontré era de Progreso, Yucatán, no de Cuetzalan. Lo descarté.<br><time>hace 20 s</time></div></div>
+      <div class="ev"><span class="dot ok"><svg class="i"><use href="#chk"/></svg></span><div><b>Verifiqué 7 de 7 citas</b> en la gaceta municipal.<br><time>hace 40 s</time></div></div>
+      <div class="ev"><span class="dot ok"><svg class="i"><use href="#doc"/></svg></span><div><b>Encontré la gaceta municipal</b> en cuetzalan.gob.mx<br><time>hace 1 min</time></div></div>
+      <div class="ev"><span class="dot ok"><svg class="i"><use href="#globe"/></svg></span><div><b>Encontré el portal de transparencia</b><br><time>hace 1 min</time></div></div>
+      <div class="ev"><span class="dot"><svg class="i"><use href="#ppl"/></svg></span><div>Una persona del equipo aprobó la revisión.<br><time>hace 2 min</time></div></div>
+    </div></div>
+    <div style="display:flex;flex-direction:column;gap:16px" class="sticky">
+      <div class="card"><div class="kpis"><div class="kpi"><b>2</b><span class="small">documentos</span></div><div class="kpi"><b style="color:var(--ok)">7/7</b><span class="small">citas verificadas</span></div><div class="kpi"><b>$0.01</b><span class="small">costo</span></div></div></div>
+      <div class="card" style="display:flex;flex-direction:column;gap:10px"><h3>Documentos encontrados</h3>
+        <div class="doc"><span class="thumb"><svg class="i"><use href="#doc"/></svg></span><div><b>Gaceta municipal</b><br><span class="chip ok">Leída</span></div></div>
+        <div class="doc"><span class="thumb"><svg class="i"><use href="#doc"/></svg></span><div><b>Portal de transparencia</b><br><span class="chip ok">Leído</span></div></div>
+        <div class="doc" style="opacity:.6"><span class="thumb"><svg class="i"><use href="#ppl"/></svg></span><div><b>Directorio del Cabildo</b><br><span class="chip warn">Buscando…</span></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="note"><b>Nota para Muse:</b> eventos nuevos entran arriba con una animación suave (respetar prefers-reduced-motion). Cada tipo de evento tiene icono y color (encontrado, verificado, corrección, buscando). Las correcciones se muestran con orgullo: prueban que no inventa. Panel derecho fijo en escritorio, debajo en teléfono.</div>
+</div></section>
+
+<!-- D · TU GOBIERNO -->
+<section><div class="wrap">
+  <p class="lbl">D · Tu gobierno (sin scroll eterno)</p>
+  <div class="grid g-side">
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <h2>Estas personas trabajan para ti en Metepec</h2>
+      <div class="filters" role="group" aria-label="¿De qué se encarga?">
+        <button class="on">Todos</button><button><svg class="i"><use href="#road"/></svg>Obras y calles</button><button><svg class="i"><use href="#shield"/></svg>Seguridad</button><button><svg class="i"><use href="#heart"/></svg>Salud</button><button><svg class="i"><use href="#book"/></svg>Educación</button><button><svg class="i"><use href="#leaf"/></svg>Medio ambiente</button>
+      </div>
+      <div class="tier"><h3><svg class="i" style="width:18px;height:18px"><use href="#pin"/></svg>Tu comunidad</h3>
+        <div class="card person"><span class="av v1">MH</span><div><b>Miguel Ángel Hurtado Melchor</b><br><span class="small muted">Presidente auxiliar de Metepec · la autoridad más cercana a ti</span></div></div></div>
+      <div class="tier"><h3><svg class="i" style="width:18px;height:18px"><use href="#ppl"/></svg>Cabildo · 12 regidurías</h3>
+        <div class="reg">
+          <div class="rg on"><span class="av v2">SR</span><span><b>Senaida Reyes</b><br>Obras y servicios</span></div>
+          <div class="rg"><span class="av v2">EG</span><span><b>Eberth Guarneros</b><br>Seguridad</span></div>
+          <div class="rg"><span class="av v2">RS</span><span><b>Refugio Sánchez</b><br>Salud</span></div>
+          <div class="rg"><span class="av v2">FS</span><span><b>Favian Sedeño</b><br>Educación</span></div>
+          <div class="rg"><span class="av v2">AA</span><span><b>Ariadna Aiza</b><br>Medio ambiente</span></div>
+          <div class="rg"><span class="av v2">MG</span><span><b>Ma. Ángeles Gómez</b><br>Hacienda</span></div>
+          <div class="rg"><span class="av v2">+6</span><span>Ver las otras 6</span></div>
+        </div></div>
+      <div class="tier"><h3><svg class="i" style="width:18px;height:18px"><use href="#home"/></svg>Presidencia</h3>
+        <div class="grid g2"><div class="card person"><span class="av v3">AA</span><div><b>Ariadna Ayala Camarillo</b><br><span class="small muted">Presidenta municipal</span></div></div><div class="card person"><span class="av v3">IC</span><div><b>Iván Cortés Ambrosio</b><br><span class="small muted">Síndico · cuida los bienes y la legalidad</span></div></div></div></div>
+    </div>
+    <div class="card sticky" style="text-align:center">
+      <div class="ring" role="img" aria-label="Tú al centro; cerca, tu presidente auxiliar; luego el Cabildo; más lejos, la presidencia">
+        <div class="c"></div><div class="c c2"></div><div class="c c3"></div>
+        <div class="p" style="left:50%;top:50%"><span class="av v4">Tú</span>Metepec</div>
+        <div class="p" style="left:50%;top:21%"><span class="av v1">MH</span>Tu comunidad</div>
+        <div class="p" style="left:18%;top:42%"><span class="av v2">SR</span>Obras</div>
+        <div class="p" style="left:82%;top:42%"><span class="av v2">12</span>Cabildo</div>
+        <div class="p" style="left:26%;top:88%"><span class="av v3">IC</span>Síndico</div>
+        <div class="p" style="left:74%;top:88%"><span class="av v3">AA</span>Presidenta</div>
+      </div>
+      <p class="small muted">Más cerca del centro = más cerca de ti.</p>
+    </div>
+  </div>
+  <div class="note"><b>Nota para Muse:</b> tres niveles con encabezado e icono. Regidurías en cuadrícula compacta (2/3/4 columnas) con nombre corto + tema; los filtros por tema resaltan la tarjeta. En escritorio el diagrama queda fijo a la derecha; en teléfono va arriba y más pequeño. Mostrar 6 y "Ver las otras 6".</div>
+</div></section>
+
+<!-- E · FICHA -->
+<section><div class="wrap">
+  <p class="lbl">E · Ficha de una persona</p>
+  <div class="grid g-side">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="person"><span class="av v2 l">SR</span><div><h2>Senaida Reyes Alarcón</h2><span class="chip"><svg class="i" style="width:16px;height:16px"><use href="#road"/></svg>Regidora de obras y servicios públicos</span></div></div>
+      <div class="card"><h3>¿Qué hace?</h3><p>Vigila que las obras y los servicios del municipio funcionen y propone mejoras al Cabildo.</p><p class="src" style="margin-top:8px"><svg class="i"><use href="#chk"/></svg>Ley Orgánica Municipal · ver fuente</p></div>
+      <div class="card"><h3 style="margin-bottom:14px">Lo que ha propuesto</h3><div class="tl">
+        <div><b>24 feb 2025</b> · Reglas para mercados y tianguis<p class="src"><svg class="i"><use href="#chk"/></svg>Gaceta municipal, p. 4</p></div>
+        <div><b>24 feb 2025</b> · Reglas para espectáculos<p class="src"><svg class="i"><use href="#chk"/></svg>Gaceta municipal, p. 4</p></div>
+        <div><a href="#" style="color:var(--accent);font-weight:700">Ver las 5 propuestas</a></div></div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px" class="sticky">
+      <div class="kpis"><div class="kpi"><b>5</b><span class="small">propuestas aprobadas</span></div><div class="kpi"><b>1</b><span class="small">foto de vecinos</span></div><div class="kpi"><b>0</b><span class="small">diferencias*</span></div></div>
+      <div class="zero"><b>0</b><span class="small">diferencias encontradas <b style="font-size:inherit;color:inherit">en los 5 documentos revisados hasta hoy</b>. Eso no significa que todo esté bien: faltan documentos. <a href="#">Ayúdanos a revisar más</a></span></div>
+      <a class="btn" href="#"><svg class="i"><use href="#mega"/></svg>Pregúntale o pide información</a>
+      <a class="btn ghost" href="#"><svg class="i"><use href="#share"/></svg>Compartir por WhatsApp</a>
+    </div>
+  </div>
+  <div class="note"><b>Nota para Muse:</b> contenido a la izquierda, acciones fijas a la derecha en escritorio (abajo en teléfono). Los ceros nunca van solos. El botón de compartir genera la tarjeta PNG.</div>
+</div></section>
+
+<nav class="bottom" aria-label="Principal"><a class="on" href="#"><svg class="i"><use href="#home"/></svg>Inicio</a><a href="#"><svg class="i"><use href="#ppl"/></svg>Gobierno</a><a href="#"><svg class="i"><use href="#coin"/></svg>Gastos</a><a href="#"><svg class="i"><use href="#mega"/></svg>Actúa</a></nav>
+
+<script>
+// Tema: claro / sistema / oscuro, guardado por persona en este navegador.
+const btns=[...document.querySelectorAll('.seg button')];
+function setTheme(t){
+  if(t==='system')document.documentElement.removeAttribute('data-theme');else document.documentElement.dataset.theme=t;
+  btns.forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t));
+  try{localStorage.setItem('tema',t)}catch(e){}
+}
+btns.forEach(b=>b.onclick=()=>setTheme(b.dataset.t));
+try{setTheme(localStorage.getItem('tema')||'system')}catch(e){setTheme('system')}
+</script>
+</body>
+</html>
