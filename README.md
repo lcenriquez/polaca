@@ -49,6 +49,7 @@ Todo lo de `spec/`, `design/`, `code/` y `.github/`: especificación, brief de d
 | `auditor/evidencia.py` | Evidencia ciudadana: quita el EXIF de la foto, segmenta el objeto con SAM 3.1 y guarda sugerencias de liga (la confirma la persona) |
 | `auditor/web.py` | Interfaz web de la demo: funcionarios, acuerdos, presupuesto, hallazgos y evidencia, todo con su fuente |
 | `auditor/explicar.py` | Explicaciones en lenguaje sencillo: glosario con fuente (o marcado «sin fuente local»), resúmenes guardados con su cita y rutas de «¿Qué puedes hacer?» con fundamento verificado; se genera una vez, navegar no llama a la API |
+| `auditor/gobierno.py` | Gobierno cercano: funcionarios y comisiones (directorio de Cabildo y Reglamento), qué hace cada cargo (Ley Orgánica Municipal de Puebla), juntas auxiliares y contacto institucional, cada fila con su cita verificada |
 | `auditor/test_auditor.py` | Pruebas sin red ni costo |
 
 Un mismo acuerdo suele aparecer varias veces (índice, dictamen y cierre). Cada aparición se guarda como mención con su cita y se agrupa, sin llamar a la API, en un acuerdo canónico (`grupo_id`, vista `acuerdos_canonicos`).

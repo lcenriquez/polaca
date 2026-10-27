@@ -283,6 +283,83 @@ def test_explicar_web():
             assert "corrupción" not in texto and "robo" not in texto, ruta
 
 
+def test_gobierno():
+    import gobierno
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        (Path(d) / "x.html").write_text("<html><head><style>a{}</style><script>var x=1;</script></head>"
+                                        "<body><p>Hola <b>mundo</b></p></body></html>")
+        assert gobierno.texto_html("x.html") == "Hola\nmundo"
+        filas = [{"nombre": "Persona", "cargo": "Regiduría de Salud", "comision": "Salud", "archivo": "x.html",
+                  "pagina": 1, "fragmento": "Hola mundo", "verificacion": "ok"},
+                 {"nombre": "Otra", "cargo": "Regiduría de Turismo", "comision": "Turismo", "archivo": "x.html",
+                  "pagina": 1, "fragmento": "no está", "verificacion": "no_encontrado"}]
+        with gobierno.conectar() as con:
+            ok = gobierno._guardar(con, "funcionarios",
+                                   ["nombre", "cargo", "comision", "archivo", "pagina", "fragmento", "verificacion"], filas)
+            assert [f["nombre"] for f in ok] == ["Persona"]  # solo con cita verificada se muestra
+            assert con.execute("SELECT count(*) FROM funcionarios WHERE verificacion = 'ok'").fetchone()[0] == 1
+
+
+def test_recorrido():
+    import gobierno
+    import presupuesto
+    import web
+    from fastapi.testclient import TestClient
+    partidas = [{"id": 1, "nombre": "A", "monto_mxn": 333.0}, {"id": 2, "nombre": "B", "monto_mxn": 333.0},
+                {"id": 3, "nombre": "C", "monto_mxn": 334.0}]
+    assert sum(web.monedas_100(partidas).values()) == 100  # la cuadrícula suma siempre 100
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        cols_f = ["nombre", "cargo", "comision", "archivo", "pagina", "fragmento", "verificacion"]
+        base = {"archivo": "g.html", "pagina": 1, "verificacion": "ok"}
+        with gobierno.conectar() as con:
+            gobierno._guardar(con, "funcionarios", cols_f, [
+                {**base, "nombre": "Ana Presidenta", "cargo": "Presidenta Municipal", "comision": None, "fragmento": "Ana Presidenta"},
+                {**base, "nombre": "Beto Síndico", "cargo": "Sindicatura Municipal", "comision": None, "fragmento": "Beto Síndico"},
+                {**base, "nombre": "Cora Regidora", "cargo": "Regiduría de Desarrollo Urbano, Obras y Servicios Públicos",
+                 "comision": "Desarrollo Urbano, Obras y Servicios Públicos", "fragmento": "Cora Regidora"}])
+            gobierno._guardar(con, "juntas_auxiliares", ["nombre", "presidente", "localidades", "archivo", "pagina", "fragmento", "verificacion"], [
+                {**base, "nombre": "Metepec", "presidente": "Dario Auxiliar", "localidades": "[]", "fragmento": "Dario Auxiliar Metepec"}])
+            gobierno._guardar(con, "funciones_cargo", ["cargo", "funcion", "archivo", "pagina", "fragmento", "verificacion"], [
+                {**base, "cargo": c, "funcion": f"Función de {c}.", "fragmento": f"Función de {c}."}
+                for c in ["Presidente Municipal", "Regidores", "Síndico", "Presidente Auxiliar", "Inspector de sección"]])
+            gobierno._guardar(con, "comisiones", ["nombre", "temas", "archivo", "pagina", "fragmento", "verificacion"], [
+                {**base, "nombre": "De Desarrollo Urbano, Obras y Servicios Públicos", "temas": "Obras y servicios",
+                 "fragmento": "De Desarrollo Urbano"}])
+            gobierno._guardar(con, "contacto_institucional",
+                              ["oficina", "telefono", "direccion", "horario", "archivo", "pagina", "fragmento", "verificacion"], [
+                {**base, "oficina": "PRESIDENCIA MUNICIPAL", "telefono": "2440000000", "direccion": None,
+                 "horario": None, "fragmento": "PRESIDENCIA MUNICIPAL 2440000000"}])
+            presupuesto.guardar(con, "pres.pdf", 10, [
+                {"capitulo": "6000", "nombre": "Inversión Pública", "monto_mxn": 100.0, "pagina": 6,
+                 "fragmento": "$100.00", "verificacion": "ok", "verificacion_nombre": "ok"}], (5, 6))
+        cliente = TestClient(web.app)
+        import re
+
+        def visible(html_texto):
+            return re.sub(r"<details.*?</details>", "", html_texto, flags=re.S)
+        for ruta in ["/", "/representantes?junta=1", "/temas", "/revisar", "/revisar/3", "/actua"]:
+            r = cliente.get(ruta)
+            assert r.status_code == 200, (ruta, r.status_code)
+            assert "corrupción" not in r.text.lower() and "robo" not in r.text.lower(), ruta
+            v = visible(r.text)
+            assert "sha-256" not in v.lower() and ".pdf" not in v.lower(), ruta  # lo técnico va en detalles
+            for svg in re.findall(r"<svg[^>]*>", r.text):
+                assert 'aria-label="' in svg, (ruta, svg)  # todo gráfico con texto alternativo
+        rep = cliente.get("/representantes?junta=1").text
+        # Del más cercano al más lejano: presidente auxiliar, regidora, presidenta.
+        assert rep.index("Dario Auxiliar") < rep.index("Cora Regidora") < rep.index("Ana Presidenta")
+        assert "Persona Inventada" not in rep  # nadie aparece si no está en la base con cita
+        temas = cliente.get("/temas").text
+        assert "De Desarrollo Urbano, Obras y Servicios Públicos" in temas and "Orientación general" in temas
+        assert "100 monedas" in cliente.get("/revisar/3").text
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):
