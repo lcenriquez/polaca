@@ -580,6 +580,30 @@ def test_solicitudes_pendientes_no_se_duplican():
             assert con.execute("SELECT count(*) FROM solicitudes WHERE estado = 'pendiente'").fetchone()[0] == 1
 
 
+def test_municipio_ya_aprobado_no_repite_peticion():
+    """Un municipio ya aprobado una vez (revisión detenida) no genera otra petición desde el botón."""
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with municipios.conectar() as con:
+            con.execute("INSERT INTO municipios VALUES ('15054', 'México', 'Metepec', 'error')")
+            con.execute("INSERT INTO solicitudes (clave_inegi, estado, creada) VALUES ('15054', 'aprobada', '2026-01-01')")
+            con.commit()
+        cliente = TestClient(web.app, follow_redirects=False)
+        r = cliente.post("/solicitar/15054")
+        assert r.status_code == 303 and r.headers["location"] == "/indexando/15054"
+        with municipios.conectar() as con:
+            assert con.execute("SELECT count(*) FROM solicitudes").fetchone()[0] == 1  # ninguna nueva
+            assert con.execute("SELECT estado_indexacion FROM municipios WHERE clave_inegi = '15054'").fetchone()[0] == "error"
+        pagina_mun = cliente.get("/municipio/15054").text
+        assert "La revisión se detuvo" in pagina_mun and "Ver lo que pasó" in pagina_mun
+        assert 'action="/solicitar' not in pagina_mun  # sin botón para repetir la misma petición
+
+
 def test_solicitud_sin_aprobacion_no_dispara_agente():
     """Sin token no hay /admin; rechazar nunca lanza el agente; aprobar lo lanza una sola vez."""
     import os

@@ -1082,6 +1082,14 @@ def municipio(clave: str):
                   '<p class="muted">Una persona del equipo ya aprobó la revisión y Muse está buscando y leyendo '
                   'los documentos oficiales. Puedes verlo trabajar en vivo, paso a paso.</p>'
                   f'<p><a class="btn" href="/indexando/{e(clave)}">Ver la revisión en vivo</a></p></div>{despues}</div>')
+    elif m["estado_indexacion"] == "error":
+        cuerpo = (f'<div class="grid g-side"><div class="card" style="display:flex;flex-direction:column;gap:16px">'
+                  '<span class="chip warn" style="align-self:flex-start">La revisión se detuvo</span>'
+                  f'<h2>Aún no revisamos {e(m["nombre"])}</h2>'
+                  '<p class="muted">Muse ya intentó revisar este municipio una vez, con aprobación de una persona '
+                  'del equipo, y la revisión se detuvo antes de terminar. Para no repetir la misma petición ni el '
+                  'mismo gasto, desde aquí ya no se puede pedir otra vez; el avance guarda paso a paso qué pasó.</p>'
+                  f'<p><a class="btn" href="/indexando/{e(clave)}">Ver lo que pasó</a></p></div>{despues}</div>')
     elif pendiente:
         cuerpo = (f'<div class="grid g-side"><div class="card" style="display:flex;flex-direction:column;gap:16px">'
                   '<span class="chip warn" style="align-self:flex-start">Solicitud en espera</span>'
@@ -1091,8 +1099,6 @@ def municipio(clave: str):
                   'Nada se hace sin esa aprobación.</p>'
                   f'<p><a class="btn ghost" href="/indexando/{e(clave)}">Ver el avance</a></p></div>{despues}</div>')
     else:
-        aviso_previo = ('<p class="muted">Una revisión anterior se detuvo antes de terminar; puedes pedirla de nuevo.</p>'
-                        if m["estado_indexacion"] == "error" else "")
         cuerpo = (f'<div class="grid g-side"><div class="card" style="display:flex;flex-direction:column;gap:16px">'
                   '<span class="chip warn" style="align-self:flex-start">Todavía sin revisar</span>'
                   f'<h2>Aún no revisamos {e(m["nombre"])}</h2>'
@@ -1102,7 +1108,6 @@ def municipio(clave: str):
                   f'<div class="kpi">{icono("globe", "Dibujo de un globo terráqueo")}<div class="small">Busca en sitios .gob.mx</div></div>'
                   f'<div class="kpi">{icono("read", "Dibujo de un libro abierto")}<div class="small">Lee gacetas y presupuesto</div></div>'
                   f'<div class="kpi">{icono("chk", "Dibujo de una palomita")}<div class="small">Verifica cada cita</div></div></div>'
-                  + aviso_previo
                   + f'<div class="btnrow"><form method="post" action="/solicitar/{e(clave)}">'
                     f'<button class="btn" type="submit">{icono("spark", "Dibujo de una estrella")}Pídele a Muse que lo revise</button></form>'
                     '<a class="btn ghost" href="/representantes?m=21019">Ver un ejemplo: Atlixco</a></div>'
@@ -1120,6 +1125,9 @@ def solicitar(clave: str):
             return RedirectResponse(f"/representantes?m={clave}", status_code=303)
         if filas[0]["estado_indexacion"] == "indexando":
             return RedirectResponse(f"/indexando/{clave}", status_code=303)  # ya se está revisando: no duplicar ni pisar el estado
+        ya_aprobada = _filas(con, "SELECT id FROM solicitudes WHERE clave_inegi = ? AND estado = 'aprobada'", (clave,))
+        if ya_aprobada:
+            return RedirectResponse(f"/indexando/{clave}", status_code=303)  # ya se aprobó una vez: la misma petición no se repite
         ya = _filas(con, "SELECT id FROM solicitudes WHERE clave_inegi = ? AND estado = 'pendiente'", (clave,))
         if not ya:
             try:
