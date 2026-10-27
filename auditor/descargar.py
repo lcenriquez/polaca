@@ -15,20 +15,28 @@ FUENTES = [
     "https://ojp.puebla.gob.mx/media/k2/attachments/Reglamento_Interior_de_Cabildo_del_Municipio_de_Atlixco_T2_08072025.pdf",
     "https://transparencia.atlixco.gob.mx/Atlixco/gaceta/2015/9C.3-011215.pdf",
     "https://transparencia.atlixco.gob.mx/Atlixco/gaceta/2022/GACETA_JULIO_2022.pdf",
+    # Etapa de gobierno cercano: directorio, juntas, contacto oficial y la ley que define cada cargo.
+    "https://atlixco.gob.mx/Pages/Ayuntamiento/Cabildo.aspx",
+    "https://atlixco.gob.mx/Pages/Ayuntamiento/Juntas_Auxiliares.aspx",
+    "https://atlixco.gob.mx/Pages/Ayuntamiento/Contacto.aspx",
+    "https://ojp.puebla.gob.mx/media/k2/attachments/Ley_Organica_Municipal_TEV_08062026.pdf",
 ]
 
 
 def descargar(url: str) -> dict:
-    destino = RAW / url.rsplit("/", 1)[-1]
+    nombre = url.rsplit("/", 1)[-1]
+    if nombre.endswith(".aspx"):  # las páginas del portal se guardan como HTML
+        nombre = nombre[:-5] + ".html"
+    destino = RAW / nombre
     if not destino.exists():
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (auditor-atlixco)"})
         with urllib.request.urlopen(req, timeout=120) as r:
             datos = r.read()
-        if not datos.startswith(b"%PDF"):
-            raise ValueError(f"{url} no devolvió un PDF")
+        if not datos.startswith(b"%PDF") and b"<html" not in datos[:1000].lower():
+            raise ValueError(f"{url} no devolvió un PDF ni una página HTML")
         destino.write_bytes(datos)
     return {
-        "archivo": destino.name,
+        "archivo": nombre,
         "url": url,
         "sha256": hashlib.sha256(destino.read_bytes()).hexdigest(),
         "bytes": destino.stat().st_size,
