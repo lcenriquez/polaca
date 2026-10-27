@@ -125,6 +125,47 @@ def llamar_responses(etiqueta: str, imagenes: int = 1, **kwargs) -> dict:
     return resp
 
 
+def llamar_responses_texto(etiqueta: str, **kwargs) -> dict:
+    """Responses API para texto (p. ej. búsqueda web con tools=[{"type": "web_search"}]).
+
+    Misma caché y registro de costos que llamar(); el costo se calcula por tokens
+    con PRECIOS, igual que en chat completions. La búsqueda web solo existe en
+    Responses/Messages, no en Chat Completions (dev.meta.ai/docs/search-grounding).
+    """
+    clave = hashlib.sha256(json.dumps(kwargs, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    archivo = CACHE / f"{clave}.json"
+    if archivo.exists():
+        return json.loads(archivo.read_text())
+
+    global _cliente
+    if _cliente is None:
+        _cargar_env()
+        _cliente = OpenAI(base_url="https://api.meta.ai/v1", api_key=os.environ["META_API_KEY"], max_retries=3)
+    inicio = time.monotonic()
+    resp = _cliente.responses.create(**kwargs).model_dump()
+    CACHE.mkdir(parents=True, exist_ok=True)
+    archivo.write_text(json.dumps(resp, ensure_ascii=False))
+
+    uso = resp.get("usage") or {}
+    uso_norm = {"prompt_tokens": uso.get("input_tokens", 0),
+                "completion_tokens": uso.get("output_tokens", 0),
+                "prompt_tokens_details": {"cached_tokens": (uso.get("input_tokens_details") or {}).get("cached_tokens", 0)}}
+    registro = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "etiqueta": etiqueta,
+        "modelo": kwargs["model"],
+        "prompt_tokens": uso_norm["prompt_tokens"],
+        "completion_tokens": uso_norm["completion_tokens"],
+        "cached_tokens": uso_norm["prompt_tokens_details"]["cached_tokens"],
+        "usd": round(costo_usd(kwargs["model"], uso_norm), 6),
+        "segundos": round(time.monotonic() - inicio, 1),
+        "cache": clave[:12],
+    }
+    with LOG_COSTOS.open("a") as f:
+        f.write(json.dumps(registro, ensure_ascii=False) + "\n")
+    return resp
+
+
 def resumen_costos() -> dict:
     if not LOG_COSTOS.exists():
         return {"llamadas": 0, "usd": 0.0}

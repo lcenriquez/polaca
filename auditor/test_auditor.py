@@ -533,6 +533,40 @@ def test_solicitud_sin_aprobacion_no_dispara_agente():
             os.environ.pop("ADMIN_TOKEN", None)
 
 
+def test_indexador_filtros_y_topes():
+    """El agente descarta dominios que no son .gob.mx y se detiene al llegar al tope de gasto."""
+    import indexar
+    assert indexar.es_gob_mx("https://cuetzalan.gob.mx/gaceta.pdf")
+    assert indexar.es_gob_mx("https://transparencia.atlixco.gob.mx/x")
+    assert indexar.es_gob_mx("http://gob.mx/")
+    assert not indexar.es_gob_mx("https://dawhois.com/domain/cuetzalan.gob.mx.html")
+    assert not indexar.es_gob_mx("https://gob.mx.ejemplo.com/")
+    assert not indexar.es_gob_mx("https://www.gob.mx@ejemplo.com/")
+    assert not indexar.es_gob_mx("sin-url")
+    resp = {"output": [
+        {"type": "web_search_call", "results": [
+            {"url": "https://dawhois.com/domain/cuetzalan.gob.mx.html", "title": "whois"},
+            {"url": "https://cuetzalan.gob.mx/Gaceta/gaceta_2026.pdf", "title": "Gaceta municipal"}]},
+        {"type": "message", "content": [{"text": "ver https://ejemplo.com/gaceta.pdf", "annotations": []}]}]}
+    candidatas = indexar.urls_de_respuesta(resp)
+    assert indexar.elegir(candidatas, ["gaceta"], pdf=True) == "https://cuetzalan.gob.mx/Gaceta/gaceta_2026.pdf"
+    assert indexar.elegir(candidatas, ["presupuesto"], pdf=True) is None  # sin fuente, no inventa
+    # Un .gob.mx de otro municipio no cuenta: el documento debe mencionar al municipio pedido.
+    assert indexar.menciona_municipio("MUNICIPIO DE CUETZALAN DEL PROGRESO, Estado de Puebla", "Cuetzalan del Progreso")
+    assert not indexar.menciona_municipio("MUNICIPIO DE PROGRESO, Estado de Yucatán", "Cuetzalan del Progreso")
+    with tempfile.TemporaryDirectory() as d:
+        llm.LOG_COSTOS = Path(d) / "costos.jsonl"
+        inicio = "2026-10-27T00:00:00+00:00"
+        llm.LOG_COSTOS.write_text('{"ts": "2026-10-27T01:00:00+00:00", "usd": 0.40}\n')
+        indexar.verificar_topes(inicio)  # bajo el tope: no lanza
+        llm.LOG_COSTOS.write_text('{"ts": "2026-10-27T01:00:00+00:00", "usd": 1.50}\n')
+        try:
+            indexar.verificar_topes(inicio)
+            raise AssertionError("debió detenerse al llegar al tope por municipio")
+        except indexar.TopeAlcanzado:
+            pass
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):
