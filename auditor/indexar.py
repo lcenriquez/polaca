@@ -31,6 +31,7 @@ import presupuesto
 
 TOPE_MUNICIPIO = 1.00
 TOPE_DIA = 5.00
+MAX_INTENTOS = 3  # candidatas por fuente: la búsqueda confunde municipios, se prueba hasta dar con el correcto
 MAX_PAGINAS_PDF = 40  # ponytail: primera pasada acotada; subir si el tope de gasto lo permite
 
 
@@ -69,7 +70,7 @@ def urls_de_respuesta(resp: dict) -> list[tuple[str, str]]:
         if item.get("type") == "web_search_call":
             for r in item.get("results") or []:
                 if r.get("url"):
-                    candidatas.append((r["url"], r.get("title", "")))
+                    candidatas.append((r["url"], (r.get("title", "") + " " + (r.get("snippet") or "")).strip()))
             if (item.get("action") or {}).get("url"):
                 candidatas.append((item["action"]["url"], ""))
         if item.get("type") == "message":
@@ -81,21 +82,36 @@ def urls_de_respuesta(resp: dict) -> list[tuple[str, str]]:
     return candidatas
 
 
-def elegir(candidatas: list[tuple[str, str]], palabras: list[str], pdf: bool = False) -> str | None:
-    """La URL .gob.mx cuyo enlace o título menciona más palabras clave; las demás se descartan."""
+def elegir_candidatas(candidatas: list[tuple[str, str]], palabras: list[str], pdf: bool = False,
+                      nombre: str = "") -> list[str]:
+    """URLs .gob.mx ordenadas: más palabras clave primero y, a igualdad, las que mencionan al municipio.
+
+    La búsqueda confunde municipios (Cuernavaca con Zihuatanejo): por eso se devuelve la
+    lista entera y el llamador prueba una por una hasta que el documento sí mencione al
+    municipio, en vez de quedarse con la primera."""
     vistas = {}
     for url, titulo in candidatas:
         if not es_gob_mx(url):
             continue
         if pdf and ".pdf" not in urlparse(url).path.lower():
             continue
-        vistas[url] = max(vistas.get(url, -1), sum(p in (url + " " + titulo).lower() for p in palabras))
-    buenas = {u: n for u, n in vistas.items() if n > 0}
-    return max(buenas, key=buenas.get) if buenas else None
+        texto = (url + " " + titulo).lower()
+        puntos = sum(p in texto for p in palabras) + (3 if nombre and menciona_municipio(texto, nombre) else 0)
+        vistas[url] = max(vistas.get(url, -1), puntos)
+    buenas = sorted((u for u, n in vistas.items() if n > 0), key=lambda u: -vistas[u])
+    return buenas
+
+
+def elegir(candidatas: list[tuple[str, str]], palabras: list[str], pdf: bool = False,
+           nombre: str = "") -> str | None:
+    """La mejor URL .gob.mx de la lista ordenada; None si ninguna sirve."""
+    ordenadas = elegir_candidatas(candidatas, palabras, pdf=pdf, nombre=nombre)
+    return ordenadas[0] if ordenadas else None
 
 
 def buscar(con, clave: str, inicio: str, paso: str, descripcion: str, consulta: str, palabras: list[str],
-           pdf: bool = False) -> str | None:
+           pdf: bool = False, nombre: str = "") -> list[str]:
+    """Busca y devuelve las URLs candidatas ordenadas (el llamador prueba hasta 3, una por una)."""
     municipios.registrar_evento(con, clave, paso, f"Buscando {descripcion}…")
     verificar_topes(inicio)
     resp = llm.llamar_responses_texto(
@@ -104,13 +120,11 @@ def buscar(con, clave: str, inicio: str, paso: str, descripcion: str, consulta: 
                f"al documento o página. Si no la encuentras, responde NO_ENCONTRADO. Búsqueda sugerida: {consulta}"),
         tools=[{"type": "web_search", "search_context_size": "low"}],
         include=["web_search_call.results"])
-    url = elegir(urls_de_respuesta(resp), palabras, pdf=pdf)
-    if url:
-        municipios.registrar_evento(con, clave, paso, f"Encontré {descripcion}: {url}")
-    else:
+    urls = elegir_candidatas(urls_de_respuesta(resp), palabras, pdf=pdf, nombre=nombre)
+    if not urls:
         municipios.registrar_evento(con, clave, paso,
                                     f"No encontré {descripcion} en un sitio .gob.mx. Lo dejo pendiente; no invento la fuente.")
-    return url
+    return urls
 
 
 def descargar(con, clave: str, tipo: str, url: str) -> str:
@@ -244,42 +258,53 @@ def indexar(clave: str) -> int:
         municipios.registrar_evento(con, clave, "inicio",
                                     f"Empiezo a revisar {nombre}, {estado}. Solo uso fuentes oficiales .gob.mx "
                                     "y cada dato que guarde llevará su cita.")
-        portal = buscar(con, clave, inicio, "portal", f"el portal de transparencia de {nombre}, {estado}",
-                        f"portal de transparencia Ayuntamiento {nombre} {estado} gob.mx", ["transparencia"])
-        if portal:
+        candidatas = buscar(con, clave, inicio, "portal", f"el portal de transparencia de {nombre}, {estado}",
+                            f"portal de transparencia Ayuntamiento de {nombre} {estado} sitio gob.mx",
+                            ["transparencia"], nombre=nombre)
+        if candidatas:
+            portal = candidatas[0]
             fuentes_ok += 1
+            municipios.registrar_evento(con, clave, "portal",
+                                        f"Encontré el portal de transparencia de {nombre}, {estado}: {portal}")
             raiz = urlparse(portal)
             municipios.registrar_evento(con, clave, "portal",
                                         f"El sitio oficial es {raiz.scheme}://{raiz.netloc}; de ahí salen las demás búsquedas.")
         for tipo, descripcion, palabras, modulo in (
                 ("gaceta", f"la gaceta municipal más reciente de {nombre}", ["gaceta"], "gaceta"),
                 ("presupuesto", f"el presupuesto de egresos de {nombre}", ["presupuesto", "egresos"], "presupuesto")):
-            url = buscar(con, clave, inicio, tipo, descripcion,
-                         f"{descripcion} Ayuntamiento {nombre} {estado} filetype:pdf gob.mx", palabras, pdf=True)
-            if not url:
-                continue
-            try:
-                archivo = descargar(con, clave, tipo, url)
-                ok, total = leer_pdf(con, clave, inicio, archivo, modulo, nombre)
+            urls = buscar(con, clave, inicio, tipo, descripcion,
+                          f'{descripcion} del Ayuntamiento de "{nombre}", {estado} filetype:pdf gob.mx',
+                          palabras, pdf=True, nombre=nombre)
+            for url in urls[:MAX_INTENTOS]:  # si el documento es de otro municipio, pruebo la siguiente candidata
+                try:
+                    archivo = descargar(con, clave, tipo, url)
+                    ok, total = leer_pdf(con, clave, inicio, archivo, modulo, nombre)
+                except TopeAlcanzado:
+                    raise
+                except Exception as e:
+                    municipios.registrar_evento(con, clave, tipo, f"No pude leer {url}: {e}. Pruebo la siguiente candidata.")
+                    continue
+                municipios.registrar_evento(con, clave, tipo, f"Encontré {descripcion}: {url}")
                 citas_ok, citas_total = citas_ok + ok, citas_total + total
                 fuentes_ok += 1
-            except TopeAlcanzado:
-                raise
-            except Exception as e:
-                municipios.registrar_evento(con, clave, tipo, f"No pude leer {url}: {e}. Sigo con las demás fuentes.")
-        url = buscar(con, clave, inicio, "directorio", f"el directorio de cabildo de {nombre}",
-                     f"directorio cabildo integrantes Ayuntamiento {nombre} {estado} gob.mx",
-                     ["cabildo", "directorio", "integrantes"])
-        if url:
+                break
+        descripcion = f"el directorio de cabildo de {nombre}"
+        urls = buscar(con, clave, inicio, "directorio", descripcion,
+                      f'directorio del Cabildo del Ayuntamiento de "{nombre}", {estado} presidente regidores gob.mx',
+                      ["cabildo", "directorio", "integrantes"], nombre=nombre)
+        for url in urls[:MAX_INTENTOS]:
             try:
                 archivo = descargar(con, clave, "directorio", url)
                 ok, total = leer_directorio(con, clave, inicio, archivo, nombre, estado)
-                citas_ok, citas_total = citas_ok + ok, citas_total + total
-                fuentes_ok += 1
             except TopeAlcanzado:
                 raise
             except Exception as e:
-                municipios.registrar_evento(con, clave, "directorio", f"No pude leer {url}: {e}.")
+                municipios.registrar_evento(con, clave, "directorio", f"No pude leer {url}: {e}. Pruebo la siguiente candidata.")
+                continue
+            municipios.registrar_evento(con, clave, "directorio", f"Encontré {descripcion}: {url}")
+            citas_ok, citas_total = citas_ok + ok, citas_total + total
+            fuentes_ok += 1
+            break
     except TopeAlcanzado as e:
         municipios.registrar_evento(con, clave, "tope", str(e))
         con.execute("UPDATE municipios SET estado_indexacion = 'error' WHERE clave_inegi = ?", (clave,))

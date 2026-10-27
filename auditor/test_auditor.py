@@ -669,6 +669,13 @@ def test_indexador_filtros_y_topes():
     candidatas = indexar.urls_de_respuesta(resp)
     assert indexar.elegir(candidatas, ["gaceta"], pdf=True) == "https://cuetzalan.gob.mx/Gaceta/gaceta_2026.pdf"
     assert indexar.elegir(candidatas, ["presupuesto"], pdf=True) is None  # sin fuente, no inventa
+    # Confusión de municipios: la candidata que menciona al municipio va primero y la
+    # lista conserva a las demás para reintentar si el documento resulta de otro lugar.
+    confusas = [("https://zihuatanejo.gob.mx/gaceta/GACETA_MUNICIPAL.pdf", "Gaceta municipal extraordinaria"),
+                ("https://cuernavaca.gob.mx/gaceta/gaceta_cuernavaca.pdf", "Gaceta del Ayuntamiento de Cuernavaca")]
+    orden = indexar.elegir_candidatas(confusas, ["gaceta"], pdf=True, nombre="Cuernavaca")
+    assert orden[0].startswith("https://cuernavaca.gob.mx") and len(orden) == 2
+    assert indexar.elegir(confusas, ["gaceta"], pdf=True, nombre="Cuernavaca") == orden[0]
     # Un .gob.mx de otro municipio no cuenta: el documento debe mencionar al municipio pedido.
     assert indexar.menciona_municipio("MUNICIPIO DE CUETZALAN DEL PROGRESO, Estado de Puebla", "Cuetzalan del Progreso")
     assert not indexar.menciona_municipio("MUNICIPIO DE PROGRESO, Estado de Yucatán", "Cuetzalan del Progreso")
