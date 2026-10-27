@@ -39,6 +39,9 @@ def _cargar_env():
                 os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 
+_cargar_env()  # al importar: web.py necesita ADMIN_TOKEN sin esperar a la primera llamada a la API
+
+
 def costo_usd(modelo: str, uso: dict) -> float:
     entrada, en_cache, salida = PRECIOS[modelo]
     cacheados = (uso.get("prompt_tokens_details") or {}).get("cached_tokens") or 0
