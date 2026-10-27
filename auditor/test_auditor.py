@@ -222,14 +222,15 @@ def test_web():
             presupuesto.guardar(con, "pres.pdf", 10, [partida], (5, 6))
 
         cliente = TestClient(web.app)
-        for ruta in ["/", "/funcionarios", "/funcionarios/ariadna-ayala-camarillo", "/acuerdos", "/acuerdos/1",
+        for ruta in ["/", "/donde", "/representantes", "/temas", "/gastos", "/funcionarios",
+                     "/funcionarios/ariadna-ayala-camarillo", "/acuerdos", "/acuerdos/1",
                      "/presupuesto", "/hallazgos", "/evidencia"]:
             r = cliente.get(ruta)
             assert r.status_code == 200, (ruta, r.status_code)
             texto = r.text.lower()
             assert "corrupción" not in texto and "robo" not in texto, ruta
         assert "nombre no verificado" in cliente.get("/presupuesto").text
-        assert "abc123" in cliente.get("/").text  # sha256 del manifiesto en la fuente
+        assert "abc123" in cliente.get("/donde").text  # sha256 del manifiesto, en detalles técnicos
         assert cliente.get("/fuentes/g.pdf").status_code == 200
         assert cliente.get("/fuentes/manifiesto.json").status_code == 404  # solo PDF de datos/raw
         assert cliente.get("/fuentes/%2E%2E%2Fweb.py").status_code == 404  # nada fuera de datos/raw
@@ -343,21 +344,56 @@ def test_recorrido():
 
         def visible(html_texto):
             return re.sub(r"<details.*?</details>", "", html_texto, flags=re.S)
-        for ruta in ["/", "/representantes?junta=1", "/temas", "/revisar", "/revisar/3", "/actua"]:
+        for ruta in ["/", "/donde", "/representantes?junta=1", "/temas", "/temas/baches",
+                     "/revisar", "/revisar/3", "/gastos", "/actua"]:
             r = cliente.get(ruta)
             assert r.status_code == 200, (ruta, r.status_code)
             assert "corrupción" not in r.text.lower() and "robo" not in r.text.lower(), ruta
             v = visible(r.text)
             assert "sha-256" not in v.lower() and ".pdf" not in v.lower(), ruta  # lo técnico va en detalles
             for svg in re.findall(r"<svg[^>]*>", r.text):
-                assert 'aria-label="' in svg, (ruta, svg)  # todo gráfico con texto alternativo
+                assert 'aria-label="' in svg or 'aria-hidden="true"' in svg, (ruta, svg)  # todo gráfico con texto alternativo
         rep = cliente.get("/representantes?junta=1").text
         # Del más cercano al más lejano: presidente auxiliar, regidora, presidenta.
         assert rep.index("Dario Auxiliar") < rep.index("Cora Regidora") < rep.index("Ana Presidenta")
         assert "Persona Inventada" not in rep  # nadie aparece si no está en la base con cita
-        temas = cliente.get("/temas").text
-        assert "De Desarrollo Urbano, Obras y Servicios Públicos" in temas and "Orientación general" in temas
-        assert "100 monedas" in cliente.get("/revisar/3").text
+        detalle = cliente.get("/temas/baches").text
+        assert "De Desarrollo Urbano, Obras y Servicios Públicos" in detalle  # comisión con cita
+        assert "Orientación general" in cliente.get("/temas/agua").text  # marcado cuando no es dato oficial
+        assert "100 monedas" in cliente.get("/gastos").text
+
+
+def test_monedas():
+    """Las 100 monedas de /gastos suman exactamente 100, también en la página pintada."""
+    import re
+    import presupuesto
+    import web
+    from fastapi.testclient import TestClient
+    # Repartos con residuos empujados: la suma debe ser 100 siempre.
+    casos = [
+        [{"id": i, "monto_mxn": m} for i, m in enumerate([1.0, 1.0, 1.0], 1)],
+        [{"id": i, "monto_mxn": m} for i, m in enumerate([333.33, 333.33, 333.34], 1)],
+        [{"id": i, "monto_mxn": m} for i, m in enumerate([10.0] * 7, 1)],
+        [{"id": i, "monto_mxn": m} for i, m in enumerate([244_276_746.96, 150_000_000.0, 90_000_000.5, 1.0], 1)],
+        [{"id": 1, "monto_mxn": 42.0}],
+    ]
+    for partidas in casos:
+        monedas = web.monedas_100(partidas)
+        assert sum(monedas.values()) == 100, monedas
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with presupuesto.conectar() as con:
+            presupuesto.guardar(con, "pres.pdf", 10, [
+                {"capitulo": c, "nombre": n, "monto_mxn": m, "pagina": 6, "fragmento": "$1.00",
+                 "verificacion": "ok", "verificacion_nombre": "ok"}
+                for c, n, m in [("1000", "Servicios Personales", 333.33),
+                                ("6000", "Inversión Pública", 333.33),
+                                ("8000", "Participaciones y Aportaciones", 333.34)]], (5, 6))
+        texto = TestClient(web.app).get("/gastos").text
+        monedas_pintadas = len(re.findall(r'<i style="background:', texto))
+        assert monedas_pintadas == 100, monedas_pintadas  # la cuadrícula pinta exactamente 100 monedas
 
 
 if __name__ == "__main__":

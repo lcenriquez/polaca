@@ -29,42 +29,67 @@ from extraer import plano
 app = FastAPI(title="Auditor de Atlixco")
 
 CSS = """
-:root { color-scheme: light; }
+:root { color-scheme: light; --bg:#f6f5fb; --card:#fff; --ink:#1d1b2e; --muted:#5b5872; --line:#e4e1f0;
+  --accent:#5b3fd1; --accent-soft:#ece8fc; --ok:#1f7a4d; --r:20px;
+  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; }
 * { box-sizing: border-box; }
-body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #111827; background: #f8fafc; line-height: 1.5; font-size: 18px; }
-header, main, footer { max-width: 46rem; margin: 0 auto; padding: 1rem; }
-header { padding-bottom: 0; }
-nav { display: flex; flex-wrap: wrap; gap: .5rem; }
-nav a, button, .boton { display: inline-block; min-height: 44px; padding: .6rem .9rem; border-radius: .5rem; background: #334155; color: #fff; text-decoration: none; border: 0; font-size: 1rem; cursor: pointer; }
-nav a { background: #e2e8f0; color: #111827; }
-a { color: #1e293b; }
-a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid #111827; outline-offset: 2px; }
-h1 { font-size: 1.6rem; margin: .5rem 0; } h2 { font-size: 1.25rem; margin-top: 1.5rem; }
-.tarjeta { background: #fff; border: 1px solid #cbd5e1; border-radius: .75rem; padding: 1rem; margin: .75rem 0; }
-.fuente { background: #f1f5f9; border-left: 4px solid #475569; padding: .75rem; margin-top: .75rem; font-size: .92rem; overflow-wrap: anywhere; }
-.aviso { background: #fef9c3; border: 1px solid #a16207; color: #713f12; border-radius: .5rem; padding: .75rem; }
-.marca { display: inline-block; background: #e2e8f0; border-radius: 999px; padding: .1rem .6rem; font-size: .85rem; margin-right: .35rem; }
-img.foto { max-width: 100%; height: auto; border-radius: .5rem; }
+body { margin: 0; font: 18px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
+header.top, main, footer { max-width: 430px; margin: 0 auto; padding: 16px 20px; }
+header.top { display: flex; align-items: center; gap: 12px; padding-bottom: 8px; }
+.prog { flex: 1; display: flex; gap: 6px; } .prog i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); } .prog i.on { background: var(--accent); }
+.back, .listen { width: 44px; height: 44px; border-radius: 50%; background: var(--card); border: 1px solid var(--line); display: inline-grid; place-items: center; color: var(--accent); cursor: pointer; flex: none; }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+h1 { font-size: 30px; line-height: 1.15; margin: .4rem 0; } h2 { font-size: 24px; line-height: 1.2; margin: 1.2rem 0 .5rem; } h3 { font-size: 19px; margin: .2rem 0; }
+main { display: flex; flex-direction: column; gap: 16px; padding-top: 8px; }
+.tarjeta, .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
+button, .boton, nav a { cursor: pointer; }
+.btn, .boton { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; border-radius: 16px; background: var(--accent); color: #fff; font-weight: 700; font-size: 18px; border: 0; width: 100%; text-decoration: none; padding: .6rem 1rem; }
+.btn.ghost, .boton.ghost { background: var(--card); color: var(--accent); border: 2px solid var(--accent); }
+.hero { background: var(--accent); color: #fff; border-radius: var(--r); padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+.hero svg.h { width: 100%; height: auto; }
+.search { display: flex; align-items: center; gap: 10px; background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 0 14px; min-height: 56px; }
+.list a { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 4px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
+.list a:last-child { border: 0; }
+.ring { position: relative; width: 100%; aspect-ratio: 1; max-width: 330px; margin: 0 auto; }
+.ring .c { position: absolute; border-radius: 50%; border: 2px dashed #c9c3e6; inset: 0; }
+.ring .c2 { inset: 16%; } .ring .c3 { inset: 32%; border-style: solid; background: var(--accent-soft); }
+.ring .p { position: absolute; transform: translate(-50%,-50%); text-align: center; font-size: 12px; width: 88px; line-height: 1.2; }
+.av, .avatar { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; margin: 0 auto 4px; font-size: 17px; background: var(--accent); flex: none; }
+.av.you { background: var(--ink); } .av.a2 { background: #0e7490; } .av.a3 { background: #475569; }
+.person, .persona { display: flex; gap: 14px; align-items: center; }
+.tag, .marca { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 4px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); font-weight: 600; margin-right: .35rem; }
+.grid2, .temas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tile, .tema { background: var(--card); border: 2px solid var(--line); border-radius: var(--r); min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-weight: 700; text-align: center; padding: 12px; color: var(--ink); text-decoration: none; }
+.tile.on, .tema.on { border-color: var(--accent); background: var(--accent-soft); }
+svg.i, .icono { width: 28px; height: 28px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; color: var(--accent); }
+.tile svg.i { width: 44px; height: 44px; }
+.stat { display: flex; gap: 12px; } .stat .card { flex: 1; text-align: center; padding: 14px 8px; } .stat b { display: block; font-size: 30px; color: var(--accent); }
+.tl { border-left: 3px solid var(--line); margin-left: 10px; padding-left: 18px; display: flex; flex-direction: column; gap: 14px; }
+.tl div { position: relative; } .tl div:before { content: ""; position: absolute; left: -27px; top: 6px; width: 15px; height: 15px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); }
+.coins { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; } .coins i { aspect-ratio: 1; border-radius: 50%; display: block; }
+.leg { display: flex; flex-direction: column; gap: 10px; } .leg div { display: flex; align-items: center; gap: 12px; }
+.leg .sw { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; flex: none; } .leg .sw svg.i { color: #fff; width: 22px; height: 22px; } .leg b { margin-left: auto; font-size: 20px; }
+.big { font-size: 44px; font-weight: 800; line-height: 1; color: var(--accent); }
+.steps { display: flex; flex-direction: column; gap: 12px; } .step { display: flex; gap: 14px; align-items: flex-start; }
+.n { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; flex: none; }
+.copy { background: #f1effa; border: 2px dashed #c9c3e6; border-radius: 16px; padding: 14px; font-size: 16px; }
+nav.bottom { display: flex; border-top: 1px solid var(--line); background: var(--card); max-width: 430px; margin: 0 auto; position: sticky; bottom: 0; }
+nav.bottom a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 0 14px; font-size: 13px; color: var(--muted); text-decoration: none; font-weight: 600; min-height: 56px; }
+nav.bottom a.on { color: var(--accent); }
+.aviso { background: #fef9c3; border: 1px solid #a16207; color: #713f12; border-radius: 16px; padding: .75rem; }
+.fuente, details.fuente { font-size: 14px; color: var(--muted); background: transparent; border: 0; padding: 0; margin-top: .5rem; overflow-wrap: anywhere; }
+details.fuente summary, details.why summary { color: var(--accent); font-weight: 600; min-height: 44px; cursor: pointer; display: flex; align-items: center; }
+details.ayuda { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: .6rem .8rem; margin: .5rem 0; font-size: 16px; }
+details.ayuda summary { min-height: 44px; cursor: pointer; font-weight: 600; display: flex; align-items: center; color: var(--accent); }
+.sencillo { border-left: 4px solid var(--accent); }
+img.foto { max-width: 100%; height: auto; border-radius: var(--r); }
 label { display: block; margin: .75rem 0 .25rem; font-weight: 600; }
-input[type=text], input[type=file], select { width: 100%; min-height: 44px; font-size: 1rem; }
-table { border-collapse: collapse; width: 100%; } th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #cbd5e1; vertical-align: top; }
-.debil { color: #374151; font-size: .92rem; }
-details.ayuda { background: #fff; border: 1px solid #cbd5e1; border-radius: .5rem; padding: .6rem .8rem; margin: .5rem 0; }
-details.ayuda summary { min-height: 44px; cursor: pointer; font-weight: 600; display: flex; align-items: center; }
-.sencillo { border-left: 4px solid #334155; }
-textarea { width: 100%; min-height: 88px; font-size: 1rem; }
-details.fuente { background: #f1f5f9; border-left: 4px solid #475569; padding: .5rem .75rem; margin-top: .75rem; font-size: .92rem; overflow-wrap: anywhere; }
-details.fuente summary { min-height: 44px; cursor: pointer; font-weight: 600; display: flex; align-items: center; }
-.avatar { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: #334155; color: #fff; font-weight: 700; font-size: 1.3rem; flex: none; }
-.persona { display: flex; gap: .9rem; align-items: flex-start; }
-.temas { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; }
-.tema { background: #fff; border: 1px solid #cbd5e1; border-radius: .75rem; padding: 1rem; text-align: center; }
-.tema a { font-weight: 700; text-decoration: none; }
-.icono { width: 48px; height: 48px; stroke: #334155; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.monedas { line-height: 1; letter-spacing: 2px; overflow-wrap: anywhere; }
-.moneda { font-size: 1.05rem; }
-.paso-num { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: #334155; color: #fff; font-weight: 700; margin-right: .5rem; }
-input[type=search] { width: 100%; min-height: 48px; font-size: 1.05rem; padding: .5rem; }
+input[type=text], input[type=file], input[type=search], select, textarea { width: 100%; min-height: 48px; font-size: 1rem; }
+textarea { min-height: 88px; }
+table { border-collapse: collapse; width: 100%; } th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.debil, .sub { color: var(--muted); } .debil { font-size: .92rem; }
+.paso-num { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; margin-right: .5rem; }
+u.term { text-decoration: underline dotted var(--accent) 2px; text-underline-offset: 4px; }
 """
 
 
@@ -75,24 +100,41 @@ def e(v) -> str:
 JS = """<script>
 function escuchar(){ try{ speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(document.querySelector('main').innerText); u.lang = 'es-MX'; speechSynthesis.speak(u); }catch(err){} }
 function detener(){ try{ speechSynthesis.cancel(); }catch(err){} }
-function copiar(id){ var x = document.getElementById(id); if(!x) return; x.select(); if(navigator.clipboard) navigator.clipboard.writeText(x.value); else document.execCommand('copy'); }
+function copiar(id){ var x = document.getElementById(id); if(!x) return; if(x.tagName === 'TEXTAREA' || x.tagName === 'INPUT'){ x.select(); } if(navigator.clipboard) navigator.clipboard.writeText(x.value || x.innerText); else document.execCommand('copy'); }
+function copiarTexto(id){ var x = document.getElementById(id); if(x && navigator.clipboard) navigator.clipboard.writeText(x.innerText); }
 function saltarBienvenida(){ try{ localStorage.setItem('bienvenida-vista', '1'); }catch(err){} var b = document.getElementById('bienvenida'); if(b) b.remove(); }
+function empezar(){ try{ localStorage.setItem('bienvenida-vista', '1'); }catch(err){} }
 function filtrar(input, id){ var q = input.value.toLowerCase(); document.querySelectorAll('#' + id + ' [data-nombre]').forEach(function(el){ el.style.display = el.getAttribute('data-nombre').toLowerCase().includes(q) ? '' : 'none'; }); }
-try{ if(localStorage.getItem('bienvenida-vista')){ var b = document.getElementById('bienvenida'); if(b) b.remove(); } }catch(err){}
 </script>"""
 
 
-def pagina(titulo: str, cuerpo: str) -> HTMLResponse:
-    nav = "".join(f'<a href="{href}">{texto}</a>' for href, texto in
-                  [("/", "1. ¿Dónde vives?"), ("/representantes", "2. ¿Quién te representa?"),
-                   ("/temas", "3. ¿Qué te preocupa?"), ("/revisar", "4. Revisa su trabajo"), ("/actua", "5. Actúa")])
+def pagina(titulo: str, cuerpo: str, paso: int | None = None, seccion: str | None = None,
+           sin_titulo: bool = False) -> HTMLResponse:
+    if paso:
+        prog = "".join(f'<i class="{"on" if i < paso else ""}"></i>' for i in range(4))
+        top = (f'<button class="back" type="button" onclick="history.back()" aria-label="Volver">'
+               f'<svg class="i" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button><div class="prog">{prog}</div>')
+    else:
+        top = '<b style="font-size:18px">Atlixco a la vista</b>'
+    top += ('<button class="listen" type="button" onclick="escuchar()" aria-label="Escuchar esta página">'
+            '<svg class="i" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg></button>'
+            '<button class="listen" type="button" onclick="detener()" aria-label="Detener lectura">'
+            '<svg class="i" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>')
+    nav = ""
+    if seccion:
+        items = [("/", "home", "Inicio", "inicio"), ("/representantes", "ppl", "Gobierno", "gobierno"),
+                 ("/gastos", "coin", "Gastos", "gastos"), ("/actua", "mega", "Actúa", "actua")]
+        nav = '<nav class="bottom">' + "".join(
+            f'<a href="{h}" class="{"on" if k == seccion else ""}"><svg class="i" aria-hidden="true"><use href="#i-{ic}"/></svg>{t}</a>'
+            for h, ic, t, k in items) + "</nav>"
+    simbolos = "".join(f'<symbol id="i-{k}" viewBox="0 0 24 24">{v}</symbol>' for k, v in _ICONOS.items())
     return HTMLResponse(f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>{e(titulo)} — Auditor de Atlixco</title>
-<style>{CSS}</style></head><body><header><strong>Auditor de Atlixco</strong><nav>{nav}</nav>
-<p><button type="button" onclick="escuchar()">🔊 Escuchar esta página</button>
-<button type="button" onclick="detener()">⏹ Detener lectura</button></p></header>
-<main><h1>{e(titulo)}</h1>{cuerpo}</main>
-<footer class="debil">Datos de documentos públicos oficiales, mostrados con su fuente.</footer>{JS}</body></html>""")
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>{e(titulo)} — Atlixco a la vista</title>
+<style>{CSS}</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>{simbolos}</defs></svg>
+<header class="top">{top}</header>
+<main>{'' if sin_titulo else f'<h1>{e(titulo)}</h1>'}{cuerpo}</main>
+<footer class="debil" style="max-width:430px;margin:0 auto;padding:0 20px 16px">Datos de documentos públicos oficiales, mostrados con su fuente.</footer>{nav}{JS}</body></html>""")
 
 
 def _con() -> sqlite3.Connection:
@@ -214,25 +256,44 @@ def _cobertura_html(c: dict) -> str:
 
 
 _ICONOS = {
-    "casa": '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
-    "personas": '<circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17.5" cy="9" r="2.8"/><path d="M16 14.6c2.9.3 5 2.3 5 5.4"/>',
-    "calle": '<path d="M4 21L10 3M20 21L14 3"/><path d="M12 18v-3M12 12V9M12 6V4"/>',
-    "agua": '<path d="M12 3c3.5 4.2 6 7.3 6 10.2A6 6 0 0 1 6 13.2C6 10.3 8.5 7.2 12 3z"/>',
-    "basura": '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>',
-    "alumbrado": '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 1 3.6 10.8c-.7.6-1.1 1.2-1.3 2.2h-4.6c-.2-1-.6-1.6-1.3-2.2A6 6 0 0 1 12 3z"/>',
-    "seguridad": '<path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/>',
-    "mercados": '<path d="M4 10l1.5-5h13L20 10"/><path d="M4 10a2.7 2.7 0 0 0 5.3 0A2.7 2.7 0 0 0 14.7 10 2.7 2.7 0 0 0 20 10"/><path d="M5.5 12.5V20h13v-7.5"/><path d="M9.5 20v-5h5v5"/>',
+    "back": '<path d="M15 18l-6-6 6-6"/>',
+    "spk": '<path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/>',
+    "pin": '<path d="M12 21s-7-6.2-7-12a7 7 0 0114 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
+    "srch": '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+    "road": '<path d="M5 21L9 3M19 21L15 3M12 4v3M12 11v3M12 18v2"/>',
+    "drop": '<path d="M12 3s6 7 6 11a6 6 0 01-12 0c0-4 6-11 6-11z"/>',
+    "trash": '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+    "bulb": '<path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.8.8 1 1.6 1 2.5h6c0-.9.2-1.7 1-2.5A6 6 0 0012 3z"/>',
+    "shield": '<path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-1-8-4-8-9V6z"/>',
+    "store": '<path d="M4 9l1.5-5h13L20 9M4 9h16v11H4zM4 9c0 2 4 2 4 0 0 2 4 2 4 0 0 2 4 2 4 0 0 2 4 2 4 0M10 20v-5h4v5"/>',
+    "ppl": '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.9.2 5 2.5 5 5.8"/>',
+    "box": '<path d="M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10"/>',
+    "tool": '<path d="M14.5 6.5a4 4 0 00-5 5L4 17l3 3 5.5-5.5a4 4 0 005-5l-2.5 2.5-2.5-.5-.5-2.5z"/>',
+    "hand": '<path d="M3 14h4l4 3h6a2 2 0 000-4h-5M7 14V9a2 2 0 014 0v4M14 9a3 3 0 106 0 3 3 0 00-6 0"/>',
+    "crane": '<path d="M6 21V4l14 3M6 4L3 7h3M17 7v5M15 12h4v3h-4zM3 21h8"/>',
+    "truck": '<path d="M3 6h11v10H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+    "pig": '<path d="M5 11a7 6 0 0113-2h2v4h-2a7 6 0 01-3 4v3h-3v-2H9v2H6v-3.5A6 6 0 015 11z"/><circle cx="15" cy="10" r=".8"/>',
+    "arrows": '<path d="M4 8h14l-3-3M20 16H6l3 3"/>',
+    "doc": '<path d="M6 3h8l4 4v14H6zM14 3v4h4M9 14l2 2 4-4"/>',
+    "home": '<path d="M3 11l9-7 9 7M5 10v10h14V10"/>',
+    "coin": '<circle cx="12" cy="12" r="8"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.6 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6.5v1.5M12 16v1.5"/>',
+    "mega": '<path d="M3 10v4h3l8 4V6L6 10zM18 9a4 4 0 010 6"/>',
+    "cam": '<path d="M4 7h3l2-3h6l2 3h3v12H4z"/><circle cx="12" cy="13" r="3.5"/>',
+    "copy": '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/>',
+    "cal": '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
     "otros": '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
-    "dinero": '<circle cx="12" cy="12" r="8.5"/><path d="M12 6.5v11M15 8.8c-.7-1-1.8-1.4-3-1.4-1.7 0-3 1-3 2.3 0 3 6 1.6 6 4 0 1.3-1.3 2.3-3 2.3-1.2 0-2.3-.5-3-1.4"/>',
-    "foto": '<rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8.5 7L10 4h4l1.5 3"/>',
-    "accion": '<path d="M4 10v4h3l6 5V5l-6 5H4z"/><path d="M16.5 9.5a4 4 0 0 1 0 5M19 7a7.5 7.5 0 0 1 0 10"/>',
-    "mesa": '<circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="4.5" r="2"/><circle cx="19" cy="16" r="2"/><circle cx="5" cy="16" r="2"/><path d="M12 8.5v.5M17.5 14.5l-.4.3M6.9 14.8l-.4-.3"/>',
 }
+# Alias usados por las pantallas anteriores.
+_ICONOS.update({"casa": _ICONOS["home"], "personas": _ICONOS["ppl"], "calle": _ICONOS["road"],
+                "agua": _ICONOS["drop"], "basura": _ICONOS["trash"], "alumbrado": _ICONOS["bulb"],
+                "seguridad": _ICONOS["shield"], "mercados": _ICONOS["store"], "dinero": _ICONOS["coin"],
+                "foto": _ICONOS["cam"], "accion": _ICONOS["mega"],
+                "mesa": _ICONOS["ppl"]})
 
 
 def icono(clave: str, texto: str) -> str:
     """Icono SVG en línea, de un solo estilo, siempre con texto alternativo."""
-    return (f'<svg class="icono" viewBox="0 0 24 24" role="img" aria-label="{e(texto)}">'
+    return (f'<svg class="i" viewBox="0 0 24 24" role="img" aria-label="{e(texto)}">'
             f'<title>{e(texto)}</title>{_ICONOS[clave]}</svg>')
 
 
@@ -273,22 +334,52 @@ def monedas_100(partidas) -> dict:
     return monedas
 
 
-def _monedas_html(partidas, urls) -> str:
+# Nombre común por capítulo: explicación general en palabras sencillas, no es el nombre oficial.
+CAPITULOS_COMUNES = {
+    "1000": ("ppl", "Sueldos del personal"),
+    "2000": ("box", "Materiales y cosas que se usan"),
+    "3000": ("tool", "Servicios, como luz, agua y rentas"),
+    "4000": ("hand", "Apoyos y ayuda a la gente"),
+    "5000": ("truck", "Vehículos, muebles y equipo"),
+    "6000": ("crane", "Obra pública"),
+    "7000": ("pig", "Ahorros e inversiones"),
+    "8000": ("arrows", "Dinero que se reparte"),
+    "9000": ("doc", "Pago de deudas"),
+}
+PALETA_MONEDAS = ["var(--c1)", "var(--c3)", "var(--c6)", "var(--c2)", "var(--c4)",
+                  "var(--c7)", "var(--c5)", "var(--c8)", "var(--c9)"]
+
+
+@app.get("/gastos", response_class=HTMLResponse)
+def gastos():
+    """Pantalla 6 del recorrido: el gasto del año en 100 monedas (mayor residuo, suma exacta 100)."""
+    with _con() as con:
+        partidas = [p for p in cruzar._partidas(con) if p["monto_mxn"]]
+        urls = _urls(con)
     monedas = monedas_100(partidas)
     if not monedas:
-        return ""
-    por_id = {p["id"]: p for p in partidas}
-    puntos = "".join(f'<span class="moneda" style="color:{["#334155", "#0f766e", "#7c2d12", "#1d4ed8", "#4d7c0f", "#6d28d9", "#9d174d", "#854d0e", "#155e75"][n % 9]}">●</span>'
-                     for n, (pid, c) in enumerate(sorted(monedas.items())) for _ in range(c))
-    leyenda = "".join(f'<li>{e(por_id[pid]["nombre"])}: {c} de cada 100 pesos '
-                      f'({_dinero(por_id[pid]["monto_mxn"])}, {e(en_palabras(por_id[pid]["monto_mxn"]))}).</li>'
-                      for pid, c in sorted(monedas.items(), key=lambda x: -x[1]))
-    return (f'<div class="tarjeta"><h2>El dinero, en 100 monedas</h2>'
-            f'<p>Imagina que todo el gasto del año son 100 monedas. Así se reparte:</p>'
-            f'<p class="monedas" role="img" aria-label="Cuadrícula de 100 monedas que reparte el presupuesto por partida">{puntos}</p>'
-            f'<ul>{leyenda}</ul>'
-            f'<p class="debil">Cada moneda es el 1% del total. Los montos y su fuente están en '
-            f'<a href="/presupuesto">Presupuesto</a>.</p></div>')
+        return pagina("En qué se gasta", "<p>Todavía no hay partidas con monto en las fuentes revisadas.</p>",
+                      seccion="gastos")
+    total = sum(p["monto_mxn"] for p in partidas)
+    orden = sorted(partidas, key=lambda p: -monedas[p["id"]])
+    color = {p["id"]: PALETA_MONEDAS[i % len(PALETA_MONEDAS)] for i, p in enumerate(orden)}
+    comun = {p["id"]: CAPITULOS_COMUNES.get(p["capitulo"] or "", ("coin", "Otro gasto")) for p in orden}
+    circulos = "".join(f'<i style="background:{color[p["id"]]}"></i>' * monedas[p["id"]] for p in orden)
+    aria = "De cada 100 pesos: " + ", ".join(f'{monedas[p["id"]]} a {comun[p["id"]][1].lower()}' for p in orden)
+    leyenda = "".join(f'<div><span class="sw" style="background:{color[p["id"]]}">{icono(comun[p["id"]][0], "Icono de " + comun[p["id"]][1])}</span>'
+                      f'{e(comun[p["id"]][1])}<b>{monedas[p["id"]]}</b></div>' for p in orden)
+    oficiales = "".join(f'<div><strong>{e(p["capitulo"] or "")} · {e(p["nombre"])}</strong>'
+                        f'<br>{_dinero(p["monto_mxn"])} ({e(en_palabras(p["monto_mxn"]))}): {monedas[p["id"]]} de cada 100 pesos.'
+                        f'{fuente_html(p["archivo"], p["pagina"], p["fragmento"], urls)}</div>' for p in orden)
+    cuerpo = (f'<div><p class="sub">En 2026 Atlixco planea gastar</p>'
+              f'<p class="big">{e(en_palabras(total).removesuffix(" de pesos"))}</p>'
+              f'<p class="sub">de pesos. Imagina que fueran 100 monedas:</p></div>'
+              f'<div class="card"><div class="coins" role="img" aria-label="{e(aria)}">{circulos}</div></div>'
+              f'<div class="leg">{leyenda}</div>'
+              f'<p class="sub" style="font-size:16px">Los nombres en palabras sencillas de arriba son una explicación '
+              f'general. El nombre oficial de cada grupo de gasto, su monto exacto y su fuente están aquí:</p>'
+              f'<div class="card"><h3>Nombres oficiales y montos</h3>{oficiales}</div>')
+    return pagina("En qué se gasta", cuerpo, seccion="gastos")
 
 
 # Temas del Paso 3: (clave, icono, título, comisión, es orientación general)
@@ -303,17 +394,17 @@ TEMAS = [
 ]
 
 
-def _tarjeta_persona(titulo, nombre, hace, fila_fuente, contacto, urls, enlace, distancia):
+def _tarjeta_persona(titulo, nombre, hace, fila_fuente, contacto, urls, enlace, distancia, color=""):
     contacto_html = ""
     if contacto:
         datos = " · ".join(x for x in [contacto.get("telefono"), contacto.get("direccion"), contacto.get("horario")] if x)
-        contacto_html = (f'<p><strong>Cómo encontrarle:</strong> {e(contacto["oficina"])}'
+        contacto_html = (f'<p style="font-size:16px"><strong>Cómo encontrarle:</strong> {e(contacto["oficina"])}'
                          f'{(" — " + e(datos)) if datos else ""}</p>{_fuente_de(contacto, urls)}')
-    return (f'<div class="tarjeta persona"><div class="avatar" aria-hidden="true">{e(_iniciales(nombre))}</div><div>'
-            f'<span class="marca">{e(distancia)}</span><br><strong>{e(nombre)}</strong><br>'
-            f'<span class="debil">{e(titulo)}</span>'
-            f'<p><strong>Qué hace:</strong> {e(hace)}</p>{_fuente_de(fila_fuente, urls)}{contacto_html}'
-            f'<p><a class="boton" href="{e(enlace)}">👀 Revisa su trabajo</a></p></div></div>')
+    return (f'<div class="card person"><div class="av {color}" style="margin:0" aria-hidden="true">{e(_iniciales(nombre))}</div><div>'
+            f'<span class="tag">{e(distancia)}</span><h3>{e(nombre)}</h3>'
+            f'<p class="sub" style="font-size:16px">{e(titulo)}</p>'
+            f'<p style="font-size:16px"><strong>Qué hace:</strong> {e(hace)}</p>{_fuente_de(fila_fuente, urls)}{contacto_html}'
+            f'<p><a class="btn ghost" href="{e(enlace)}">Ver su trabajo</a></p></div></div>')
 
 
 @app.get("/representantes", response_class=HTMLResponse)
@@ -346,7 +437,7 @@ def representantes(junta: int = 0):
         tarjetas.append(_tarjeta_persona(
             f"Regiduría de {f['comision']}: vota en el Cabildo y vigila ese tema",
             f["nombre"], f_reg["funcion"] if f_reg else "Participa en las decisiones del Cabildo.",
-            f, _buscar_fila(contactos, f["comision"]), urls, f"/revisar/{f['id']}", "Representa a todo el municipio"))
+            f, _buscar_fila(contactos, f["comision"]), urls, f"/revisar/{f['id']}", "Representa a todo el municipio", "a2"))
     sindico = _buscar_fila(funcionarios, "sindicatura")
     if sindico:
         f_sin = _buscar_fila(funciones, "síndico", "sindico")
@@ -354,7 +445,7 @@ def representantes(junta: int = 0):
             "Síndico municipal: representa legalmente al municipio", sindico["nombre"],
             f_sin["funcion"] if f_sin else "", sindico,
             _buscar_fila(contactos, "atención ciudadana", "ayuntamiento de atlixco"), urls,
-            f"/revisar/{sindico['id']}", "Representa a todo el municipio"))
+            f"/revisar/{sindico['id']}", "Representa a todo el municipio", "a3"))
     presidenta = _buscar_fila(funcionarios, "presidenta")
     if presidenta:
         f_pre = _buscar_fila(funciones, "presidente municipal")
@@ -362,45 +453,78 @@ def representantes(junta: int = 0):
             "Presidenta municipal: encabeza el gobierno del municipio", presidenta["nombre"],
             f_pre["funcion"] if f_pre else "", presidenta,
             _buscar_fila(contactos, "presidencia municipal"), urls, f"/revisar/{presidenta['id']}",
-            "Representa a todo el municipio"))
-    visual = (f'<p>{icono("mesa", "Dibujo de personas sentadas alrededor de una mesa: así decide el Cabildo")}</p>'
-              '<p class="debil">Primero ves a quien tienes más cerca de tu casa y al final a quien gobierna para todo el municipio. '
-              'Todas deciden juntas en el Cabildo.</p>')
-    cuerpo = visual + "".join(tarjetas) + """<div class="tarjeta"><strong>El Cabildo completo</strong>
-<p>Presidenta, síndico y regidores se reúnen, discuten y votan. Lo que acuerdan queda en documentos públicos.</p>
-<p><a class="boton" href="/temas">❓ Paso 3: ¿Qué te preocupa?</a> <a class="boton" href="/acuerdos">Ver los acuerdos</a></p></div>"""
-    return pagina("2. ¿Quién te representa?", cuerpo)
+            "Representa a todo el municipio", "a3"))
+    # Diagrama de círculos concéntricos: tú al centro y cada autoridad más lejos.
+    lugar = elegida["nombre"] if elegida else "Tu comunidad"
+    reg_obras = _buscar_fila(funcionarios, "desarrollo urbano") or (regidores[0] if regidores else None)
+    n_reg = f"+{len(regidores) - 1}" if len(regidores) > 1 else ""
+    puntos = [("50%", "50%", "you", "Tú", lugar)]
+    if elegida:
+        puntos.append(("50%", "22%", "", _iniciales(elegida["presidente"] or ""), "Presidente auxiliar"))
+    if reg_obras:
+        puntos.append(("16%", "40%", "a2", _iniciales(reg_obras["nombre"]), "Regidora o regidor de obras"))
+    if n_reg:
+        puntos.append(("84%", "40%", "a2", n_reg, "Regidores"))
+    if sindico:
+        puntos.append(("24%", "86%", "a3", _iniciales(sindico["nombre"]), "Síndico"))
+    if presidenta:
+        puntos.append(("76%", "86%", "a3", _iniciales(presidenta["nombre"]), "Presidenta"))
+    anillos = "".join(f'<div class="p" style="left:{x};top:{y}"><div class="av {c}">{e(i)}</div>{e(t)}</div>'
+                      for x, y, c, i, t in puntos)
+    visual = (f'<div class="ring" role="img" aria-label="Tú al centro; cerca, tu presidente auxiliar; '
+              f'luego regidoras y regidores; más lejos, el síndico y la presidenta municipal">'
+              f'<div class="c"></div><div class="c c2"></div><div class="c c3"></div>{anillos}</div>'
+              '<p class="sub" style="font-size:16px">Primero ves a quien tienes más cerca de tu casa y al final a quien '
+              'gobierna para todo el municipio. Todas deciden juntas en el Cabildo.</p>')
+    cuerpo = visual + "".join(tarjetas) + """<div class="card"><h3>El Cabildo completo</h3>
+<p style="font-size:16px">Presidenta, síndico y regidores se reúnen, discuten y votan. Lo que acuerdan queda en documentos públicos.</p>
+<p><a class="btn" href="/temas">¿Qué te preocupa?</a></p>
+<p><a class="btn ghost" href="/acuerdos">Ver los acuerdos</a></p></div>"""
+    return pagina("Estas personas trabajan para ti", cuerpo, paso=2)
+
+
+def _temas_grid(seleccion=""):
+    return '<div class="grid2">' + "".join(
+        f'<a class="tile {"on" if clave == seleccion else ""}" href="/temas/{clave}">{icono(ic, titulo)}{e(titulo)}</a>'
+        for clave, ic, titulo, _, _ in TEMAS) + "</div>"
 
 
 @app.get("/temas", response_class=HTMLResponse)
 def temas():
-    with _con() as con:
-        comisiones = _gob(con, "comisiones")
-        funcionarios = _gob(con, "funcionarios")
-        urls = _urls(con)
-    tarjetas = []
-    for clave, ic, titulo, nombre_comision, orientacion in TEMAS:
-        comision = _buscar_fila(comisiones, nombre_comision.replace("De ", "", 1)) if nombre_comision else None
-        regidor = None
-        if comision:
-            regidor = _buscar_fila(funcionarios, comision["nombre"].replace("De ", "", 1))
-        marca = ('<span class="marca">Orientación general, no es un dato oficial</span>' if orientacion
-                 else '<span class="marca">Según el Reglamento de Cabildo</span>')
-        destino = (f'<p><strong>Comisión:</strong> {e(comision["nombre"])}</p>{_fuente_de(comision, urls)}'
-                   f'<p><strong>Regidor o regidora de ese tema:</strong> {e(regidor["nombre"])}</p>{_fuente_de(regidor, urls)}'
-                   f'<p><a class="boton" href="/revisar/{regidor["id"]}">👀 Revisa su trabajo</a></p>'
-                   if comision and regidor else
-                   '<p>Para cualquier tema puedes pedir información y acudir a una sesión pública.</p>'
-                   '<p><a class="boton" href="/actua">✋ Paso 5: Actúa</a></p>')
-        tarjetas.append(f'<div class="tema">{icono(ic, titulo)}<br><a href="/temas/{clave}">{e(titulo)}</a><br>{marca}{destino}</div>')
-    return pagina("3. ¿Qué te preocupa?",
-                  "<p>Toca un tema. Te decimos qué comisión y qué regidor lo atienden, con su fuente.</p>"
-                  f'<div class="temas">{"".join(tarjetas)}</div>')
+    cuerpo = ('<p class="sub">Te decimos quién se encarga.</p>' + _temas_grid())
+    return pagina("¿Qué te preocupa en tu comunidad?", cuerpo, paso=3)
 
 
 @app.get("/temas/{clave}", response_class=HTMLResponse)
 def tema(clave: str):
-    return temas()
+    elegido = next((t for t in TEMAS if t[0] == clave), None)
+    if not elegido:
+        return HTMLResponse("<p>No se encontró el tema.</p>", status_code=404)
+    _, ic, titulo, nombre_comision, orientacion = elegido
+    with _con() as con:
+        comisiones = _gob(con, "comisiones")
+        funcionarios = _gob(con, "funcionarios")
+        funciones = _gob(con, "funciones_cargo")
+        urls = _urls(con)
+    comision = _buscar_fila(comisiones, nombre_comision.replace("De ", "", 1)) if nombre_comision else None
+    regidor = _buscar_fila(funcionarios, comision["nombre"].replace("De ", "", 1)) if comision else None
+    marca = ('<span class="tag">Orientación general, no es un dato oficial</span>' if orientacion
+             else '<span class="tag">Según el Reglamento de Cabildo</span>')
+    if comision and regidor:
+        f_reg = _buscar_fila(funciones, "regidores")
+        detalle = (f'<div class="card person" style="border:2px solid var(--accent)">'
+                   f'<div class="av a2" style="margin:0" aria-hidden="true">{e(_iniciales(regidor["nombre"]))}</div><div>'
+                   f'<p class="sub" style="font-size:15px">De {e(titulo.lower())} se encarga</p><h3>{e(regidor["nombre"])}</h3>'
+                   f'<p style="font-size:16px">{e(regidor["cargo"])}</p>'
+                   f'<p style="font-size:16px">Comisión: {e(comision["nombre"])}</p>{marca}'
+                   f'<p style="font-size:16px"><strong>Qué hace:</strong> {e(f_reg["funcion"]) if f_reg else ""}</p>'
+                   f'{_fuente_de(comision, urls)}{_fuente_de(regidor, urls)}'
+                   f'<p><a class="btn" href="/revisar/{regidor["id"]}">Ver qué ha hecho</a></p></div></div>')
+    else:
+        detalle = ('<div class="card"><p style="font-size:16px">Para cualquier tema puedes pedir información y acudir a una sesión pública.</p>'
+                   f'{marca}<p><a class="btn" href="/actua">Pide información</a></p></div>')
+    cuerpo = ('<p class="sub">Te decimos quién se encarga.</p>' + _temas_grid(clave) + detalle)
+    return pagina("¿Qué te preocupa en tu comunidad?", cuerpo, paso=3)
 
 
 @app.get("/revisar", response_class=HTMLResponse)
@@ -409,14 +533,14 @@ def revisar():
         funcionarios = _gob(con, "funcionarios")
         juntas = _gob(con, "juntas_auxiliares")
     tarjetas = "".join(
-        f'<div class="tarjeta persona"><div class="avatar" aria-hidden="true">{e(_iniciales(f["nombre"]))}</div><div>'
-        f'<strong>{e(f["nombre"])}</strong><br><span class="debil">{e(f["cargo"])}</span>'
-        f'<p><a class="boton" href="/revisar/{f["id"]}">👀 Revisa su trabajo</a></p></div></div>' for f in funcionarios)
+        f'<div class="card person"><div class="av a2" style="margin:0" aria-hidden="true">{e(_iniciales(f["nombre"]))}</div><div>'
+        f'<h3>{e(f["nombre"])}</h3><p class="sub" style="font-size:16px">{e(f["cargo"])}</p>'
+        f'<p><a class="btn ghost" href="/revisar/{f["id"]}">Revisa su trabajo</a></p></div></div>' for f in funcionarios)
     tarjetas += "".join(
-        f'<div class="tarjeta persona"><div class="avatar" aria-hidden="true">{e(_iniciales(j["presidente"] or j["nombre"]))}</div><div>'
-        f'<strong>{e(j["presidente"] or "")}</strong><br><span class="debil">Presidente auxiliar de {e(j["nombre"])}</span>'
-        f'<p><a class="boton" href="/actua?para={e(j["nombre"])}">✋ Actúa</a></p></div></div>' for j in juntas)
-    return pagina("4. Revisa su trabajo", "<p>Elige a una persona para ver qué propuso y qué se aprobó.</p>" + tarjetas)
+        f'<div class="card person"><div class="av" style="margin:0" aria-hidden="true">{e(_iniciales(j["presidente"] or j["nombre"]))}</div><div>'
+        f'<h3>{e(j["presidente"] or "")}</h3><p class="sub" style="font-size:16px">Presidente auxiliar de {e(j["nombre"])}</p>'
+        f'<p><a class="btn ghost" href="/actua?para={e(j["nombre"])}">Pregúntale o pide información</a></p></div></div>' for j in juntas)
+    return pagina("Revisa su trabajo", "<p>Elige a una persona para ver qué propuso y qué se aprobó.</p>" + tarjetas, paso=4)
 
 
 @app.get("/revisar/{id_}", response_class=HTMLResponse)
@@ -429,75 +553,126 @@ def revisar_persona(id_: int):
             return HTMLResponse("<p>No se encontró a la persona.</p>", status_code=404)
         acuerdos = [a for a in cruzar._acuerdos(con)
                     if any(plano(p["nombre"]) == plano(f["nombre"]) for p in json.loads(a["propuesto_por"]))]
-        partidas = cruzar._partidas(con)
+        ids = [a["id"] for a in acuerdos]
+        hallazgos_n = (con.execute("SELECT count(*) FROM hallazgos WHERE acuerdo_id IN (%s)"
+                                   % ",".join("?" * len(ids)), ids).fetchone()[0] if ids else 0)
+        funciones = _gob(con, "funciones_cargo")
         evidencias = _filas(con, "SELECT * FROM evidencias ORDER BY id DESC LIMIT 3")
-    lista = "".join(f'<div class="tarjeta"><a href="/acuerdos/{a["id"]}">{e(a["acuerdo"])}</a>'
+    claves = ("presidenta",) if not f["comision"] and "presidenta" in plano(f["cargo"]) else \
+             ("síndico", "sindico") if "sindicatura" in plano(f["cargo"]) else ("regidores",)
+    f_fun = _buscar_fila(funciones, *claves)
+    linea = "".join(f'<div><b>{e(a["fecha_sesion"] or "sin fecha registrada")}</b><br>'
+                    f'<span style="font-size:16px">{e(a["acuerdo"])}</span>'
                     f'{fuente_html(a["archivo"], a["pagina"], a["fragmento"], urls)}</div>' for a in acuerdos)
-    fotos = "".join(f'<div class="tarjeta"><strong>Evidencia ciudadana: {e(ev["objeto"])}</strong><br>'
+    fotos = "".join(f'<div><strong>Evidencia ciudadana: {e(ev["objeto"])}</strong><br>'
                     + (f'<img class="foto" src="/evidencia-img/{e(Path(ev["superpuesta"]).name)}" '
                        f'alt="Foto ciudadana con la parte observada marcada en color">'
                        if ev["superpuesta"] else "")
-                    + f'<p><a href="/evidencia/{ev["id"]}">Ver la evidencia completa</a></p></div>' for ev in evidencias)
-    cuerpo = (f'<div class="tarjeta persona"><div class="avatar" aria-hidden="true">{e(_iniciales(f["nombre"]))}</div><div>'
-              f'<strong>{e(f["nombre"])}</strong><br><span class="debil">{e(f["cargo"])}</span>{_fuente_de(f, urls)}</div></div>'
-              f'<h2>Lo que propuso y lo que se aprobó</h2>'
-              + (lista or '<p>En los acuerdos revisados no aparece como proponente. Esto solo cubre los documentos cargados hasta hoy.</p>')
-              + _monedas_html(partidas, urls)
-              + '<h2>Evidencia ciudadana</h2>' + (fotos or '<p>Todavía no hay fotos ciudadanas registradas.</p>')
-              + f'<p><a class="boton" href="/evidencia">📷 Subir una foto</a> '
-                f'<a class="boton" href="/actua?para={e(f["nombre"])}">✋ Paso 5: Actúa</a></p>')
-    return pagina(f"Revisa su trabajo: {f['nombre']}", cuerpo)
+                    + f'<p style="font-size:16px">{len(json.loads(ev["sam_resultado"]).get("objetos", []))} parte(s) marcada(s) · sin confirmar</p>'
+                      f'<p><a href="/evidencia/{ev["id"]}">Ver la evidencia completa</a></p></div>' for ev in evidencias)
+    tag = (f'<span class="tag">{icono("road" if "desarrollo urbano" in plano(f["comision"] or "") else "doc", "Icono del tema")} '
+           f'{e(f["comision"])}</span>' if f["comision"] else f'<span class="tag">{e(f["cargo"])}</span>')
+    cuerpo = (f'<div style="text-align:center"><div class="av a2" style="width:84px;height:84px;font-size:28px;margin:0 auto" aria-hidden="true">{e(_iniciales(f["nombre"]))}</div>'
+              f'<h2>{e(f["nombre"])}</h2>{tag}{_fuente_de(f, urls)}</div>'
+              f'<div class="card"><h3>¿Qué hace?</h3><p style="font-size:16px">{e(f_fun["funcion"]) if f_fun else ""}</p>'
+              f'{_fuente_de(f_fun, urls) if f_fun else ""}</div>'
+              f'<div class="stat"><div class="card"><b>{len(acuerdos)}</b><span style="font-size:15px">propuestas en los acuerdos revisados</span></div>'
+              f'<div class="card"><b>{hallazgos_n}</b><span style="font-size:15px">diferencias encontradas con los documentos revisados</span></div></div>'
+              f'<div class="card"><h3 style="margin-bottom:12px">Lo que ha propuesto</h3>'
+              + (f'<div class="tl">{linea}</div>' if acuerdos else
+                 '<p style="font-size:16px">En los acuerdos revisados no aparece como proponente. Esto solo cubre los documentos cargados hasta hoy.</p>')
+              + '</div>'
+              + '<div class="card"><h3>Lo que reportan vecinos</h3>'
+              + (fotos or '<p style="font-size:16px">Todavía no hay fotos ciudadanas registradas.</p>')
+              + f'<p><a class="btn ghost" href="/evidencia">{icono("cam", "Dibujo de una cámara")} Subir una foto</a></p></div>'
+              + f'<p><a class="btn" href="/actua?para={e(f["nombre"])}">{icono("mega", "Dibujo de un megáfono")} Pregúntale o pide información</a></p>')
+    return pagina(f["nombre"], cuerpo, paso=4)
 
 
 @app.get("/actua", response_class=HTMLResponse)
-def actua(para: str = ""):
-    tema = f"el trabajo de {para}" if para else "un tema del Ayuntamiento de Atlixco"
+def actua(para: str = "", tema: str = ""):
+    asunto = tema or (f"el trabajo de {para}" if para else "el gasto y las decisiones del Ayuntamiento de Atlixco")
     with _con() as con:
         urls = _urls(con)
-        rutas = _rutas_html(con, tema, urls)
-    visual = f'<p>{icono("accion", "Dibujo de una persona alzando la voz con un megáfono")}</p>'
-    return pagina("5. Actúa", visual + "<p>No necesitas saber de política. Estas son rutas con su fundamento; "
-                  "tú decides si las usas y tú envías cualquier solicitud.</p>" + rutas)
+        try:
+            crudas = _filas(con, "SELECT * FROM rutas ORDER BY clave")
+        except sqlite3.OperationalError:
+            crudas = []
+        rutas = _rutas_html(con, asunto, urls)
+    con_plantilla = next((r for r in crudas if r["plantilla"]), None)
+    texto = (con_plantilla["plantilla"].replace("{tema}", asunto) if con_plantilla
+             else f"Solicito conocer información sobre {asunto} en 2026, con su costo y ubicación.")
+    enlace = con_plantilla["fundamento_url"] if con_plantilla and con_plantilla["fundamento_url"] else ""
+    sesion = next((r for r in crudas if "sesion" in plano(r["clave"]) or "sesion" in plano(r["titulo"])), None)
+    boton = (f'<p><a class="btn" href="{e(enlace)}">Ir a la Plataforma</a></p>' if enlace else "")
+    fuente_sesion = (fuente_html(sesion["fundamento_archivo"], sesion["fundamento_pagina"],
+                                 sesion["fundamento_fragmento"], urls) if sesion else "")
+    sesion_html = ('<div class="card" style="display:flex;gap:12px;align-items:center">'
+                   f'{icono("cal", "Dibujo de un calendario")}<span style="font-size:16px">También puedes ir a una '
+                   f'<b>sesión de Cabildo</b>: son públicas.</span>{fuente_sesion}</div>')
+    cuerpo = ('<p class="sub">Tienes derecho a preguntar al gobierno en qué gasta y qué hace. Es gratis.</p>'
+              '<div class="steps">'
+              f'<div class="step"><span class="n">1</span><div><b>Copia este texto</b>'
+              f'<div class="copy" id="solicitud" style="margin-top:8px">{e(texto)}</div>'
+              f'<button class="btn ghost" type="button" style="margin-top:8px;min-height:48px" '
+              f'onclick="copiarTexto(\'solicitud\')">{icono("copy", "Dibujo de dos hojas, copiar")}Copiar texto</button></div></div>'
+              '<div class="step"><span class="n">2</span><div><b>Entra a la Plataforma de Transparencia</b>'
+              '<p style="font-size:16px">Crea tu cuenta con tu correo.</p></div></div>'
+              '<div class="step"><span class="n">3</span><div><b>Pega y envía</b>'
+              '<p style="font-size:16px">Elige "Ayuntamiento de Atlixco".</p></div></div>'
+              '<div class="step"><span class="n">4</span><div><b>Espera tu respuesta</b>'
+              '<p style="font-size:16px">Te llega a tu correo.</p></div></div></div>'
+              + boton + sesion_html
+              + '<div class="card" style="display:flex;gap:12px;align-items:center">'
+                f'{icono("cam", "Dibujo de una cámara")}<span style="font-size:16px">También puedes reportar con '
+                f'una foto, por ejemplo un bache o una luminaria apagada.</span></div>'
+                '<p><a class="btn ghost" href="/evidencia">Sube una foto</a></p>'
+              + rutas)
+    return pagina("Pide información", cuerpo, seccion="actua")
 
 
 @app.get("/", response_class=HTMLResponse)
 def inicio():
+    hero_svg = """<svg class="h" viewBox="0 0 300 150" role="img" aria-label="Una persona frente al Ayuntamiento, con una lupa">
+<rect x="150" y="40" width="130" height="90" rx="6" fill="#ffffff22"/><path d="M140 44 215 12l75 32z" fill="#ffffff33"/>
+<g fill="#ffffff44"><rect x="165" y="60" width="16" height="70"/><rect x="200" y="60" width="16" height="70"/><rect x="235" y="60" width="16" height="70"/></g>
+<circle cx="70" cy="58" r="20" fill="#fff"/><path d="M38 140c0-30 14-52 32-52s32 22 32 52z" fill="#fff"/>
+<circle cx="122" cy="74" r="16" fill="none" stroke="#fff" stroke-width="6"/><path d="M110 86 96 100" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg>"""
+    cuerpo = f"""<section id="bienvenida" class="hero">{hero_svg}
+<h1>Conoce a quienes gobiernan tu comunidad</h1>
+<p>Te mostramos quiénes son, qué hacen y cómo revisar su trabajo. Toma 2 minutos.</p></section>
+<div class="card" style="display:flex;gap:12px;align-items:center">{icono("doc", "Dibujo de un documento")}
+<span style="font-size:16px">Todo sale de documentos públicos del Ayuntamiento. Siempre te mostramos de dónde.</span></div>
+<p class="aviso">Los hallazgos son discrepancias verificables entre documentos públicos, no acusaciones.</p>
+<div style="display:flex;flex-direction:column;gap:10px">
+<a class="btn" href="/donde" onclick="empezar()">Empezar</a>
+<a class="btn ghost" href="/representantes">Ya conozco, ir al inicio</a></div>"""
+    return pagina("Atlixco a la vista", cuerpo, sin_titulo=True)
+
+
+@app.get("/donde", response_class=HTMLResponse)
+def donde():
     with _con() as con:
         juntas = _gob(con, "juntas_auxiliares")
         urls = _urls(con)
         cobertura = _cobertura_html(cruzar.cobertura(con))
     opciones = "".join(
-        f'<div class="tarjeta" data-nombre="{e(j["nombre"])} {e(j["presidente"] or "")}"><div class="persona">'
-        f'{icono("casa", "Dibujo de una casa")}<div><strong>{e(j["nombre"])}</strong><br>'
-        f'<span class="debil">Presidente auxiliar: {e(j["presidente"] or "sin nombre en la fuente")}</span>'
-        f'{_fuente_de(j, urls)}<p><a class="boton" href="/representantes?junta={j["id"]}">🏠 Vivo aquí</a></p></div></div></div>'
-        for j in juntas)
+        f'<a href="/representantes?junta={j["id"]}" data-nombre="{e(j["nombre"])} {e(j["presidente"] or "")}">'
+        f'{icono("pin", "Dibujo de un pin de mapa")}{e(j["nombre"])}</a>' for j in juntas)
     tecnicos = "".join(
         f"""<div class="tarjeta"><strong>{e(m['archivo'])}</strong><br>
         <span class="debil">Descargado: {e(m.get('descargado', 'sin fecha registrada'))}<br>SHA-256: {e(m.get('sha256', ''))}</span><br>
         <a href="{e(m.get('url', ''))}">Página oficial de la fuente</a> · <a href="/fuentes/{e(m['archivo'])}">Documento guardado</a></div>"""
         for m in _manifiesto())
-    bienvenida = """<section id="bienvenida" class="tarjeta"><h2>Hola. No necesitas saber de política</h2>
-<ol><li><strong>Di dónde vives</strong> y te mostramos a las personas que te representan, de la más cercana a la más lejana.</li>
-<li><strong>Conócelas:</strong> qué hace cada una y cómo encontrarla.</li>
-<li><strong>Revisa su trabajo y actúa:</strong> qué propusieron, en qué se gasta y qué puedes hacer tú.</li></ol>
-<button type="button" onclick="saltarBienvenida()">Saltar y no mostrar de nuevo</button></section>"""
-    cuerpo = f"""{bienvenida}
-<p>{icono("personas", "Dibujo de un grupo de personas: las que gobiernan tu municipio")}</p>
-<p>Esta página lee documentos públicos del Ayuntamiento de Atlixco y te los muestra en palabras simples.
-Cada dato trae su fuente, para que puedas comprobarlo tú mismo.</p>
-<p class="aviso">Los hallazgos son discrepancias verificables entre documentos públicos, no acusaciones.</p>
-<h2><span class="paso-num">1</span>¿Dónde vives?</h2>
-<p>Busca tu junta auxiliar. Tu elección no se guarda en ningún servidor: solo ordena lo que ves en esta visita.</p>
-<label for="buscar-junta">Escribe el nombre de tu lugar</label>
-<input id="buscar-junta" type="search" placeholder="Por ejemplo: Metepec" oninput="filtrar(this, 'lista-juntas')">
-<div id="lista-juntas">{opciones}
-<div class="tarjeta" data-nombre="cabecera centro colonias"><div class="persona">{icono("casa", "Dibujo de una casa")}
-<div><strong>Cabecera municipal y colonias</strong><br>
-<span class="debil">Si vives en la ciudad de Atlixco o tu lugar no aparece, sigue desde aquí. Las colonias que atiende cada junta no están en la fuente oficial revisada.</span>
-<p><a class="boton" href="/representantes">🏠 Seguir desde aquí</a></p></div></div></div></div>
+    cuerpo = f"""<p class="sub">Así te mostramos primero a las personas más cercanas a ti. No guardamos tu respuesta.</p>
+<div class="search">{icono("srch", "Dibujo de una lupa")}
+<input id="buscar-junta" type="search" placeholder="Escribe tu comunidad o colonia" aria-label="Escribe tu comunidad o colonia" oninput="filtrar(this, 'lista-juntas')" style="border:0;outline:none"></div>
+<div class="card list" id="lista-juntas">
+<a href="/representantes" data-nombre="atlixco centro colonias cabecera">{icono("pin", "Dibujo de un pin de mapa")}Atlixco centro y colonias</a>
+{opciones}</div>
+<p class="debil">Las colonias que atiende cada junta no están en la fuente oficial revisada; por eso la lista es por junta auxiliar.</p>
 <details class="tarjeta"><summary><strong>Detalles técnicos y fuentes revisadas</strong></summary>{tecnicos}{cobertura}</details>"""
-    return pagina("Auditor de Atlixco", cuerpo)
+    return pagina("¿Dónde vives?", cuerpo, paso=1)
 
 
 def _personas(con) -> dict:
