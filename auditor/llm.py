@@ -85,6 +85,46 @@ def llamar(etiqueta: str, **kwargs) -> dict:
     return resp
 
 
+# USD por imagen, según https://dev.meta.ai/docs/pricing-rate-limits (sam-3.1: $2.50 / 1,000 imágenes).
+PRECIOS_IMAGEN = {"sam-3.1": 2.50 / 1_000}
+
+
+def llamar_responses(etiqueta: str, imagenes: int = 1, **kwargs) -> dict:
+    """Responses API (p. ej. SAM 3.1, que no usa chat.completions) con la misma caché y registro que llamar().
+
+    El costo es plano por imagen, no por tokens.
+    """
+    clave = hashlib.sha256(json.dumps(kwargs, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    archivo = CACHE / f"{clave}.json"
+    if archivo.exists():
+        return json.loads(archivo.read_text())
+
+    global _cliente
+    if _cliente is None:
+        _cargar_env()
+        _cliente = OpenAI(base_url="https://api.meta.ai/v1", api_key=os.environ["META_API_KEY"], max_retries=3)
+    inicio = time.monotonic()
+    resp = _cliente.responses.create(**kwargs).model_dump()
+    CACHE.mkdir(parents=True, exist_ok=True)
+    archivo.write_text(json.dumps(resp, ensure_ascii=False))
+
+    registro = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "etiqueta": etiqueta,
+        "modelo": kwargs["model"],
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "cached_tokens": 0,
+        "imagenes": imagenes,
+        "usd": round(PRECIOS_IMAGEN[kwargs["model"]] * imagenes, 6),
+        "segundos": round(time.monotonic() - inicio, 1),
+        "cache": clave[:12],
+    }
+    with LOG_COSTOS.open("a") as f:
+        f.write(json.dumps(registro, ensure_ascii=False) + "\n")
+    return resp
+
+
 def resumen_costos() -> dict:
     if not LOG_COSTOS.exists():
         return {"llamadas": 0, "usd": 0.0}

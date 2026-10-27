@@ -1,2 +1,4 @@
 openai==3.38.0
 pypdf==6.21.2
+Pillow==13.0.0
+meta-sam-parser==0.1.0

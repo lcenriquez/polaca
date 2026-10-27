@@ -165,6 +165,38 @@ def test_cruzar_monto_difiere():
             assert cruzar.generar(con) == []
 
 
+def test_evidencia():
+    import evidencia
+    from PIL import Image
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        # Foto con EXIF (marca y fecha): la copia guardada no debe conservar nada.
+        foto = Path(d) / "foto.jpg"
+        exif = Image.Exif()
+        exif[271] = "camara-prueba"      # Make
+        exif[306] = "2026:01:01 00:00:00"  # DateTime
+        Image.new("RGB", (20, 10), (120, 120, 120)).save(foto, exif=exif)
+        limpia = evidencia.guardar_sin_exif(foto, Path(d) / "limpia.jpg")
+        with Image.open(limpia) as im:
+            assert dict(im.getexif()) == {} and im.size == (20, 10)
+
+        with evidencia.conectar() as con:
+            # Una sugerencia no es una liga confirmada: acuerdo_id y partida_id quedan null.
+            id_ = evidencia.guardar(con, "limpia.jpg", "pothole", {"texto": "", "objetos": []}, None, None,
+                                    None, None,
+                                    [{"tipo": "partida", "id": 1, "justificacion": "podría relacionarse",
+                                      "archivo": "pres.pdf", "pagina": 6, "fragmento": "$100.00"}])
+            fila = con.execute("SELECT acuerdo_id, partida_id, sugerencias FROM evidencias WHERE id = ?", (id_,)).fetchone()
+            assert fila[0] is None and fila[1] is None
+            assert json.loads(fila[2])[0]["justificacion"] == "podría relacionarse"
+            # La liga confirmada por la persona sí se registra como tal.
+            id2 = evidencia.guardar(con, "limpia.jpg", "pothole", {"texto": "", "objetos": []}, None, None,
+                                    None, 1, [])
+            assert con.execute("SELECT partida_id FROM evidencias WHERE id = ?", (id2,)).fetchone()[0] == 1
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):
