@@ -10,14 +10,17 @@ se escapa. Lenguaje neutral: los datos se muestran con su fuente, sin
 calificaciones.
 """
 import html
+import io
 import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
+from PIL import Image, ImageDraw, ImageFont
 
 import cruzar
 import evidencia
@@ -29,58 +32,79 @@ from extraer import plano
 app = FastAPI(title="Auditor de Atlixco")
 
 CSS = """
-:root { color-scheme: light; --bg:#f6f5fb; --card:#fff; --ink:#1d1b2e; --muted:#5b5872; --line:#e4e1f0;
-  --accent:#5b3fd1; --accent-soft:#ece8fc; --ok:#1f7a4d; --r:20px;
+:root { color-scheme: light; --bg:#f6f5fb; --card:#fff; --ink:#1d1b2e; --muted:#59556f; --line:#e4e1f0;
+  --accent:#5b3fd1; --accent-tx:#5b3fd1; --accent-soft:#ece8fc; --ok:#1f7a4d; --r:20px;
+  --aviso-bg:#fef9c3; --aviso-line:#a16207; --aviso-ink:#713f12; --copy-bg:#f1effa; --dash:#c9c3e6;
+  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; }
+@media (prefers-color-scheme: dark) {
+:root:not([data-theme="light"]) { color-scheme: dark; --bg:#141126; --card:#211c3a; --ink:#f4f2fc; --muted:#c2bde0; --line:#3d3866;
+  --accent:#7a5af5; --accent-tx:#c4b5fd; --accent-soft:#2e2857; --ok:#5ec98a; --r:20px;
+  --aviso-bg:#38300f; --aviso-line:#a58a2e; --aviso-ink:#fde9a8; --copy-bg:#2a2450; --dash:#574f92;
+  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; } }
+:root[data-theme="dark"] { color-scheme: dark; --bg:#141126; --card:#211c3a; --ink:#f4f2fc; --muted:#c2bde0; --line:#3d3866;
+  --accent:#7a5af5; --accent-tx:#c4b5fd; --accent-soft:#2e2857; --ok:#5ec98a; --r:20px;
+  --aviso-bg:#38300f; --aviso-line:#a58a2e; --aviso-ink:#fde9a8; --copy-bg:#2a2450; --dash:#574f92;
   --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; }
 * { box-sizing: border-box; }
-body { margin: 0; font: 18px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
-header.top, main, footer { max-width: 430px; margin: 0 auto; padding: 16px 20px; }
-header.top { display: flex; align-items: center; gap: 12px; padding-bottom: 8px; }
+body { margin: 0; font: 18px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); overflow-x: clip; }
+header.top, main, footer { max-width: 430px; margin: 0 auto; padding: 16px; }
+header.top { display: flex; align-items: center; gap: 12px; padding-bottom: 8px; flex-wrap: wrap; }
+nav.topmenu { display: none; }
 .prog { flex: 1; display: flex; gap: 6px; } .prog i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); } .prog i.on { background: var(--accent); }
-.back, .listen { width: 44px; height: 44px; border-radius: 50%; background: var(--card); border: 1px solid var(--line); display: inline-grid; place-items: center; color: var(--accent); cursor: pointer; flex: none; }
-a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.back, .listen { width: 44px; height: 44px; border-radius: 50%; background: var(--card); border: 1px solid var(--line); display: inline-grid; place-items: center; color: var(--accent-tx); cursor: pointer; flex: none; }
+.a11y { position: relative; margin-left: auto; }
+.a11y-panel { position: absolute; right: 0; top: 52px; z-index: 20; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; width: 280px; max-width: 86vw; box-shadow: 0 12px 32px rgba(0,0,0,.25); }
+.a11y-panel .btn { min-height: 48px; margin-bottom: 8px; }
+.tema-btns { display: flex; gap: 6px; } .tema-btns button { flex: 1; min-height: 44px; border-radius: 10px; border: 2px solid var(--line); background: var(--card); color: var(--ink); font-weight: 600; cursor: pointer; }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible, select:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 h1 { font-size: 30px; line-height: 1.15; margin: .4rem 0; } h2 { font-size: 24px; line-height: 1.2; margin: 1.2rem 0 .5rem; } h3 { font-size: 19px; margin: .2rem 0; }
 main { display: flex; flex-direction: column; gap: 16px; padding-top: 8px; }
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.cols { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .tarjeta, .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
 button, .boton, nav a { cursor: pointer; }
 .btn, .boton { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; border-radius: 16px; background: var(--accent); color: #fff; font-weight: 700; font-size: 18px; border: 0; width: 100%; text-decoration: none; padding: .6rem 1rem; }
-.btn.ghost, .boton.ghost { background: var(--card); color: var(--accent); border: 2px solid var(--accent); }
+.btn.ghost, .boton.ghost { background: var(--card); color: var(--accent-tx); border: 2px solid var(--accent-tx); }
 .hero { background: var(--accent); color: #fff; border-radius: var(--r); padding: 24px; display: flex; flex-direction: column; gap: 12px; }
 .hero svg.h { width: 100%; height: auto; }
 .search { display: flex; align-items: center; gap: 10px; background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 0 14px; min-height: 56px; }
 .list a { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 4px; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
 .list a:last-child { border: 0; }
 .ring { position: relative; width: 100%; aspect-ratio: 1; max-width: 330px; margin: 0 auto; }
-.ring .c { position: absolute; border-radius: 50%; border: 2px dashed #c9c3e6; inset: 0; }
+.ring .c { position: absolute; border-radius: 50%; border: 2px dashed var(--dash); inset: 0; }
 .ring .c2 { inset: 16%; } .ring .c3 { inset: 32%; border-style: solid; background: var(--accent-soft); }
 .ring .p { position: absolute; transform: translate(-50%,-50%); text-align: center; font-size: 12px; width: 88px; line-height: 1.2; }
 .av, .avatar { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; margin: 0 auto 4px; font-size: 17px; background: var(--accent); flex: none; }
 .av.you { background: var(--ink); } .av.a2 { background: #0e7490; } .av.a3 { background: #475569; }
 .person, .persona { display: flex; gap: 14px; align-items: center; }
-.tag, .marca { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 4px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); font-weight: 600; margin-right: .35rem; }
+.tag, .marca { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 4px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent-tx); font-weight: 600; margin-right: .35rem; }
 .grid2, .temas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .tile, .tema { background: var(--card); border: 2px solid var(--line); border-radius: var(--r); min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-weight: 700; text-align: center; padding: 12px; color: var(--ink); text-decoration: none; }
 .tile.on, .tema.on { border-color: var(--accent); background: var(--accent-soft); }
-svg.i, .icono { width: 28px; height: 28px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; color: var(--accent); }
+.reggrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.regcard { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; }
+.regcard summary { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; min-height: 44px; text-align: center; font-weight: 700; list-style: none; }
+.regcard summary::-webkit-details-marker { display: none; }
+svg.i, .icono { width: 28px; height: 28px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; color: var(--accent-tx); }
 .tile svg.i { width: 44px; height: 44px; }
-.stat { display: flex; gap: 12px; } .stat .card { flex: 1; text-align: center; padding: 14px 8px; } .stat b { display: block; font-size: 30px; color: var(--accent); }
+.stat { display: flex; gap: 12px; } .stat .card { flex: 1; text-align: center; padding: 14px 8px; } .stat b { display: block; font-size: 30px; color: var(--accent-tx); }
 .tl { border-left: 3px solid var(--line); margin-left: 10px; padding-left: 18px; display: flex; flex-direction: column; gap: 14px; }
 .tl div { position: relative; } .tl div:before { content: ""; position: absolute; left: -27px; top: 6px; width: 15px; height: 15px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); }
 .coins { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; } .coins i { aspect-ratio: 1; border-radius: 50%; display: block; }
 .leg { display: flex; flex-direction: column; gap: 10px; } .leg div { display: flex; align-items: center; gap: 12px; }
 .leg .sw { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; flex: none; } .leg .sw svg.i { color: #fff; width: 22px; height: 22px; } .leg b { margin-left: auto; font-size: 20px; }
-.big { font-size: 44px; font-weight: 800; line-height: 1; color: var(--accent); }
+.big { font-size: 44px; font-weight: 800; line-height: 1; color: var(--accent-tx); }
 .steps { display: flex; flex-direction: column; gap: 12px; } .step { display: flex; gap: 14px; align-items: flex-start; }
-.n { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; flex: none; }
-.copy { background: #f1effa; border: 2px dashed #c9c3e6; border-radius: 16px; padding: 14px; font-size: 16px; }
-nav.bottom { display: flex; border-top: 1px solid var(--line); background: var(--card); max-width: 430px; margin: 0 auto; position: sticky; bottom: 0; }
+.n { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-tx); display: grid; place-items: center; font-weight: 800; flex: none; }
+.copy { background: var(--copy-bg); border: 2px dashed var(--dash); border-radius: 16px; padding: 14px; font-size: 16px; }
+nav.bottom { display: flex; border-top: 1px solid var(--line); background: var(--card); max-width: 1100px; margin: 0 auto; position: sticky; bottom: 0; }
 nav.bottom a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 0 14px; font-size: 13px; color: var(--muted); text-decoration: none; font-weight: 600; min-height: 56px; }
-nav.bottom a.on { color: var(--accent); }
-.aviso { background: #fef9c3; border: 1px solid #a16207; color: #713f12; border-radius: 16px; padding: .75rem; }
+nav.bottom a.on { color: var(--accent-tx); }
+.aviso { background: var(--aviso-bg); border: 1px solid var(--aviso-line); color: var(--aviso-ink); border-radius: 16px; padding: .75rem; }
 .fuente, details.fuente { font-size: 14px; color: var(--muted); background: transparent; border: 0; padding: 0; margin-top: .5rem; overflow-wrap: anywhere; }
-details.fuente summary, details.why summary { color: var(--accent); font-weight: 600; min-height: 44px; cursor: pointer; display: flex; align-items: center; }
+details.fuente summary, details.why summary { color: var(--accent-tx); font-weight: 600; min-height: 44px; cursor: pointer; display: flex; align-items: center; }
 details.ayuda { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: .6rem .8rem; margin: .5rem 0; font-size: 16px; }
-details.ayuda summary { min-height: 44px; cursor: pointer; font-weight: 600; display: flex; align-items: center; color: var(--accent); }
+details.ayuda summary { min-height: 44px; cursor: pointer; font-weight: 600; display: flex; align-items: center; color: var(--accent-tx); }
 .sencillo { border-left: 4px solid var(--accent); }
 img.foto { max-width: 100%; height: auto; border-radius: var(--r); }
 label { display: block; margin: .75rem 0 .25rem; font-weight: 600; }
@@ -88,8 +112,20 @@ input[type=text], input[type=file], input[type=search], select, textarea { width
 textarea { min-height: 88px; }
 table { border-collapse: collapse; width: 100%; } th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
 .debil, .sub { color: var(--muted); } .debil { font-size: .92rem; }
-.paso-num { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; margin-right: .5rem; }
-u.term { text-decoration: underline dotted var(--accent) 2px; text-underline-offset: 4px; }
+u.term { text-decoration: underline dotted var(--accent-tx) 2px; text-underline-offset: 4px; }
+@media (min-width: 640px) {
+  header.top, main, footer { max-width: 1100px; padding: 20px 32px; }
+  nav.bottom { display: none; }
+  nav.topmenu { display: flex; gap: 4px; margin-left: auto; }
+  nav.topmenu a { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; min-height: 44px; border-radius: 12px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: 16px; }
+  nav.topmenu a.on { color: var(--accent-tx); background: var(--accent-soft); }
+  .a11y { margin-left: 0; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
+  .grid2, .temas { grid-template-columns: repeat(3, 1fr); }
+  .reggrid { grid-template-columns: repeat(4, 1fr); }
+  .ring { position: sticky; top: 16px; }
+  h1 { font-size: 36px; }
+}
 """
 
 
@@ -105,6 +141,10 @@ function copiarTexto(id){ var x = document.getElementById(id); if(x && navigator
 function saltarBienvenida(){ try{ localStorage.setItem('bienvenida-vista', '1'); }catch(err){} var b = document.getElementById('bienvenida'); if(b) b.remove(); }
 function empezar(){ try{ localStorage.setItem('bienvenida-vista', '1'); }catch(err){} }
 function filtrar(input, id){ var q = input.value.toLowerCase(); document.querySelectorAll('#' + id + ' [data-nombre]').forEach(function(el){ el.style.display = el.getAttribute('data-nombre').toLowerCase().includes(q) ? '' : 'none'; }); }
+function filtrarTema(sel){ document.querySelectorAll('[data-tema]').forEach(function(el){ el.style.display = (!sel.value || el.getAttribute('data-tema') === sel.value) ? '' : 'none'; }); }
+function menuA11y(){ var m = document.getElementById('menu-a11y'); if(m) m.hidden = !m.hidden; }
+function ponerTema(t){ try{ if(t === 'system'){ localStorage.removeItem('tema'); document.documentElement.removeAttribute('data-theme'); } else { localStorage.setItem('tema', t); document.documentElement.dataset.theme = t; } }catch(err){} }
+async function compartir(url, texto){ try{ var r = await fetch(url); var b = await r.blob(); var f = new File([b], 'tarjeta.png', {type: 'image/png'}); if(navigator.canShare && navigator.canShare({files: [f]})){ await navigator.share({files: [f], text: texto}); return; } }catch(err){} var a = document.createElement('a'); a.href = url; a.download = 'tarjeta.png'; a.click(); }
 </script>"""
 
 
@@ -116,25 +156,35 @@ def pagina(titulo: str, cuerpo: str, paso: int | None = None, seccion: str | Non
                f'<svg class="i" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button><div class="prog">{prog}</div>')
     else:
         top = '<b style="font-size:18px">Atlixco a la vista</b>'
-    top += ('<button class="listen" type="button" onclick="escuchar()" aria-label="Escuchar esta página">'
+    items = [("/", "home", "Inicio", "inicio"), ("/representantes", "ppl", "Gobierno", "gobierno"),
+             ("/gastos", "coin", "Gastos", "gastos"), ("/actua", "mega", "Actúa", "actua")]
+    topmenu = '<nav class="topmenu" aria-label="Secciones">' + "".join(
+        f'<a href="{h}" class="{"on" if k == seccion else ""}"><svg class="i" aria-hidden="true"><use href="#i-{ic}"/></svg>{t}</a>'
+        for h, ic, t, k in items) + "</nav>"
+    a11y = ('<div class="a11y"><button class="listen" type="button" onclick="menuA11y()" aria-label="Accesibilidad: escuchar esta página y cambiar el tema">'
             '<svg class="i" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg></button>'
-            '<button class="listen" type="button" onclick="detener()" aria-label="Detener lectura">'
-            '<svg class="i" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>')
+            '<div class="a11y-panel" id="menu-a11y" hidden>'
+            '<button class="btn" type="button" onclick="escuchar()">Escuchar esta página</button>'
+            '<button class="btn ghost" type="button" onclick="detener()">Detener lectura</button>'
+            '<p style="font-size:16px;margin:.4rem 0"><strong>Tema de la pantalla</strong></p>'
+            '<div class="tema-btns"><button type="button" onclick="ponerTema(\'light\')">Claro</button>'
+            '<button type="button" onclick="ponerTema(\'system\')">Sistema</button>'
+            '<button type="button" onclick="ponerTema(\'dark\')">Oscuro</button></div></div></div>')
+    top += topmenu + a11y
     nav = ""
     if seccion:
-        items = [("/", "home", "Inicio", "inicio"), ("/representantes", "ppl", "Gobierno", "gobierno"),
-                 ("/gastos", "coin", "Gastos", "gastos"), ("/actua", "mega", "Actúa", "actua")]
         nav = '<nav class="bottom">' + "".join(
             f'<a href="{h}" class="{"on" if k == seccion else ""}"><svg class="i" aria-hidden="true"><use href="#i-{ic}"/></svg>{t}</a>'
             for h, ic, t, k in items) + "</nav>"
     simbolos = "".join(f'<symbol id="i-{k}" viewBox="0 0 24 24">{v}</symbol>' for k, v in _ICONOS.items())
     return HTMLResponse(f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>{e(titulo)} — Atlixco a la vista</title>
+<script>try{{ var t = localStorage.getItem('tema'); if(t && t !== 'system') document.documentElement.dataset.theme = t; }}catch(err){{}}</script>
 <style>{CSS}</style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>{simbolos}</defs></svg>
 <header class="top">{top}</header>
 <main>{'' if sin_titulo else f'<h1>{e(titulo)}</h1>'}{cuerpo}</main>
-<footer class="debil" style="max-width:430px;margin:0 auto;padding:0 20px 16px">Datos de documentos públicos oficiales, mostrados con su fuente.</footer>{nav}{JS}</body></html>""")
+<footer class="debil">Datos de documentos públicos oficiales, mostrados con su fuente.</footer>{nav}{JS}</body></html>""")
 
 
 def _con() -> sqlite3.Connection:
@@ -350,6 +400,102 @@ PALETA_MONEDAS = ["var(--c1)", "var(--c3)", "var(--c6)", "var(--c2)", "var(--c4)
                   "var(--c7)", "var(--c5)", "var(--c8)", "var(--c9)"]
 
 
+def _n_documentos(con) -> int:
+    try:
+        return con.execute("SELECT count(*) FROM documentos").fetchone()[0]
+    except sqlite3.OperationalError:
+        return 0
+
+
+def _envolver(draw, texto_: str, fuente_, ancho: int) -> list[str]:
+    lineas, actual = [], ""
+    for palabra in texto_.split():
+        prueba = (actual + " " + palabra).strip()
+        if draw.textlength(prueba, font=fuente_) <= ancho:
+            actual = prueba
+        else:
+            if actual:
+                lineas.append(actual)
+            actual = palabra
+    if actual:
+        lineas.append(actual)
+    return lineas
+
+
+def _tarjeta_png(dato: str, nombre: str, cargo: str, fuente: str) -> bytes:
+    """Tarjeta 1080x1350 para compartir: dato principal, nombre, cargo y fuente. Sin datos personales."""
+    img = Image.new("RGB", (1080, 1350), "#f6f5fb")
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, 1080, 300], fill="#5b3fd1")
+    titulo = ImageFont.load_default(size=64)
+    grande = ImageFont.load_default(size=88)
+    medio = ImageFont.load_default(size=56)
+    chico = ImageFont.load_default(size=40)
+    d.text((70, 90), "Atlixco a la vista", font=titulo, fill="#ffffff")
+    d.text((70, 180), "Datos de documentos públicos, con su fuente", font=chico, fill="#ddd3ff")
+    y = 380
+    for linea in _envolver(d, dato, grande, 940)[:6]:
+        d.text((70, y), linea, font=grande, fill="#1d1b2e")
+        y += 105
+    y += 40
+    for linea in _envolver(d, nombre, medio, 940)[:3]:
+        d.text((70, y), linea, font=medio, fill="#1d1b2e")
+        y += 70
+    for linea in _envolver(d, cargo, chico, 940)[:3]:
+        d.text((70, y), linea, font=chico, fill="#59556f")
+        y += 55
+    d.line([70, 1150, 1010, 1150], fill="#5b3fd1", width=6)
+    fy = 1180
+    for linea in _envolver(d, f"Fuente: {fuente}", chico, 940)[:3]:
+        d.text((70, fy), linea, font=chico, fill="#59556f")
+        fy += 52
+    salida = io.BytesIO()
+    img.save(salida, format="PNG")
+    return salida.getvalue()
+
+
+def _compartir_html(url_png: str, texto: str) -> str:
+    wa = "https://wa.me/?text=" + quote(texto)
+    return ('<div class="card"><h3>Compartir</h3>'
+            '<p style="font-size:16px">Una imagen con el dato y su fuente, sin datos personales.</p>'
+            f'<button class="btn ghost" type="button" onclick="compartir(\'{e(url_png)}\', \'{e(texto)}\')">Compartir</button>'
+            f'<p style="font-size:16px"><a href="{e(url_png)}" download="tarjeta.png">Descargar la imagen</a> · '
+            f'<a href="{e(wa)}">Enviar por WhatsApp</a></p></div>')
+
+
+@app.get("/compartir/funcionario/{id_}.png")
+def compartir_funcionario(id_: int):
+    with _con() as con:
+        filas = [f for f in _gob(con, "funcionarios") if f["id"] == id_]
+        if not filas:
+            return HTMLResponse("<p>No se encontró a la persona.</p>", status_code=404)
+        f = filas[0]
+        acuerdos = [a for a in cruzar._acuerdos(con)
+                    if any(plano(p["nombre"]) == plano(f["nombre"]) for p in json.loads(a["propuesto_por"]))]
+        ids = [a["id"] for a in acuerdos]
+        hallazgos_n = (con.execute("SELECT count(*) FROM hallazgos WHERE acuerdo_id IN (%s)"
+                                   % ",".join("?" * len(ids)), ids).fetchone()[0] if ids else 0)
+        n_docs = _n_documentos(con)
+    dato = (f"{len(acuerdos)} propuestas en los acuerdos revisados. "
+            f"{hallazgos_n} diferencias encontradas en los {n_docs} documentos revisados hasta hoy.")
+    png = _tarjeta_png(dato, f["nombre"], f["cargo"], f"{f['archivo']}, página {f['pagina']}")
+    return Response(png, media_type="image/png")
+
+
+@app.get("/compartir/hallazgo/{id_}.png")
+def compartir_hallazgo(id_: int):
+    with _con() as con:
+        filas = _filas(con, "SELECT * FROM hallazgos WHERE id = ?", (id_,))
+        n_docs = _n_documentos(con)
+    if not filas:
+        return HTMLResponse("<p>No se encontró el hallazgo.</p>", status_code=404)
+    h = filas[0]
+    png = _tarjeta_png(h["descripcion"][:300], "Diferencia entre documentos públicos",
+                       f"Revisado en {n_docs} documentos públicos hasta hoy",
+                       f"{h['archivo_presupuesto']}, página {h['pagina_presupuesto']}")
+    return Response(png, media_type="image/png")
+
+
 @app.get("/gastos", response_class=HTMLResponse)
 def gastos():
     """Pantalla 6 del recorrido: el gasto del año en 100 monedas (mayor residuo, suma exacta 100)."""
@@ -374,8 +520,8 @@ def gastos():
     cuerpo = (f'<div><p class="sub">En 2026 Atlixco planea gastar</p>'
               f'<p class="big">{e(en_palabras(total).removesuffix(" de pesos"))}</p>'
               f'<p class="sub">de pesos. Imagina que fueran 100 monedas:</p></div>'
-              f'<div class="card"><div class="coins" role="img" aria-label="{e(aria)}">{circulos}</div></div>'
-              f'<div class="leg">{leyenda}</div>'
+              f'<div class="cols"><div class="card"><div class="coins" role="img" aria-label="{e(aria)}">{circulos}</div></div>'
+              f'<div class="leg">{leyenda}</div></div>'
               f'<p class="sub" style="font-size:16px">Los nombres en palabras sencillas de arriba son una explicación '
               f'general. El nombre oficial de cada grupo de gasto, su monto exacto y su fuente están aquí:</p>'
               f'<div class="card"><h3>Nombres oficiales y montos</h3>{oficiales}</div>')
@@ -407,6 +553,18 @@ def _tarjeta_persona(titulo, nombre, hace, fila_fuente, contacto, urls, enlace, 
             f'<p><a class="btn ghost" href="{e(enlace)}">Ver su trabajo</a></p></div></div>')
 
 
+def _icono_tema(texto_: str) -> str:
+    t = plano(texto_ or "")
+    for clave, ic in [("desarrollo urbano", "crane"), ("obras", "crane"), ("seguridad", "shield"),
+                      ("gobernacion", "shield"), ("salud", "hand"), ("educacion", "doc"), ("cultura", "doc"),
+                      ("hacienda", "coin"), ("tesoreria", "coin"), ("agua", "drop"), ("comercio", "store"),
+                      ("mercados", "store"), ("turismo", "pin"), ("agricultura", "truck"), ("campo", "truck"),
+                      ("basura", "trash"), ("alumbrado", "bulb"), ("ecologia", "drop"), ("ambiente", "drop")]:
+        if clave in t:
+            return ic
+    return "ppl"
+
+
 @app.get("/representantes", response_class=HTMLResponse)
 def representantes(junta: int = 0):
     with _con() as con:
@@ -416,32 +574,27 @@ def representantes(junta: int = 0):
         contactos = _gob(con, "contacto_institucional")
         urls = _urls(con)
     elegida = next((j for j in juntas if j["id"] == junta), None)
-    tarjetas = []
+    nivel_comunidad, nivel_presidencia = [], []
     if elegida:
         f_aux = _buscar_fila(funciones, "presidente auxiliar")
-        tarjetas.append(_tarjeta_persona(
+        nivel_comunidad.append(_tarjeta_persona(
             f"Presidente auxiliar de {elegida['nombre']}: la autoridad de tu junta auxiliar",
             elegida["presidente"] or elegida["nombre"],
             f_aux["funcion"] if f_aux else "Atiende los asuntos de su junta auxiliar.",
             elegida, _buscar_fila(contactos, "atención ciudadana", "ayuntamiento de atlixco"), urls,
             f"/actua?para={elegida['nombre']}", "Lo más cercano a ti"))
     f_insp = _buscar_fila(funciones, "inspector")
-    tarjetas.append(f"""<div class="tarjeta persona"><div class="avatar" aria-hidden="true">IN</div><div>
+    nivel_comunidad.append(f"""<div class="tarjeta persona"><div class="avatar" aria-hidden="true">IN</div><div>
 <span class="marca">Lo más cercano a ti</span><br><strong>El inspector o inspectora de tu colonia</strong><br>
 <p><strong>Qué hace:</strong> {e(f_insp['funcion']) if f_insp else ''}</p>
 <p class="debil">Su nombre no está en las fuentes oficiales revisadas; pregunta por él en tu junta auxiliar o en el Ayuntamiento.</p>
 {_fuente_de(f_insp, urls) if f_insp else ''}</div></div>""")
     regidores = [f for f in funcionarios if f["comision"]]
     f_reg = _buscar_fila(funciones, "regidores")
-    for f in regidores:
-        tarjetas.append(_tarjeta_persona(
-            f"Regiduría de {f['comision']}: vota en el Cabildo y vigila ese tema",
-            f["nombre"], f_reg["funcion"] if f_reg else "Participa en las decisiones del Cabildo.",
-            f, _buscar_fila(contactos, f["comision"]), urls, f"/revisar/{f['id']}", "Representa a todo el municipio", "a2"))
     sindico = _buscar_fila(funcionarios, "sindicatura")
     if sindico:
         f_sin = _buscar_fila(funciones, "síndico", "sindico")
-        tarjetas.append(_tarjeta_persona(
+        nivel_presidencia.append(_tarjeta_persona(
             "Síndico municipal: representa legalmente al municipio", sindico["nombre"],
             f_sin["funcion"] if f_sin else "", sindico,
             _buscar_fila(contactos, "atención ciudadana", "ayuntamiento de atlixco"), urls,
@@ -449,7 +602,7 @@ def representantes(junta: int = 0):
     presidenta = _buscar_fila(funcionarios, "presidenta")
     if presidenta:
         f_pre = _buscar_fila(funciones, "presidente municipal")
-        tarjetas.append(_tarjeta_persona(
+        nivel_presidencia.append(_tarjeta_persona(
             "Presidenta municipal: encabeza el gobierno del municipio", presidenta["nombre"],
             f_pre["funcion"] if f_pre else "", presidenta,
             _buscar_fila(contactos, "presidencia municipal"), urls, f"/revisar/{presidenta['id']}",
@@ -476,10 +629,28 @@ def representantes(junta: int = 0):
               f'<div class="c"></div><div class="c c2"></div><div class="c c3"></div>{anillos}</div>'
               '<p class="sub" style="font-size:16px">Primero ves a quien tienes más cerca de tu casa y al final a quien '
               'gobierna para todo el municipio. Todas deciden juntas en el Cabildo.</p>')
-    cuerpo = visual + "".join(tarjetas) + """<div class="card"><h3>El Cabildo completo</h3>
+    temas_unicos = sorted({f["comision"] for f in regidores})
+    opciones = "".join(f'<option value="{e(t)}">{e(t)}</option>' for t in temas_unicos)
+    hace_reg = f_reg["funcion"] if f_reg else "Participa en las decisiones del Cabildo."
+    reggrid = "".join(
+        f'<details class="regcard" data-tema="{e(f["comision"])}"><summary>'
+        f'<span class="av a2" aria-hidden="true">{e(_iniciales(f["nombre"]))}</span>'
+        f'{icono(_icono_tema(f["comision"]), "Icono del tema " + f["comision"])}<span>{e(f["nombre"])}</span>'
+        f'<span class="sub" style="font-size:14px;font-weight:400">{e(f["comision"])}</span></summary>'
+        f'<p style="font-size:16px">{e(f["cargo"])}</p>'
+        f'<p style="font-size:16px"><strong>Qué hace:</strong> {e(hace_reg)}</p>{_fuente_de(f, urls)}'
+        f'<p><a class="btn ghost" href="/revisar/{f["id"]}">Ver su trabajo</a></p></details>' for f in regidores)
+    derecha = ('<div class="stack"><h2>Tu comunidad</h2>' + "".join(nivel_comunidad)
+               + '<h2>Cabildo: regidoras y regidores</h2>'
+                 '<label for="filtro-tema">¿De qué se encarga?</label>'
+                 f'<select id="filtro-tema" onchange="filtrarTema(this)"><option value="">Todos los temas</option>{opciones}</select>'
+               + f'<div class="reggrid">{reggrid}</div>'
+                 '<h2>Presidencia</h2>' + "".join(nivel_presidencia)
+               + """<div class="card"><h3>El Cabildo completo</h3>
 <p style="font-size:16px">Presidenta, síndico y regidores se reúnen, discuten y votan. Lo que acuerdan queda en documentos públicos.</p>
 <p><a class="btn" href="/temas">¿Qué te preocupa?</a></p>
-<p><a class="btn ghost" href="/acuerdos">Ver los acuerdos</a></p></div>"""
+<p><a class="btn ghost" href="/acuerdos">Ver los acuerdos</a></p></div></div>""")
+    cuerpo = f'<div class="cols"><div>{visual}</div>{derecha}</div>'
     return pagina("Estas personas trabajan para ti", cuerpo, paso=2)
 
 
@@ -540,7 +711,8 @@ def revisar():
         f'<div class="card person"><div class="av" style="margin:0" aria-hidden="true">{e(_iniciales(j["presidente"] or j["nombre"]))}</div><div>'
         f'<h3>{e(j["presidente"] or "")}</h3><p class="sub" style="font-size:16px">Presidente auxiliar de {e(j["nombre"])}</p>'
         f'<p><a class="btn ghost" href="/actua?para={e(j["nombre"])}">Pregúntale o pide información</a></p></div></div>' for j in juntas)
-    return pagina("Revisa su trabajo", "<p>Elige a una persona para ver qué propuso y qué se aprobó.</p>" + tarjetas, paso=4)
+    return pagina("Revisa su trabajo", "<p>Elige a una persona para ver qué propuso y qué se aprobó.</p>"
+                  f'<div class="cols">{tarjetas}</div>', paso=4)
 
 
 @app.get("/revisar/{id_}", response_class=HTMLResponse)
@@ -556,6 +728,7 @@ def revisar_persona(id_: int):
         ids = [a["id"] for a in acuerdos]
         hallazgos_n = (con.execute("SELECT count(*) FROM hallazgos WHERE acuerdo_id IN (%s)"
                                    % ",".join("?" * len(ids)), ids).fetchone()[0] if ids else 0)
+        n_docs = _n_documentos(con)
         funciones = _gob(con, "funciones_cargo")
         evidencias = _filas(con, "SELECT * FROM evidencias ORDER BY id DESC LIMIT 3")
     claves = ("presidenta",) if not f["comision"] and "presidenta" in plano(f["cargo"]) else \
@@ -577,7 +750,10 @@ def revisar_persona(id_: int):
               f'<div class="card"><h3>¿Qué hace?</h3><p style="font-size:16px">{e(f_fun["funcion"]) if f_fun else ""}</p>'
               f'{_fuente_de(f_fun, urls) if f_fun else ""}</div>'
               f'<div class="stat"><div class="card"><b>{len(acuerdos)}</b><span style="font-size:15px">propuestas en los acuerdos revisados</span></div>'
-              f'<div class="card"><b>{hallazgos_n}</b><span style="font-size:15px">diferencias encontradas con los documentos revisados</span></div></div>'
+              f'<div class="card"><b>{hallazgos_n}</b><span style="font-size:15px">diferencias encontradas en los {n_docs} documentos revisados hasta hoy</span></div></div>'
+              f'<p style="font-size:16px">Esto solo cubre los {n_docs} documentos públicos revisados hasta hoy. '
+              f'Si falta revisar más, el número puede cambiar.</p>'
+              f'<p><a class="btn ghost" href="/evidencia">Ayúdanos a revisar más: sube una foto</a></p>'
               f'<div class="card"><h3 style="margin-bottom:12px">Lo que ha propuesto</h3>'
               + (f'<div class="tl">{linea}</div>' if acuerdos else
                  '<p style="font-size:16px">En los acuerdos revisados no aparece como proponente. Esto solo cubre los documentos cargados hasta hoy.</p>')
@@ -585,7 +761,10 @@ def revisar_persona(id_: int):
               + '<div class="card"><h3>Lo que reportan vecinos</h3>'
               + (fotos or '<p style="font-size:16px">Todavía no hay fotos ciudadanas registradas.</p>')
               + f'<p><a class="btn ghost" href="/evidencia">{icono("cam", "Dibujo de una cámara")} Subir una foto</a></p></div>'
-              + f'<p><a class="btn" href="/actua?para={e(f["nombre"])}">{icono("mega", "Dibujo de un megáfono")} Pregúntale o pide información</a></p>')
+              + f'<p><a class="btn" href="/actua?para={e(f["nombre"])}">{icono("mega", "Dibujo de un megáfono")} Pregúntale o pide información</a></p>'
+              + _compartir_html(f"/compartir/funcionario/{f['id']}.png",
+                                f"{f['nombre']} ({f['cargo']}): {len(acuerdos)} propuestas en los acuerdos revisados; "
+                                f"{hallazgos_n} diferencias en los {n_docs} documentos revisados. Fuente: {f['archivo']}, p. {f['pagina']}"))
     return pagina(f["nombre"], cuerpo, paso=4)
 
 
@@ -707,7 +886,7 @@ def funcionarios():
         Acuerdos propuestos: {len(p['acuerdos'])} · Menciones: {p['menciones']} ({p['verificadas']} verificadas) ·
         Hallazgos relacionados: {p['hallazgos']}</div>"""
         for p in sorted(personas.values(), key=lambda x: x["nombre"]))
-    return pagina("Funcionarios", tarjetas or "<p>Sin personas registradas en los acuerdos.</p>")
+    return pagina("Funcionarios", f'<div class="cols">{tarjetas}</div>' if tarjetas else "<p>Sin personas registradas en los acuerdos.</p>")
 
 
 @app.get("/funcionarios/{clave}", response_class=HTMLResponse)
@@ -745,7 +924,7 @@ def acuerdos():
     intro = ("<p>Estos son acuerdos que tomó el Ayuntamiento en sus reuniones. "
              "Abre uno para verlo en palabras simples, con el texto original y su fuente.</p>"
              + ayuda("Cabildo", glos, urls) + ayuda("Dictamen", glos, urls))
-    return pagina("Acuerdos de Cabildo", intro + (tarjetas or "<p>Sin acuerdos registrados.</p>"))
+    return pagina("Acuerdos de Cabildo", intro + (f'<div class="cols">{tarjetas}</div>' if tarjetas else "<p>Sin acuerdos registrados.</p>"))
 
 
 @app.get("/acuerdos/{id_}", response_class=HTMLResponse)
@@ -809,8 +988,12 @@ def hallazgos():
     with _con() as con:
         lista = _filas(con, "SELECT * FROM hallazgos ORDER BY id")
         cobertura = _cobertura_html(cruzar.cobertura(con))
+        n_docs = _n_documentos(con)
     if not lista:
-        cuerpo = "<p>Sin hallazgos registrados. Esto es lo que hay hoy para cruzar y lo que falta:</p>" + cobertura
+        cuerpo = (f"<p>0 diferencias encontradas en los {n_docs} documentos revisados hasta hoy. "
+                  "Esto solo cubre los documentos públicos cargados hasta hoy; si falta revisar más, el número puede cambiar.</p>"
+                  '<p><a class="btn ghost" href="/evidencia">Ayúdanos a revisar más: sube una foto</a></p>'
+                  "<p>Esto es lo que hay hoy para cruzar y lo que falta:</p>" + cobertura)
     else:
         cuerpo = "".join(f'<div class="tarjeta"><a href="/hallazgos/{h["id"]}">{e(h["tipo"])}</a><br>{e(h["descripcion"])}</div>'
                          for h in lista)
@@ -822,16 +1005,19 @@ def hallazgo(id_: int):
     with _con() as con:
         filas = _filas(con, "SELECT * FROM hallazgos WHERE id = ?", (id_,))
         urls = _urls(con)
-    with _con() as con:
-        filas = _filas(con, "SELECT * FROM hallazgos WHERE id = ?", (id_,))
-        urls = _urls(con)
+        n_docs = _n_documentos(con)
         rutas = _rutas_html(con, "la diferencia entre documentos públicos descrita en esta página", urls) if filas else ""
     if not filas:
         return HTMLResponse("<p>No se encontró el hallazgo.</p>", status_code=404)
     h = filas[0]
-    cuerpo = f"""<p>{e(h['descripcion'])}</p><h2>Cita del presupuesto</h2>
+    cuerpo = f"""<p>{e(h['descripcion'])}</p>
+<p style="font-size:16px">Diferencia encontrada al revisar {n_docs} documentos públicos hasta hoy.</p>
+<h2>Cita del presupuesto</h2>
 {fuente_html(h['archivo_presupuesto'], h['pagina_presupuesto'], h['fragmento_presupuesto'], urls)}
-<h2>Cita del acuerdo</h2>{fuente_html(h['archivo_acuerdo'], h['pagina_acuerdo'], h['fragmento_acuerdo'], urls)}{rutas}"""
+<h2>Cita del acuerdo</h2>{fuente_html(h['archivo_acuerdo'], h['pagina_acuerdo'], h['fragmento_acuerdo'], urls)}{rutas}""" \
+        + _compartir_html(f"/compartir/hallazgo/{h['id']}.png",
+                          f"Diferencia entre documentos públicos de Atlixco: {h['descripcion'][:180]} "
+                          f"Fuente: {h['archivo_presupuesto']}, p. {h['pagina_presupuesto']}")
     return pagina(h["tipo"], cuerpo)
 
 

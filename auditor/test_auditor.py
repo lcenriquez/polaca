@@ -396,6 +396,62 @@ def test_monedas():
         assert monedas_pintadas == 100, monedas_pintadas  # la cuadrícula pinta exactamente 100 monedas
 
 
+def test_responsive_y_temas():
+    """Escritorio sin contenedor principal < 640 px; claro y oscuro definen las mismas variables."""
+    import re
+    import web
+    css = web.CSS
+    escritorio = css.split("@media (min-width: 640px)", 1)[1]
+    assert "max-width: 1100px" in escritorio  # el contenido crece en tablet y escritorio
+    assert "nav.bottom { display: none; }" in escritorio  # arriba manda el menú, no la barra inferior
+    assert "repeat(4, 1fr)" in escritorio  # regidores: 4 columnas en escritorio
+
+    def variables(bloque):
+        return set(re.findall(r"(--[a-z0-9-]+)\s*:", bloque))
+    claro = variables(css.split(":root {", 1)[1].split("}", 1)[0])
+    oscuro_media = variables(css.split(':root:not([data-theme="light"]) {', 1)[1].split("}", 1)[0])
+    oscuro_forzado = variables(css.split(':root[data-theme="dark"] {', 1)[1].split("}", 1)[0])
+    assert claro == oscuro_media == oscuro_forzado, (claro ^ oscuro_media, claro ^ oscuro_forzado)
+    assert "data-theme" in web.pagina("x", "y").body.decode()  # el selector de tema llega a la página
+
+
+def test_tarjeta_png_y_ceros():
+    """La tarjeta PNG mide 1080x1350 y lleva la fuente; el 0 va con el número de documentos."""
+    import io as _io
+    import gobierno
+    import web
+    from fastapi.testclient import TestClient
+    from PIL import Image
+    png = web._tarjeta_png("0 diferencias encontradas", "Ana Presidenta", "Presidenta Municipal",
+                           "g.pdf, página 4")
+    with Image.open(_io.BytesIO(png)) as im:
+        assert im.format == "PNG" and im.size == (1080, 1350), im.size
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        cols_f = ["nombre", "cargo", "comision", "archivo", "pagina", "fragmento", "verificacion"]
+        base = {"archivo": "g.html", "pagina": 1, "verificacion": "ok"}
+        acuerdo = {"acuerdo": "Se aprobó el Bando de Policía y Gobierno", "tipo_sesion": None, "fecha_sesion": None,
+                   "propuesto_por": [], "monto_mxn": None, "proveedor": None, "resultado_votacion": None,
+                   "pagina": 4, "fragmento": "Bando de Policía", "verificacion": "ok"}
+        with gobierno.conectar() as con:
+            extraer.guardar(con, "g.pdf", 9, [acuerdo], (1, 9))  # 1 documento en la tabla documentos
+            gobierno._guardar(con, "funcionarios", cols_f, [
+                {**base, "nombre": "Ana Presidenta", "cargo": "Presidenta Municipal", "comision": None,
+                 "fragmento": "Ana Presidenta"}])
+        cliente = TestClient(web.app)
+        ficha = cliente.get("/revisar/1").text
+        assert "en los 1 documentos revisados hasta hoy" in ficha  # ningún 0 aparece solo
+        assert "Ayúdanos a revisar más" in ficha and "Compartir" in ficha and "wa.me" in ficha
+        r = cliente.get("/compartir/funcionario/1.png")
+        assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+        with Image.open(_io.BytesIO(r.content)) as im:
+            assert im.size == (1080, 1350), im.size
+        assert cliente.get("/compartir/funcionario/99.png").status_code == 404
+        assert cliente.get("/compartir/hallazgo/99.png").status_code == 404
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):
