@@ -66,11 +66,29 @@ def conectar() -> sqlite3.Connection:
             pagina INTEGER NOT NULL,
             fragmento TEXT NOT NULL,
             verificacion TEXT NOT NULL CHECK (verificacion IN ('ok', 'sin_texto', 'no_encontrado')),
+            verificacion_nombre TEXT NOT NULL DEFAULT 'no_encontrado'
+                CHECK (verificacion_nombre IN ('ok', 'sin_texto', 'no_encontrado')),
             modelo TEXT NOT NULL,
             extraido TEXT NOT NULL
         )""")
+    # DBs creadas antes de verificacion_nombre no la tienen.
+    if "verificacion_nombre" not in {f[1] for f in con.execute("PRAGMA table_info(partidas)")}:
+        con.execute("ALTER TABLE partidas ADD COLUMN verificacion_nombre TEXT NOT NULL DEFAULT 'no_encontrado' "
+                    "CHECK (verificacion_nombre IN ('ok', 'sin_texto', 'no_encontrado'))")
     con.commit()
     return con
+
+
+def verificar_nombre(nombre: str, paginas: dict[int, str], pagina: int) -> str:
+    """'ok' solo si el nombre aparece en el texto de SU página (no en otra del tramo).
+
+    No reusa verificar(): esta busca en todas las páginas y daría por bueno un
+    nombre que solo aparece en la prosa de otra página (p. ej. 'Participaciones
+    y Aportaciones' se menciona en la pág. 5, pero no es rótulo en la 6).
+    """
+    if normalizar(nombre) in paginas.get(pagina, ""):
+        return "ok"
+    return "sin_texto" if len(paginas.get(pagina, "")) < 20 else "no_encontrado"
 
 
 def extraer_tramo(archivo: str, reader: PdfReader, inicio: int, fin: int) -> list[dict]:
@@ -94,6 +112,7 @@ def extraer_tramo(archivo: str, reader: PdfReader, inicio: int, fin: int) -> lis
               for i in range(fin - inicio + 1)}
     for a in partidas:
         a["pagina"], a["verificacion"] = verificar(a["fragmento"], textos, inicio - 1 + a["pagina"])
+        a["verificacion_nombre"] = verificar_nombre(a["nombre"], textos, a["pagina"])
     return partidas
 
 
@@ -108,9 +127,10 @@ def guardar(con, archivo: str, paginas: int, partidas: list[dict], rango: tuple[
     con.execute("DELETE FROM partidas WHERE documento_id = ? AND pagina BETWEEN ? AND ?", (doc_id, *rango))
     ahora = datetime.now(timezone.utc).isoformat(timespec="seconds")
     con.executemany("""INSERT INTO partidas (documento_id, capitulo, nombre, monto_mxn, pagina, fragmento,
-                       verificacion, modelo, extraido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       verificacion, verificacion_nombre, modelo, extraido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     [(doc_id, a["capitulo"], a["nombre"], a["monto_mxn"], a["pagina"], a["fragmento"],
-                      a["verificacion"], llm.MODELO_PUBLICO, ahora) for a in partidas])
+                      a["verificacion"], a.get("verificacion_nombre", "no_encontrado"),
+                      llm.MODELO_PUBLICO, ahora) for a in partidas])
     con.commit()
 
 
@@ -134,8 +154,10 @@ def main():
     with conectar() as con:
         guardar(con, args.archivo, total, partidas, (ini, fin))
     estados = {e: sum(a["verificacion"] == e for a in partidas) for e in ("ok", "sin_texto", "no_encontrado")}
+    nombres = {e: sum(a.get("verificacion_nombre") == e for a in partidas) for e in ("ok", "sin_texto", "no_encontrado")}
     suma = sum(a["monto_mxn"] or 0 for a in partidas)
-    print(f"{len(partidas)} partidas, suma de montos extraídos: ${suma:,.2f}, verificación de fragmento: {estados} → {extraer.DB}")
+    print(f"{len(partidas)} partidas, suma de montos extraídos: ${suma:,.2f}, verificación de fragmento: {estados}, "
+          f"verificación de nombre: {nombres} → {extraer.DB}")
     print("Gasto acumulado:", llm.resumen_costos())
 
 

@@ -101,20 +101,23 @@ def test_evaluar():
 
 def test_presupuesto_guardar():
     import presupuesto
+    paginas = {6: extraer.normalizar("Clasificador 1000 Servicios Personales $100.00")}
+    assert presupuesto.verificar_nombre("Servicios Personales", paginas, 6) == "ok"
+    assert presupuesto.verificar_nombre("Participaciones y Aportaciones", paginas, 6) == "no_encontrado"
     with tempfile.TemporaryDirectory() as d:
         extraer.DB = Path(d) / "t.db"
         extraer.RAW = Path(d)
         (Path(d) / "manifiesto.json").write_text("[]")
         p = {"capitulo": "1000", "nombre": "Servicios Personales", "monto_mxn": 100.0,
-             "pagina": 6, "fragmento": "$100.00", "verificacion": "ok"}
+             "pagina": 6, "fragmento": "$100.00", "verificacion": "ok", "verificacion_nombre": "ok"}
         with presupuesto.conectar() as con:
             presupuesto.guardar(con, "pres.pdf", 10, [p, {**p, "capitulo": "2000", "nombre": "Materiales"}], (5, 6))
             presupuesto.guardar(con, "pres.pdf", 10, [p], (5, 6))
-            filas = con.execute("SELECT capitulo, monto_mxn FROM partidas").fetchall()
-            assert filas == [("1000", 100.0)], filas
+            filas = con.execute("SELECT capitulo, monto_mxn, verificacion_nombre FROM partidas").fetchall()
+            assert filas == [("1000", 100.0, "ok")], filas
 
 
-def test_cruzar():
+def test_cruzar_sin_datos_comparables():
     import cruzar
     import presupuesto
     with tempfile.TemporaryDirectory() as d:
@@ -125,20 +128,19 @@ def test_cruzar():
                    "propuesto_por": [], "monto_mxn": None, "proveedor": None, "resultado_votacion": None,
                    "pagina": 4, "fragmento": "Bando de Policía", "verificacion": "ok"}
         partida = {"capitulo": "6000", "nombre": "Inversión Pública", "monto_mxn": 50.0,
-                   "pagina": 6, "fragmento": "$50.00", "verificacion": "ok"}
+                   "pagina": 6, "fragmento": "$50.00", "verificacion": "ok", "verificacion_nombre": "ok"}
         with cruzar.conectar() as con:
             extraer.guardar(con, "g.pdf", 9, [acuerdo], (1, 9))
             presupuesto.guardar(con, "pres.pdf", 10, [partida], (5, 6))
-            hallazgos = cruzar.generar(con)
-            assert len(hallazgos) == 1 and hallazgos[0]["tipo"] == "partida_sin_acuerdo_textual", hallazgos
-            h = hallazgos[0]
-            assert (h["archivo_presupuesto"], h["pagina_presupuesto"], h["fragmento_presupuesto"]) == ("pres.pdf", 6, "$50.00")
-            assert (h["archivo_acuerdo"], h["pagina_acuerdo"], h["fragmento_acuerdo"]) == ("g.pdf", 4, "Bando de Policía")
-            assert "corrupción" not in h["descripcion"].lower() and "robo" not in h["descripcion"].lower()
+            # Reglamento sin monto contra capítulo del presupuesto: no hay dato comparable, no hay hallazgo.
+            assert cruzar.generar(con) == []
+            c = cruzar.cobertura(con)
+            assert (c["partidas"], c["acuerdos_canonicos"], c["acuerdos_con_monto"], c["pares_comparables"]) == (1, 1, 0, 0)
+            assert any("Presupuesto de Egresos 2026" in f for f in c["fuentes_faltantes"])
             assert cruzar.cruzar_pmd(con) == []  # fuente no cargada: no inventa hallazgos
 
 
-def test_cruzar_acuerdo_supera_total():
+def test_cruzar_monto_difiere():
     import cruzar
     import presupuesto
     with tempfile.TemporaryDirectory() as d:
@@ -147,14 +149,20 @@ def test_cruzar_acuerdo_supera_total():
         (Path(d) / "manifiesto.json").write_text("[]")
         acuerdo = {"acuerdo": "Se aprobó un pago de Servicios Personales", "tipo_sesion": None, "fecha_sesion": None,
                    "propuesto_por": [], "monto_mxn": 999.0, "proveedor": None, "resultado_votacion": None,
-                   "pagina": 4, "fragmento": "Servicios Personales", "verificacion": "ok"}
+                   "pagina": 4, "fragmento": "pago de Servicios Personales por $999.00", "verificacion": "ok"}
         partida = {"capitulo": "1000", "nombre": "Servicios Personales", "monto_mxn": 100.0,
-                   "pagina": 6, "fragmento": "$100.00", "verificacion": "ok"}
+                   "pagina": 6, "fragmento": "$100.00", "verificacion": "ok", "verificacion_nombre": "ok"}
         with cruzar.conectar() as con:
             extraer.guardar(con, "g.pdf", 9, [acuerdo], (1, 9))
             presupuesto.guardar(con, "pres.pdf", 10, [partida], (5, 6))
             hallazgos = cruzar.generar(con)
-            assert [h["tipo"] for h in hallazgos] == ["acuerdo_supera_total_presupuestado"], hallazgos
+            assert [h["tipo"] for h in hallazgos] == ["monto_difiere_entre_fuentes"], hallazgos
+            h = hallazgos[0]
+            assert (h["archivo_presupuesto"], h["pagina_presupuesto"], h["fragmento_presupuesto"]) == ("pres.pdf", 6, "$100.00")
+            assert (h["archivo_acuerdo"], h["pagina_acuerdo"], h["fragmento_acuerdo"]) == ("g.pdf", 4, "pago de Servicios Personales por $999.00")
+            acuerdo["monto_mxn"] = 100.0  # mismo monto en ambas fuentes: ya no difieren
+            extraer.guardar(con, "g.pdf", 9, [acuerdo], (1, 9))
+            assert cruzar.generar(con) == []
 
 
 if __name__ == "__main__":
