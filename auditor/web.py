@@ -21,6 +21,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 
 import cruzar
 import evidencia
+import explicar
 import extraer
 from extraer import plano
 
@@ -47,11 +48,24 @@ label { display: block; margin: .75rem 0 .25rem; font-weight: 600; }
 input[type=text], input[type=file], select { width: 100%; min-height: 44px; font-size: 1rem; }
 table { border-collapse: collapse; width: 100%; } th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #cbd5e1; vertical-align: top; }
 .debil { color: #374151; font-size: .92rem; }
+details.ayuda { background: #fff; border: 1px solid #cbd5e1; border-radius: .5rem; padding: .6rem .8rem; margin: .5rem 0; }
+details.ayuda summary { min-height: 44px; cursor: pointer; font-weight: 600; display: flex; align-items: center; }
+.sencillo { border-left: 4px solid #334155; }
+textarea { width: 100%; min-height: 88px; font-size: 1rem; }
 """
 
 
 def e(v) -> str:
     return html.escape("" if v is None else str(v))
+
+
+JS = """<script>
+function escuchar(){ try{ speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(document.querySelector('main').innerText); u.lang = 'es-MX'; speechSynthesis.speak(u); }catch(err){} }
+function detener(){ try{ speechSynthesis.cancel(); }catch(err){} }
+function copiar(id){ var x = document.getElementById(id); if(!x) return; x.select(); if(navigator.clipboard) navigator.clipboard.writeText(x.value); else document.execCommand('copy'); }
+function saltarBienvenida(){ try{ localStorage.setItem('bienvenida-vista', '1'); }catch(err){} var b = document.getElementById('bienvenida'); if(b) b.remove(); }
+try{ if(localStorage.getItem('bienvenida-vista')){ var b = document.getElementById('bienvenida'); if(b) b.remove(); } }catch(err){}
+</script>"""
 
 
 def pagina(titulo: str, cuerpo: str) -> HTMLResponse:
@@ -60,13 +74,17 @@ def pagina(titulo: str, cuerpo: str) -> HTMLResponse:
                    ("/presupuesto", "Presupuesto"), ("/hallazgos", "Hallazgos"), ("/evidencia", "Evidencia ciudadana")])
     return HTMLResponse(f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>{e(titulo)} — Auditor de Atlixco</title>
-<style>{CSS}</style></head><body><header><strong>Auditor de Atlixco</strong><nav>{nav}</nav></header>
+<style>{CSS}</style></head><body><header><strong>Auditor de Atlixco</strong><nav>{nav}</nav>
+<p><button type="button" onclick="escuchar()">🔊 Escuchar esta página</button>
+<button type="button" onclick="detener()">⏹ Detener lectura</button></p></header>
 <main><h1>{e(titulo)}</h1>{cuerpo}</main>
-<footer class="debil">Datos de documentos públicos oficiales, mostrados con su fuente.</footer></body></html>""")
+<footer class="debil">Datos de documentos públicos oficiales, mostrados con su fuente.</footer>{JS}</body></html>""")
 
 
 def _con() -> sqlite3.Connection:
     with evidencia.conectar():  # asegura la tabla evidencias en la misma base
+        pass
+    with explicar.conectar():  # asegura glosario, resúmenes y rutas
         pass
     return cruzar.conectar()  # asegura hallazgos, partidas, acuerdos y documentos
 
@@ -95,6 +113,71 @@ def _dinero(v) -> str:
     return "sin monto registrado" if v is None else f"${v:,.2f}"
 
 
+def en_palabras(v) -> str:
+    """Monto en palabras simples, p. ej. 244276746.96 -> '244 millones de pesos'."""
+    if v >= 1_000_000:
+        m = v / 1_000_000
+        n = f"{m:,.0f}" if m >= 100 else f"{m:,.1f}".removesuffix(".0")
+        return f"{n} millones de pesos"
+    if v >= 1_000:
+        return f"{v / 1_000:,.0f} mil pesos"
+    return f"{v:,.0f} pesos"
+
+
+def _glosario(con) -> dict:
+    try:
+        return {f["termino"]: f for f in _filas(con, "SELECT * FROM glosario")}
+    except sqlite3.OperationalError:
+        return {}
+
+
+def ayuda(termino: str, glos: dict, urls=None) -> str:
+    """Desplegable '¿Qué es esto?' con la definición y su fuente, o la marca de sin fuente local."""
+    g = glos.get(termino)
+    if not g:
+        return ""
+    fuente = (fuente_html(g["archivo"], g["pagina"], g["fragmento"], urls) if g["archivo"]
+              else '<p class="debil">Explicación general, sin fuente local. No es un dato oficial.</p>')
+    return (f'<details class="ayuda"><summary>❓ ¿Qué es esto? {e(termino)}</summary>'
+            f'<p>{e(g["definicion"])}</p>{fuente}</details>')
+
+
+def _resumen_html(con, tipo: str, id_: int, urls=None) -> str:
+    try:
+        filas = _filas(con, "SELECT * FROM resumenes WHERE tipo = ? AND id = ?", (tipo, id_))
+    except sqlite3.OperationalError:
+        return ""
+    if not filas:
+        return ""
+    r = filas[0]
+    return (f'<div class="tarjeta sencillo"><strong>En palabras simples:</strong> {e(r["resumen"])}'
+            f'<p class="debil">Resumen hecho a partir de la fuente citada. El texto original está en esta misma página.</p>'
+            f'{fuente_html(r["archivo"], r["pagina"], r["fragmento"], urls)}</div>')
+
+
+def _rutas_html(con, tema: str, urls=None) -> str:
+    """Sección '¿Qué puedes hacer?' solo con rutas cuyo fundamento está guardado y verificado."""
+    try:
+        rutas = _filas(con, "SELECT * FROM rutas ORDER BY clave")
+    except sqlite3.OperationalError:
+        return ""
+    if not rutas:
+        return ""
+    partes = ["<h2>¿Qué puedes hacer?</h2><p>Estas son rutas con su fundamento. Tú decides si las usas y tú envías cualquier solicitud.</p>"]
+    for r in rutas:
+        pasos = "".join(f"<li>{e(p)}</li>" for p in json.loads(r["pasos"]))
+        plantilla = ""
+        if r["plantilla"]:
+            texto = r["plantilla"].replace("{tema}", tema)
+            plantilla = (f'<label for="plantilla-{e(r["clave"])}">Texto listo para copiar:</label>'
+                         f'<textarea id="plantilla-{e(r["clave"])}" readonly>{e(texto)}</textarea>'
+                         f'<button type="button" onclick="copiar(\'plantilla-{e(r["clave"])}\')">📋 Copiar el texto</button>')
+        enlace = (f'<p><a href="{e(r["fundamento_url"])}">Sitio oficial relacionado</a></p>' if r["fundamento_url"] else "")
+        partes.append(f'<div class="tarjeta"><strong>{e(r["titulo"])}</strong><ol>{pasos}</ol>{plantilla}{enlace}'
+                      f'{fuente_html(r["fundamento_archivo"], r["fundamento_pagina"], r["fundamento_fragmento"], urls)}</div>')
+    return "".join(partes)
+
+
 def _manifiesto() -> list[dict]:
     ruta = extraer.RAW / "manifiesto.json"
     return json.loads(ruta.read_text()) if ruta.exists() else []
@@ -120,9 +203,14 @@ def inicio():
         for m in _manifiesto())
     with _con() as con:
         cobertura = _cobertura_html(cruzar.cobertura(con))
-    cuerpo = f"""<p>El auditor lee documentos públicos del Ayuntamiento de Atlixco (gacetas, acuerdos de Cabildo y
-el Presupuesto de Egresos), extrae los datos con su cita —archivo, página y fragmento textual— y los muestra aquí
-para que cualquier persona pueda revisarlos en la fuente.</p>
+    bienvenida = """<section id="bienvenida" class="tarjeta"><h2>Hola. Esto se entiende en 3 pasos</h2>
+<ol><li><strong>Quién gobierna:</strong> mira <a href="/funcionarios">quiénes son las personas del Ayuntamiento</a> y qué han propuesto.</li>
+<li><strong>En qué se gasta:</strong> revisa <a href="/presupuesto">el presupuesto</a>, el plan de gastos del año, en palabras simples.</li>
+<li><strong>Qué puedes hacer tú:</strong> en cada acuerdo y cada partida encontrarás rutas concretas, como pedir información o ir a una sesión pública.</li></ol>
+<button type="button" onclick="saltarBienvenida()">Saltar y no mostrar de nuevo</button></section>"""
+    cuerpo = f"""{bienvenida}<p>Esta página lee documentos públicos del Ayuntamiento de Atlixco y te los muestra
+en palabras simples, siempre con su fuente: archivo, página y el fragmento tal como viene en el documento.
+Así puedes comprobar tú mismo cada dato.</p>
 <p class="aviso">Los hallazgos son discrepancias verificables entre documentos públicos, no acusaciones.</p>
 <h2>Fuentes revisadas</h2>{fuentes or '<p>Sin fuentes registradas.</p>'}{cobertura}"""
     return pagina("Auditor de Atlixco", cuerpo)
@@ -167,14 +255,19 @@ def funcionarios():
 def funcionario(clave: str):
     with _con() as con:
         personas = _personas(con)
+        glos = _glosario(con)
+        urls = _urls(con)
     p = personas.get(clave)
     if not p:
         return HTMLResponse("<p>No se encontró a la persona.</p>", status_code=404)
     acuerdos = "".join(
         f"""<div class="tarjeta"><a href="/acuerdos/{a['id']}">{e(a['acuerdo'])}</a>
         {fuente_html(a['archivo'], a['pagina'], a['fragmento'], p['urls'])}</div>""" for a in p["acuerdos"])
+    ayudas = "".join(ayuda(t, glos, urls) for t in ("Presidenta Municipal", "Síndico Municipal", "Regidor", "Ayuntamiento")
+                     if any(t.split()[0].lower().rstrip("a") in (c or "").lower() or t.lower() in (c or "").lower()
+                            for c in p["cargos"]))
     cuerpo = f"""<p><span class="debil">Cargo tal como consta en la fuente:</span>
-{e(', '.join(sorted(c for c in p['cargos'] if c)) or 'sin cargo registrado')}</p>
+{e(', '.join(sorted(c for c in p['cargos'] if c)) or 'sin cargo registrado')}</p>{ayudas}
 <p>Acuerdos propuestos: {len(p['acuerdos'])} · Menciones: {p['menciones']} ({p['verificadas']} verificadas,
 {p['menciones'] - p['verificadas']} no verificadas) · Hallazgos relacionados: {p['hallazgos']}</p>{acuerdos}"""
     return pagina(p["nombre"], cuerpo)
@@ -184,11 +277,16 @@ def funcionario(clave: str):
 def acuerdos():
     with _con() as con:
         lista = cruzar._acuerdos(con)
+        glos = _glosario(con)
+        urls = _urls(con)
     tarjetas = "".join(
         f"""<div class="tarjeta"><a href="/acuerdos/{a['id']}"><strong>{e(a['acuerdo'])}</strong></a><br>
         <span class="debil">Sesión: {e(a['fecha_sesion'] or 'sin fecha registrada')} · {e(a['menciones'])} mención(es)</span></div>"""
         for a in lista)
-    return pagina("Acuerdos de Cabildo", tarjetas or "<p>Sin acuerdos registrados.</p>")
+    intro = ("<p>Estos son acuerdos que tomó el Ayuntamiento en sus reuniones. "
+             "Abre uno para verlo en palabras simples, con el texto original y su fuente.</p>"
+             + ayuda("Cabildo", glos, urls) + ayuda("Dictamen", glos, urls))
+    return pagina("Acuerdos de Cabildo", intro + (tarjetas or "<p>Sin acuerdos registrados.</p>"))
 
 
 @app.get("/acuerdos/{id_}", response_class=HTMLResponse)
@@ -202,18 +300,24 @@ def acuerdo(id_: int):
         menciones = _filas(con, """SELECT a.*, d.archivo FROM acuerdos a JOIN documentos d ON d.id = a.documento_id
                                    WHERE a.grupo_id = ? ORDER BY a.id""", (id_,))
         urls = _urls(con)
+        glos = _glosario(con)
+        resumen = _resumen_html(con, "acuerdo", id_, urls)
+        rutas = _rutas_html(con, f"el acuerdo «{a['acuerdo'][:120]}» del Ayuntamiento de Atlixco", urls)
     personas = "".join(f"<li>{e(p['nombre'])} — {e(p['cargo'] or 'sin cargo registrado')}</li>"
                        for p in json.loads(a["propuesto_por"])) or "<li>Sin proponentes registrados</li>"
     detalle_menciones = "".join(
         f"""<div class="tarjeta"><span class="marca">{e(m['verificacion'])}</span>
         Página {e(m['pagina'])} de {e(m['archivo'])}{fuente_html(m['archivo'], m['pagina'], m['fragmento'], urls)}</div>"""
         for m in menciones)
-    cuerpo = f"""<p>{e(a['acuerdo'])}</p>
+    termino_sesion = {"ordinaria": "Sesión ordinaria", "extraordinaria": "Sesión extraordinaria",
+                      "solemne": "Sesión solemne"}.get((a["tipo_sesion"] or "").lower(), "")
+    cuerpo = f"""{resumen}<h2>Texto original del registro</h2><p>{e(a['acuerdo'])}</p>
 <p>Tipo de sesión: {e(a['tipo_sesion'] or 'sin dato')} · Fecha de sesión: {e(a['fecha_sesion'] or 'sin dato')} ·
 Resultado de votación: {e(a['resultado_votacion'] or 'sin dato')} · Monto: {_dinero(a['monto_mxn'])} ·
 Proveedor: {e(a['proveedor'] or 'sin dato')}</p>
+{ayuda(termino_sesion, glos, urls) if termino_sesion else ''}{ayuda("Sesión pública", glos, urls)}
 <h2>Propuesto por</h2><ul>{personas}</ul>
-<h2>Menciones y sus citas</h2>{detalle_menciones}"""
+<h2>Menciones y sus citas</h2>{detalle_menciones}{rutas}"""
     return pagina("Acuerdo", cuerpo)
 
 
@@ -222,14 +326,23 @@ def presupuesto_():
     with _con() as con:
         partidas = cruzar._partidas(con)
         urls = _urls(con)
+        glos = _glosario(con)
+        resumenes = {p["id"]: _resumen_html(con, "partida", p["id"], urls) for p in partidas}
+        rutas = _rutas_html(con, "el Presupuesto de Egresos 2026 del Ayuntamiento de Atlixco", urls)
     filas = "".join(
         f"""<tr><td>{e(p['capitulo'] or 'sin capítulo')}<br>{e(p['nombre'])}
-        {'<span class="marca">nombre no verificado</span>' if p['verificacion_nombre'] != 'ok' else ''}</td>
-        <td>{_dinero(p['monto_mxn'])}</td>
+        {'<span class="marca">nombre no verificado</span>' if p['verificacion_nombre'] != 'ok' else ''}
+        {resumenes[p['id']]}</td>
+        <td>{_dinero(p['monto_mxn'])}<br><span class="debil">{e(en_palabras(p['monto_mxn'])) if p['monto_mxn'] is not None else ''}</span></td>
         <td><span class="marca">monto: {e(p['verificacion'])}</span><span class="marca">nombre: {e(p['verificacion_nombre'])}</span>
         {fuente_html(p['archivo'], p['pagina'], p['fragmento'], urls)}</td></tr>""" for p in partidas)
+    intro = ("<p>Este es el plan de gastos del municipio para 2026. Cada renglón es un grupo de gasto, "
+             "con su monto en números y en palabras, y su fuente.</p>"
+             + ayuda("Presupuesto de Egresos", glos, urls) + ayuda("Capítulo del gasto", glos, urls)
+             + ayuda("Partida", glos, urls) + ayuda("Inversión Pública", glos, urls)
+             + ayuda("Servicios Personales", glos, urls))
     return pagina("Presupuesto de Egresos 2026",
-                  f"<table><tr><th>Capítulo y partida</th><th>Monto</th><th>Verificación y cita</th></tr>{filas}</table>")
+                  intro + f"<table><tr><th>Capítulo y partida</th><th>Monto</th><th>Verificación y cita</th></tr>{filas}</table>" + rutas)
 
 
 @app.get("/hallazgos", response_class=HTMLResponse)
@@ -250,12 +363,16 @@ def hallazgo(id_: int):
     with _con() as con:
         filas = _filas(con, "SELECT * FROM hallazgos WHERE id = ?", (id_,))
         urls = _urls(con)
+    with _con() as con:
+        filas = _filas(con, "SELECT * FROM hallazgos WHERE id = ?", (id_,))
+        urls = _urls(con)
+        rutas = _rutas_html(con, "la diferencia entre documentos públicos descrita en esta página", urls) if filas else ""
     if not filas:
         return HTMLResponse("<p>No se encontró el hallazgo.</p>", status_code=404)
     h = filas[0]
     cuerpo = f"""<p>{e(h['descripcion'])}</p><h2>Cita del presupuesto</h2>
 {fuente_html(h['archivo_presupuesto'], h['pagina_presupuesto'], h['fragmento_presupuesto'], urls)}
-<h2>Cita del acuerdo</h2>{fuente_html(h['archivo_acuerdo'], h['pagina_acuerdo'], h['fragmento_acuerdo'], urls)}"""
+<h2>Cita del acuerdo</h2>{fuente_html(h['archivo_acuerdo'], h['pagina_acuerdo'], h['fragmento_acuerdo'], urls)}{rutas}"""
     return pagina(h["tipo"], cuerpo)
 
 

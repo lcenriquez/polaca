@@ -237,6 +237,52 @@ def test_web():
         assert r.status_code == 400, r.status_code  # solo JPEG/PNG: se rechaza sin llamar a la API
 
 
+def test_explicar_web():
+    import explicar
+    import web
+    from fastapi.testclient import TestClient
+    assert web.en_palabras(244_276_746.96) == "244 millones de pesos"
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        acuerdo = {"acuerdo": "Se aprobó el Bando de Policía y Gobierno", "tipo_sesion": "ordinaria",
+                   "fecha_sesion": "2025-02-24", "propuesto_por": [], "monto_mxn": None, "proveedor": None,
+                   "resultado_votacion": "aprobado", "pagina": 4, "fragmento": "Bando de Policía", "verificacion": "ok"}
+        with explicar.conectar() as con:
+            extraer.guardar(con, "g.pdf", 9, [acuerdo], (1, 9))
+            explicar.guardar_glosario(con, [
+                {"termino": "Cabildo", "definicion": "Reunión del Ayuntamiento.", "archivo": "g.pdf",
+                 "pagina": 4, "fragmento": "Bando de Policía", "verificacion": "ok"},
+                {"termino": "Capítulo del gasto", "definicion": "Grupo de gastos por tipo.", "archivo": None,
+                 "pagina": None, "fragmento": None, "verificacion": "sin_fuente"}])
+            # Invariante: cada término tiene cita completa o la marca de sin fuente local.
+            for t in con.execute("SELECT * FROM glosario"):
+                assert (t[2] and t[3] and t[4]) or t[5] == "sin_fuente", t
+            explicar.guardar_resumenes(con, [
+                {"tipo": "acuerdo", "id": 1, "resumen": "Se aprobó el Bando de Policía.",
+                 "archivo": "g.pdf", "pagina": 4, "fragmento": "Bando de Policía"}])
+            for r in con.execute("SELECT archivo, pagina, fragmento FROM resumenes"):
+                assert all(r), r  # cada resumen lleva su cita
+            explicar.guardar_rutas(con, [
+                {"clave": "solicitud-pnt", "titulo": "Pedir información", "pasos": ["Entra a la plataforma."],
+                 "plantilla": "Solicito conocer {tema}.", "fundamento_archivo": "g.pdf", "fundamento_pagina": 4,
+                 "fundamento_fragmento": "Bando de Policía", "fundamento_url": "https://ejemplo.gob.mx",
+                 "verificacion": "ok"}])
+        cliente = TestClient(web.app)
+        acuerdos = cliente.get("/acuerdos").text
+        assert "¿Qué es esto?" in acuerdos and "sin fuente local" not in acuerdos  # Cabildo tiene fuente
+        detalle = cliente.get("/acuerdos/1").text
+        assert "En palabras simples" in detalle and "¿Qué puedes hacer?" in detalle and "Solicito conocer" in detalle
+        presupuesto_html = cliente.get("/presupuesto").text
+        assert "sin fuente local" in presupuesto_html  # Capítulo del gasto, marcado, no como dato oficial
+        inicio = cliente.get("/").text
+        assert "Escuchar esta página" in inicio and 'id="bienvenida"' in inicio  # se puede saltar y no vuelve (localStorage)
+        for ruta in ["/", "/acuerdos", "/acuerdos/1", "/presupuesto"]:
+            texto = cliente.get(ruta).text.lower()
+            assert "corrupción" not in texto and "robo" not in texto, ruta
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):
