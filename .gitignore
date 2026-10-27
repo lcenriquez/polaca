@@ -11,3 +11,4 @@ datos/raw/
 datos/cache/
 datos/costos.jsonl
 datos/*.db
+.claude/settings.local.json
