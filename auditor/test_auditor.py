@@ -452,6 +452,87 @@ def test_tarjeta_png_y_ceros():
         assert cliente.get("/compartir/hallazgo/99.png").status_code == 404
 
 
+def test_buscador_nacional():
+    """El buscador encuentra localidades con y sin acentos y distingue municipios ya revisados."""
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with municipios.conectar() as con:
+            con.executemany("INSERT INTO municipios VALUES (?, ?, ?, ?)",
+                            [("15054", "México", "Metepec", "sin_revisar"),
+                             ("21019", "Puebla", "Atlixco", "indexado")])
+            con.executemany("INSERT INTO localidades VALUES (?, ?, ?, ?, ?, ?, ?)",
+                            [("150540001", "15054", "Metepec", "Metepec", "México",
+                              municipios.sin_acentos("Metepec"), municipios.sin_acentos("Metepec")),
+                             ("210190001", "21019", "Atlixco de las Flores", "Atlixco", "Puebla",
+                              municipios.sin_acentos("Atlixco de las Flores"), municipios.sin_acentos("Atlixco"))])
+            con.commit()
+            for texto in ("metepec", "Métepec", "METEPEC"):
+                encontrados = municipios.buscar_localidades(con, texto)
+                assert encontrados and encontrados[0]["clave_mun"] == "15054", texto
+            assert municipios.buscar_localidades(con, "atlixco")[0]["estado_indexacion"] == "indexado"
+            assert municipios.buscar_localidades(con, "ab") == []  # muy corto: no busca
+        cliente = TestClient(web.app)
+        r = cliente.get("/donde", params={"q": "metepec"})
+        assert r.status_code == 200 and "/municipio/15054" in r.text
+        r = cliente.get("/donde", params={"q": "Atlixco"})
+        assert "/representantes?m=21019" in r.text and "Ya lo revisamos" in r.text
+        r = cliente.get("/municipio/15054")
+        assert "Todavía no revisamos este municipio" in r.text and "Pídele a Muse que lo revise" in r.text
+        assert cliente.get("/municipio/99999").status_code == 404
+
+
+def test_solicitud_sin_aprobacion_no_dispara_agente():
+    """Sin token no hay /admin; rechazar nunca lanza el agente; aprobar lo lanza una sola vez."""
+    import os
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with municipios.conectar() as con:
+            con.execute("INSERT INTO municipios VALUES ('15054', 'México', 'Metepec', 'sin_revisar')")
+            con.commit()
+        lanzadas = []
+        original = web._lanzar_indexador
+        web._lanzar_indexador = lanzadas.append
+        os.environ["ADMIN_TOKEN"] = "token-de-prueba"
+        try:
+            cliente = TestClient(web.app, raise_server_exceptions=False)
+            r = cliente.post("/solicitar/15054", follow_redirects=False)
+            assert r.status_code == 303 and lanzadas == []  # pedir no dispara nada
+            assert "token" in cliente.get("/admin").text.lower()  # sin token: formulario, no la lista
+            assert cliente.post("/admin/decision", data={"token": "malo", "solicitud": 1,
+                                                         "decision": "aprobar"}).status_code == 403
+            assert lanzadas == []
+            with municipios.conectar() as con:
+                sid = con.execute("SELECT id FROM solicitudes WHERE estado = 'pendiente'").fetchone()[0]
+            cliente.post("/admin/decision", data={"token": "token-de-prueba", "solicitud": sid,
+                                                  "decision": "rechazar"})
+            assert lanzadas == []  # rechazar tampoco
+            cliente.post("/solicitar/15054", follow_redirects=False)
+            with municipios.conectar() as con:
+                sid = con.execute("SELECT id FROM solicitudes WHERE estado = 'pendiente'").fetchone()[0]
+            cliente.post("/admin/decision", data={"token": "token-de-prueba", "solicitud": sid,
+                                                  "decision": "aprobar"})
+            assert lanzadas == ["15054"]  # solo la aprobación humana lo dispara
+            with municipios.conectar() as con:
+                assert con.execute("SELECT estado_indexacion FROM municipios WHERE clave_inegi = '15054'"
+                                   ).fetchone()[0] == "indexando"
+                assert con.execute("SELECT count(*) FROM eventos_indexacion WHERE clave_inegi = '15054'"
+                                   ).fetchone()[0] == 1
+            assert cliente.get("/indexando/15054").status_code == 200
+        finally:
+            web._lanzar_indexador = original
+            os.environ.pop("ADMIN_TOKEN", None)
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):

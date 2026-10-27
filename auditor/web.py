@@ -12,14 +12,19 @@ calificaciones.
 import html
 import io
 import json
+import os
+import secrets
 import sqlite3
+import subprocess
+import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response, StreamingResponse
 from PIL import Image, ImageDraw, ImageFont
 
 import cruzar
@@ -27,6 +32,7 @@ import evidencia
 import explicar
 import extraer
 import gobierno
+import municipios
 from extraer import plano
 
 app = FastAPI(title="Auditor de Atlixco")
@@ -188,6 +194,8 @@ def pagina(titulo: str, cuerpo: str, paso: int | None = None, seccion: str | Non
 
 
 def _con() -> sqlite3.Connection:
+    with municipios.conectar():  # asegura municipios, localidades, solicitudes, eventos y municipio_id
+        pass
     with evidencia.conectar():  # asegura la tabla evidencias en la misma base
         pass
     with explicar.conectar():  # asegura glosario, resúmenes y rutas
@@ -347,9 +355,11 @@ def icono(clave: str, texto: str) -> str:
             f'<title>{e(texto)}</title>{_ICONOS[clave]}</svg>')
 
 
-def _gob(con, tabla: str) -> list[dict]:
+def _gob(con, tabla: str, clave: str = "21019") -> list[dict]:
+    """Filas con cita verificada de un municipio (Atlixco por omisión; null = dato anterior al esquema)."""
     try:
-        return _filas(con, f"SELECT * FROM {tabla} WHERE verificacion = 'ok' ORDER BY id")
+        return _filas(con, f"SELECT * FROM {tabla} WHERE verificacion = 'ok' AND (municipio_id = ? OR municipio_id IS NULL) ORDER BY id",
+                      (clave,))
     except sqlite3.OperationalError:
         return []
 
@@ -566,12 +576,12 @@ def _icono_tema(texto_: str) -> str:
 
 
 @app.get("/representantes", response_class=HTMLResponse)
-def representantes(junta: int = 0):
+def representantes(junta: int = 0, m: str = "21019"):
     with _con() as con:
-        funcionarios = _gob(con, "funcionarios")
-        juntas = _gob(con, "juntas_auxiliares")
-        funciones = _gob(con, "funciones_cargo")
-        contactos = _gob(con, "contacto_institucional")
+        funcionarios = _gob(con, "funcionarios", m)
+        juntas = _gob(con, "juntas_auxiliares", m)
+        funciones = _gob(con, "funciones_cargo", m)
+        contactos = _gob(con, "contacto_institucional", m)
         urls = _urls(con)
     elegida = next((j for j in juntas if j["id"] == junta), None)
     nivel_comunidad, nivel_presidencia = [], []
@@ -830,28 +840,215 @@ def inicio():
 
 
 @app.get("/donde", response_class=HTMLResponse)
-def donde():
+def donde(q: str = ""):
     with _con() as con:
         juntas = _gob(con, "juntas_auxiliares")
         urls = _urls(con)
         cobertura = _cobertura_html(cruzar.cobertura(con))
+        resultados = municipios.buscar_localidades(con, q) if q else []
+        indexados = _filas(con, "SELECT * FROM municipios WHERE estado_indexacion = 'indexado' ORDER BY nombre")
+    resultados_html = ""
+    if q:
+        items = ""
+        for r in resultados:
+            if r["estado_indexacion"] == "indexado":
+                items += (f'<a href="/representantes?m={e(r["clave_mun"])}" data-nombre="{e(r["nom_loc"])}">'
+                          f'{icono("pin", "Dibujo de un pin de mapa")}{e(r["nom_loc"])} — {e(r["nom_mun"])}, {e(r["nom_ent"])}'
+                          f'<span class="tag">Ya lo revisamos</span></a>')
+            else:
+                items += (f'<a href="/municipio/{e(r["clave_mun"])}" data-nombre="{e(r["nom_loc"])}">'
+                          f'{icono("pin", "Dibujo de un pin de mapa")}{e(r["nom_loc"])} — {e(r["nom_mun"])}, {e(r["nom_ent"])}</a>')
+        resultados_html = (f'<div class="card list" id="lista-resultados">{items}</div>' if items else
+                           '<p class="sub">No encontramos esa localidad en el catálogo de INEGI. '
+                           'Revisa cómo se escribe o busca tu municipio.</p>')
     opciones = "".join(
         f'<a href="/representantes?junta={j["id"]}" data-nombre="{e(j["nombre"])} {e(j["presidente"] or "")}">'
         f'{icono("pin", "Dibujo de un pin de mapa")}{e(j["nombre"])}</a>' for j in juntas)
-    tecnicos = "".join(
-        f"""<div class="tarjeta"><strong>{e(m['archivo'])}</strong><br>
-        <span class="debil">Descargado: {e(m.get('descargado', 'sin fecha registrada'))}<br>SHA-256: {e(m.get('sha256', ''))}</span><br>
-        <a href="{e(m.get('url', ''))}">Página oficial de la fuente</a> · <a href="/fuentes/{e(m['archivo'])}">Documento guardado</a></div>"""
-        for m in _manifiesto())
-    cuerpo = f"""<p class="sub">Así te mostramos primero a las personas más cercanas a ti. No guardamos tu respuesta.</p>
-<div class="search">{icono("srch", "Dibujo de una lupa")}
-<input id="buscar-junta" type="search" placeholder="Escribe tu comunidad o colonia" aria-label="Escribe tu comunidad o colonia" oninput="filtrar(this, 'lista-juntas')" style="border:0;outline:none"></div>
+    def _tec(m):
+        guardado = (f' · <a href="/fuentes/{e(m["archivo"])}">Documento guardado</a>'
+                    if m["archivo"].rsplit(".", 1)[-1].lower() in ("pdf", "html") else "")
+        return (f'<div class="tarjeta"><strong>{e(m["archivo"])}</strong><br>'
+                f'<span class="debil">Descargado: {e(m.get("descargado", "sin fecha registrada"))}<br>'
+                f'SHA-256: {e(m.get("sha256", ""))}</span><br>'
+                f'<a href="{e(m.get("url", ""))}">Página oficial de la fuente</a>{guardado}</div>')
+
+    tecnicos = "".join(_tec(m) for m in _manifiesto())
+    ya = "".join(f'<a href="/representantes?m={e(m["clave_inegi"])}">{icono("pin", "Dibujo de un pin de mapa")}'
+                 f'{e(m["nombre"])}, {e(m["estado"])}</a>' for m in indexados)
+    cuerpo = f"""<p class="sub">Busca tu localidad en todo México (catálogo oficial de INEGI). Así te mostramos primero a las personas más cercanas a ti. No guardamos tu respuesta.</p>
+<form method="get" action="/donde"><div class="search">{icono("srch", "Dibujo de una lupa")}
+<input id="buscar-loc" name="q" type="search" value="{e(q)}" placeholder="Escribe tu localidad o municipio" aria-label="Escribe tu localidad o municipio" style="border:0;outline:none"></div>
+<p><button class="btn" type="submit">Buscar</button></p></form>
+{resultados_html}
+<h2>Municipios que ya revisamos</h2>
+<div class="card list">{ya}</div>
+<h2>Si vives en Atlixco, elige tu junta auxiliar</h2>
 <div class="card list" id="lista-juntas">
 <a href="/representantes" data-nombre="atlixco centro colonias cabecera">{icono("pin", "Dibujo de un pin de mapa")}Atlixco centro y colonias</a>
 {opciones}</div>
 <p class="debil">Las colonias que atiende cada junta no están en la fuente oficial revisada; por eso la lista es por junta auxiliar.</p>
 <details class="tarjeta"><summary><strong>Detalles técnicos y fuentes revisadas</strong></summary>{tecnicos}{cobertura}</details>"""
     return pagina("¿Dónde vives?", cuerpo, paso=1)
+
+
+@app.get("/municipio/{clave}", response_class=HTMLResponse)
+def municipio(clave: str):
+    with _con() as con:
+        filas = _filas(con, "SELECT * FROM municipios WHERE clave_inegi = ?", (clave,))
+        if not filas:
+            return HTMLResponse("<p>No se encontró el municipio.</p>", status_code=404)
+        m = filas[0]
+        pendiente = _filas(con, "SELECT * FROM solicitudes WHERE clave_inegi = ? AND estado = 'pendiente' ORDER BY id DESC", (clave,))
+    if m["estado_indexacion"] == "indexado":
+        cuerpo = (f'<p>Ya revisamos este municipio.</p><p><a class="btn" href="/representantes?m={e(clave)}">'
+                  'Ver quién te representa</a></p>')
+    elif pendiente:
+        cuerpo = ('<p><strong>Ya hay una solicitud para revisar este municipio.</strong> '
+                  'Una persona del equipo debe aprobarla antes de que Muse empiece a leer documentos. '
+                  'Nada se hace sin esa aprobación.</p>'
+                  f'<p><a class="btn ghost" href="/indexando/{e(clave)}">Ver el avance</a></p>')
+    else:
+        cuerpo = ('<p><strong>Todavía no revisamos este municipio.</strong></p>'
+                  '<p>Muse puede buscar sus documentos públicos (portal de transparencia, gaceta, presupuesto y directorio de cabildo), '
+                  'leerlos y guardar cada dato con su fuente, igual que hicimos con Atlixco. Primero una persona del equipo debe aprobar la solicitud.</p>'
+                  f'<form method="post" action="/solicitar/{e(clave)}">'
+                  '<button class="btn" type="submit">Pídele a Muse que lo revise</button></form>')
+    return pagina(f'{m["nombre"]}, {m["estado"]}', cuerpo, seccion="inicio")
+
+
+@app.post("/solicitar/{clave}")
+def solicitar(clave: str):
+    with _con() as con:
+        filas = _filas(con, "SELECT * FROM municipios WHERE clave_inegi = ?", (clave,))
+        if not filas:
+            return HTMLResponse("<p>No se encontró el municipio.</p>", status_code=404)
+        if filas[0]["estado_indexacion"] == "indexado":
+            return RedirectResponse(f"/representantes?m={clave}", status_code=303)
+        ya = _filas(con, "SELECT id FROM solicitudes WHERE clave_inegi = ? AND estado = 'pendiente'", (clave,))
+        if not ya:
+            con.execute("INSERT INTO solicitudes (clave_inegi, estado, creada) VALUES (?, 'pendiente', ?)",
+                        (clave, datetime.now(timezone.utc).isoformat(timespec="seconds")))
+            con.execute("UPDATE municipios SET estado_indexacion = 'solicitado' WHERE clave_inegi = ?", (clave,))
+            con.commit()
+    return RedirectResponse(f"/municipio/{clave}", status_code=303)
+
+
+def _lanzar_indexador(clave: str):
+    """Arranca el agente indexador como proceso aparte. Nada lo llama sin aprobación humana."""
+    subprocess.Popen([sys.executable, "indexar.py", clave],
+                     cwd=str(Path(__file__).resolve().parent),
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def _token_ok(token: str) -> bool:
+    esperado = os.environ.get("ADMIN_TOKEN", "")
+    return bool(esperado) and bool(token) and secrets.compare_digest(token, esperado)
+
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin(token: str = ""):
+    if not _token_ok(token):
+        cuerpo = ('<p>Esta página es solo para el equipo que aprueba nuevas revisiones de municipios.</p>'
+                  '<form method="get" action="/admin"><label for="token">Token de administración</label>'
+                  '<input id="token" name="token" type="password" autocomplete="off">'
+                  '<p><button class="btn" type="submit">Entrar</button></p></form>')
+        return pagina("Administración", cuerpo)
+    with _con() as con:
+        pendientes = _filas(con, """SELECT s.*, m.nombre, m.estado FROM solicitudes s
+                                    JOIN municipios m ON m.clave_inegi = s.clave_inegi
+                                    WHERE s.estado = 'pendiente' ORDER BY s.id""")
+        recientes = _filas(con, """SELECT s.*, m.nombre, m.estado FROM solicitudes s
+                                   JOIN municipios m ON m.clave_inegi = s.clave_inegi
+                                   WHERE s.estado != 'pendiente' ORDER BY s.id DESC LIMIT 10""")
+    lista = ""
+    for s in pendientes:
+        lista += (f'<div class="card"><h3>{e(s["nombre"])}, {e(s["estado"])}</h3>'
+                  f'<p style="font-size:16px">Solicitud #{s["id"]} · pedida el {e(s["creada"])} · '
+                  'al aprobar, Muse buscará y leerá sus documentos públicos (tope de gasto por municipio).</p>'
+                  f'<form method="post" action="/admin/decision">'
+                  f'<input type="hidden" name="token" value="{e(token)}">'
+                  f'<input type="hidden" name="solicitud" value="{s["id"]}">'
+                  '<p><button class="btn" type="submit" name="decision" value="aprobar">Aprobar y empezar la revisión</button></p>'
+                  '<p><button class="btn ghost" type="submit" name="decision" value="rechazar">Rechazar</button></p></form></div>')
+    hist = "".join(f'<div class="tarjeta">{e(s["nombre"])}, {e(s["estado"])}: solicitud {e(s["estado"])} '
+                   f'(decidida el {e(s["decidida"] or "—")}) · <a href="/indexando/{e(s["clave_inegi"])}">ver avance</a></div>'
+                   for s in recientes)
+    cuerpo = ('<h2>Solicitudes por decidir</h2>' + (lista or '<p>No hay solicitudes pendientes.</p>')
+              + '<h2>Decisiones recientes</h2>' + hist)
+    return pagina("Administración", cuerpo)
+
+
+@app.post("/admin/decision")
+def admin_decision(token: str = Form(""), solicitud: int = Form(0), decision: str = Form("")):
+    if not _token_ok(token):
+        return HTMLResponse("<p>Token no válido.</p>", status_code=403)
+    with _con() as con:
+        filas = _filas(con, "SELECT * FROM solicitudes WHERE id = ? AND estado = 'pendiente'", (solicitud,))
+        if not filas:
+            return HTMLResponse("<p>La solicitud ya fue decidida o no existe.</p>", status_code=404)
+        s = filas[0]
+        ahora = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        if decision == "aprobar":
+            con.execute("UPDATE solicitudes SET estado = 'aprobada', decidida = ? WHERE id = ?", (ahora, solicitud))
+            con.execute("UPDATE municipios SET estado_indexacion = 'indexando' WHERE clave_inegi = ?", (s["clave_inegi"],))
+            con.commit()
+            municipios.registrar_evento(con, s["clave_inegi"], "aprobada",
+                                        "Una persona del equipo aprobó la solicitud. Muse empieza a buscar los documentos públicos.")
+            _lanzar_indexador(s["clave_inegi"])  # solo aquí, tras la aprobación, se dispara el agente
+        else:
+            con.execute("UPDATE solicitudes SET estado = 'rechazada', decidida = ? WHERE id = ?", (ahora, solicitud))
+            con.execute("UPDATE municipios SET estado_indexacion = 'sin_revisar' WHERE clave_inegi = ?", (s["clave_inegi"],))
+            con.commit()
+    return RedirectResponse(f"/admin?token={quote(token)}", status_code=303)
+
+
+@app.get("/indexando/{clave}", response_class=HTMLResponse)
+def indexando(clave: str):
+    with _con() as con:
+        filas = _filas(con, "SELECT * FROM municipios WHERE clave_inegi = ?", (clave,))
+        if not filas:
+            return HTMLResponse("<p>No se encontró el municipio.</p>", status_code=404)
+        m = filas[0]
+        eventos = _filas(con, "SELECT * FROM eventos_indexacion WHERE clave_inegi = ? ORDER BY id", (clave,))
+    lista = "".join(f'<li><strong>{e(ev["paso"])}</strong> · {e(ev["mensaje"])} '
+                    f'<span class="debil">{e(ev["ts"])}</span></li>' for ev in eventos)
+    estado = {"indexado": "Ya terminamos de revisar este municipio.",
+              "indexando": "Muse está leyendo los documentos públicos de este municipio…",
+              "solicitado": "Solicitud registrada. Falta que una persona del equipo la apruebe.",
+              "error": "La revisión se detuvo. Esto es lo que pasó:"}.get(
+                  m["estado_indexacion"], "Todavía no se ha pedido revisar este municipio.")
+    enlace = (f'<p><a class="btn" href="/representantes?m={e(clave)}">Ver quién te representa</a></p>'
+              if m["estado_indexacion"] == "indexado" else "")
+    cuerpo = (f'<p class="sub">{e(estado)}</p><div class="card"><h3>Así va la revisión</h3>'
+              f'<ul id="eventos" style="font-size:16px">{lista}</ul>'
+              '<p class="debil" id="en-vivo">Conectando con el avance en vivo…</p></div>' + enlace
+              + f"""<script>
+var fuente = new EventSource('/indexando/{e(clave)}/eventos');
+fuente.onmessage = function(ev){{ var d = JSON.parse(ev.data); var li = document.createElement('li');
+  li.innerHTML = '<strong></strong> · <span></span> '; li.querySelector('strong').textContent = d.paso;
+  li.querySelector('span').textContent = d.mensaje; document.getElementById('eventos').appendChild(li); }};
+fuente.onerror = function(){{ document.getElementById('en-vivo').textContent = 'La conexión en vivo se cerró. Recarga la página para ver el avance.'; }};
+</script>""")
+    return pagina(f'Revisando {m["nombre"]}, {m["estado"]}', cuerpo, seccion="inicio")
+
+
+@app.get("/indexando/{clave}/eventos")
+def indexando_eventos(clave: str):
+    def generar():
+        ultimo = 0
+        for _ in range(900):  # ponytail: 15 min máx por conexión; el navegador reconecta solo
+            with municipios.conectar() as con:
+                filas = _filas(con, "SELECT * FROM eventos_indexacion WHERE clave_inegi = ? AND id > ? ORDER BY id",
+                               (clave, ultimo))
+                m = _filas(con, "SELECT estado_indexacion FROM municipios WHERE clave_inegi = ?", (clave,))
+            for f in filas:
+                ultimo = f["id"]
+                yield f"data: {json.dumps(f, ensure_ascii=False)}\n\n"
+            if m and m[0]["estado_indexacion"] in ("indexado", "error") and not filas:
+                break
+            yield ": latido\n\n"
+            time.sleep(1)
+    return StreamingResponse(generar(), media_type="text/event-stream")
 
 
 def _personas(con) -> dict:
