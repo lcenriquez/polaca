@@ -405,7 +405,10 @@ def test_responsive_y_temas():
     escritorio = css.split("@media (min-width: 768px)", 1)[1]
     assert "max-width: 1120px" in escritorio  # el contenido crece en tablet y escritorio
     assert "nav.bottom { display: none; }" in escritorio  # arriba manda el menú, no la barra inferior
-    assert "repeat(4,minmax(0,1fr))" in escritorio  # regidores: 4 columnas en escritorio, sin desbordar
+    assert "repeat(3,minmax(0,1fr))" in escritorio  # regidores: 3 columnas en escritorio, nunca 4 junto al diagrama
+    assert "repeat(4,minmax(0,1fr))" not in escritorio
+    assert ".v4 { background: var(--ink); color: var(--bg); }" in css  # el círculo «Tú» se ve en modo oscuro
+    assert "[id] { scroll-margin-top: 84px; }" in css  # el encabezado fijo no tapa los títulos
 
     def variables(bloque):
         return set(re.findall(r"(--[a-z0-9-]+)\s*:", bloque))
@@ -649,6 +652,58 @@ def test_solicitud_sin_aprobacion_no_dispara_agente():
         finally:
             web._lanzar_indexador = original
             os.environ.pop("ADMIN_TOKEN", None)
+
+
+def test_temas_cortos_y_estados_vacios():
+    """Sección D/F: tema corto en tarjetas y filtros, oficial en la ficha, y nunca una vista vacía."""
+    import gobierno
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    assert web.tema_corto("Desarrollo Urbano, Obras y Servicios Públicos") == ("road", "Obras y calles")
+    assert web.tema_corto("Bienestar, Juventud, Protección y Atención a la Niñez")[1] == "Bienestar y niñez"
+    assert web.tema_corto("De Salud y Asistencia Pública") == ("heart", "Salud")
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        cols_f = ["nombre", "cargo", "comision", "archivo", "pagina", "fragmento", "verificacion"]
+        base = {"archivo": "g.html", "pagina": 1, "verificacion": "ok"}
+        comisiones = ["Desarrollo Urbano, Obras y Servicios Públicos",
+                      "Bienestar, Juventud, Protección y Atención a la Niñez",
+                      "Salud y Asistencia Pública", "Educación Pública y Actividades Culturales, Deportivas y Sociales",
+                      "Gobernación, Justicia y Seguridad Pública", "Medio Ambiente y Ecología",
+                      "Patrimonio y Hacienda Pública Municipal"]
+        with municipios.conectar() as con:
+            con.executemany("INSERT INTO municipios VALUES (?, ?, ?, ?)",
+                            [("17007", "Morelos", "Cuernavaca", "sin_revisar"),
+                             ("21019", "Puebla", "Atlixco", "indexado")])
+            con.commit()
+        with gobierno.conectar() as con:
+            gobierno._guardar(con, "funcionarios", cols_f, [
+                *[{**base, "nombre": f"Regidora {i}", "cargo": f"Regiduría de {c}", "comision": c,
+                   "fragmento": f"Regidora {i}"} for i, c in enumerate(comisiones, 1)],
+                {**base, "nombre": "Ana Presidenta", "cargo": "Presidenta Municipal", "comision": None,
+                 "fragmento": "Ana Presidenta"}])
+            gobierno._guardar(con, "funciones_cargo", ["cargo", "funcion", "archivo", "pagina", "fragmento", "verificacion"], [
+                {**base, "cargo": "Regidores", "funcion": "Vigilan los ramos a su cargo.", "fragmento": "Vigilan"}])
+        cliente = TestClient(web.app)
+        sin = cliente.get("/representantes", params={"m": "17007"}).text
+        assert "Aún no revisamos Cuernavaca" in sin and "Pídele a Muse que lo revise" in sin
+        assert "Ver un ejemplo: Atlixco" in sin and "0 regidurías" not in sin and "Qué hace:</strong> </p>" not in sin
+        assert 'class="ring"' not in sin  # sin diagrama vacío ni secciones huecas
+        rep = cliente.get("/representantes").text
+        assert "Obras y calles" in rep and "Bienestar y niñez" in rep and "Ver las otras 2" in rep
+        assert "Bienestar, Juventud, Protección y Atención a la Niñez" not in rep  # oficial largo: solo en la ficha
+        ficha = cliente.get("/revisar/2").text
+        assert "Bienestar, Juventud, Protección y Atención a la Niñez" in ficha and "explicación general" in ficha
+        assert "Todavía no tenemos la descripción" in cliente.get("/revisar/8").text  # «Qué hace» nunca vacío
+        for ruta, marca in [("/gastos", "Todavía no tenemos el gasto"), ("/hallazgos", "documentos revisados"),
+                            ("/funcionarios", "Todavía no hay personas"), ("/acuerdos", "Todavía no hay acuerdos"),
+                            ("/presupuesto", "Todavía no hay partidas"), ("/evidencia", "Todavía no hay fotos")]:
+            texto = cliente.get(ruta).text
+            assert marca in texto, ruta
+        assert "No encontramos" in cliente.get("/", params={"q": "zzzzinexistente"}).text
 
 
 def test_indexador_filtros_y_topes():

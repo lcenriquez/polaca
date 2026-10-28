@@ -136,20 +136,25 @@ main .btn, main .boton { display: flex; width: 100%; }
 .ring .p { position: absolute; transform: translate(-50%,-50%); text-align: center; font-size: 13px; font-weight: 600; width: 96px; line-height: 1.2; }
 .av, .avatar { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; margin: 0 auto 4px; flex: none; background: var(--accent); font-size: 17px; }
 .av.l { width: 84px; height: 84px; font-size: 28px; }
-.av.you, .v4 { background: var(--ink); } .v1, .av { background: #5b3fd1; } .v2, .av.a2 { background: #0e7490; } .v3, .av.a3 { background: #475569; }
+.av.you, .v4 { background: var(--ink); color: var(--bg); } .v1, .av { background: #5b3fd1; } .v2, .av.a2 { background: #0e7490; } .v3, .av.a3 { background: #475569; }
+.empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; padding: 32px 20px; border: 2px dashed var(--line); border-radius: var(--r); background: var(--surface); }
+.empty .ico { width: 72px; height: 72px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.empty .ico svg.i { width: 36px; height: 36px; }
+.empty .acts { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+[id] { scroll-margin-top: 84px; }
 .tier { display: flex; flex-direction: column; gap: 10px; }
 .tier h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .tier h3 svg.i { width: 18px; height: 18px; }
 .person, .persona { display: flex; gap: 14px; align-items: center; }
-.reg, .reggrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
-@media (min-width: 600px) { .reg, .reggrid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
-@media (min-width: 1000px) { .reg, .reggrid { grid-template-columns: repeat(4,minmax(0,1fr)); } }
+.reg, .reggrid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+@media (min-width: 1000px) { .reg, .reggrid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 .reg.filtrando .regcard:not(.on), .reggrid.filtrando .regcard:not(.on) { opacity: .45; }
-.rg, .regcard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; font-size: 14px; line-height: 1.25; }
+.rg, .regcard { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; font-size: 14px; line-height: 1.25; }
 .rg.on, .regcard.on { border: 2px solid var(--accent); background: var(--accent-soft); }
-.regcard summary { display: flex; gap: 10px; align-items: center; cursor: pointer; min-height: 44px; font-weight: 700; list-style: none; }
-.regcard summary::-webkit-details-marker { display: none; }
-.regcard .av { width: 38px; height: 38px; font-size: 14px; margin: 0; }
+.regcard .av { width: 44px; height: 44px; font-size: 15px; margin: 0; }
+.regcard b.nombre { font-size: 16px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.regcard .t { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.regcard .t svg.i { width: 16px; height: 16px; color: var(--accent); }
 .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
 .filters button { flex: none; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 600 15px system-ui; cursor: pointer; }
 .filters button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
@@ -187,9 +192,9 @@ label { display: block; margin: .75rem 0 .25rem; font-weight: 600; }
 input[type=text], input[type=file], input[type=search], input[type=password], select, textarea { width: 100%; min-height: 48px; font-size: 1rem; }
 textarea { min-height: 88px; }
 table { border-collapse: collapse; width: 100%; } th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
-.grid>*, .hero>*, .kpis>*, .ev>*, .reg>*, .reggrid>*, .grid2>*, .temas>*, .cols>*, .seg>* { min-width: 0; }
+.grid>*, .hero>*, .kpis>*, .ev>*, .reg>*, .reggrid>*, .regcard>*, .grid2>*, .temas>*, .cols>*, .seg>* { min-width: 0; }
 .card, .tarjeta, .doc>div, .person>div, .leg>div, .step>div { min-width: 0; }
-.ev div, .src, .tarjeta, .copy, code, td { overflow-wrap: anywhere; }
+.ev div, .src, .doc, .tarjeta, .copy, code, td { overflow-wrap: anywhere; }
 @media (max-width: 767px) { table.cards, table.cards tr, table.cards td { display: block; } table.cards tr:first-child { display: none; } table.cards tr { border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 12px; background: var(--surface); } table.cards td { border: 0; padding: .25rem 0; } }
 .copy { background: var(--copy-bg); border: 2px dashed var(--dash); border-radius: 16px; padding: 14px; font-size: 16px; }
 .prog { display: flex; gap: 6px; max-width: 300px; } .prog i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); } .prog i.on { background: var(--accent); }
@@ -387,13 +392,16 @@ def _manifiesto() -> list[dict]:
 
 def _cobertura_html(c: dict) -> str:
     faltan = "".join(f"<li>{e(f)}</li>" for f in c["fuentes_faltantes"])
+    faltan_html = (f"<h3>Fuentes que faltan para poder cruzar</h3><ul>{faltan}</ul>" if faltan else
+                   "<h3>Fuentes que faltan para poder cruzar</h3><p>Ya están las fuentes básicas para cruzar; "
+                   "si aun así no hay pares comparables, es porque hablan de cosas distintas.</p>")
     return f"""<div class="tarjeta"><h2>Reporte de cobertura</h2>
 <p>Partidas: {c['partidas']} ({c['partidas_con_monto']} con monto, suma ${_dinero(c['suma_partidas'])[1:]},
 {c['partidas_nombre_no_verificado']} con nombre no verificado).</p>
 <p>Acuerdos canónicos: {c['acuerdos_canonicos']} ({c['acuerdos_con_monto']} con monto,
 {c['acuerdos_con_proveedor']} con proveedor).</p>
 <p>Pares comparables entre ambas fuentes: {c['pares_comparables']}.</p>
-<h3>Fuentes que faltan para poder cruzar</h3><ul>{faltan}</ul></div>"""
+{faltan_html}</div>"""
 
 
 _ICONOS = {
@@ -451,6 +459,22 @@ def icono(clave: str, texto: str) -> str:
             f'<title>{e(texto)}</title>{_ICONOS[clave]}</svg>')
 
 
+def _vacio(icono_: str, titulo: str, texto: str, acciones: list) -> str:
+    """Tarjeta de estado vacío (sección F del mockup): icono, una explicación y 1 o 2 acciones."""
+    botones = "".join(f'<a class="btn{" ghost" if fantasma else ""}" href="{e(href)}">{e(texto_)}</a>'
+                      for href, texto_, fantasma in acciones)
+    return (f'<div class="empty"><span class="ico">{icono(icono_, "Dibujo decorativo")}</span>'
+            f'<h3>{e(titulo)}</h3><p class="small muted">{e(texto)}</p>'
+            f'<div class="acts">{botones}</div></div>')
+
+
+def _sin_resultados(q: str) -> str:
+    return _vacio("srch", f"No encontramos “{q}”",
+                  "Revisa cómo se escribe o busca tu municipio en lugar de tu colonia.",
+                  [("/donde", "Buscar por municipio", False),
+                   ("/representantes?m=21019", "Ver un ejemplo: Atlixco", True)])
+
+
 def _gob(con, tabla: str, clave: str = "21019") -> list[dict]:
     """Filas con cita verificada de un municipio (Atlixco por omisión; null = dato anterior al esquema)."""
     try:
@@ -504,6 +528,43 @@ CAPITULOS_COMUNES = {
 }
 PALETA_MONEDAS = ["var(--c1)", "var(--c3)", "var(--c6)", "var(--c2)", "var(--c4)",
                   "var(--c7)", "var(--c5)", "var(--c8)", "var(--c9)"]
+
+# Tema corto por comisión: explicación general en palabras sencillas, no es el nombre
+# oficial (ese va en la ficha de la persona). Clave: denominación oficial sin acentos.
+TEMAS_CORTOS = {
+    "industria comercio agricultura y ganaderia": ("store", "Comercio y campo"),
+    "grupos vulnerables y personas con discapacidad": ("hand", "Apoyo a la gente"),
+    "educacion publica y actividades culturales deportivas y sociales": ("book", "Educación"),
+    "turismo arte y pueblos originarios": ("pin", "Turismo y cultura"),
+    "gobernacion justicia y seguridad publica": ("shield", "Seguridad"),
+    "patrimonio y hacienda publica municipal": ("coin", "Dinero del municipio"),
+    "bienestar juventud proteccion y atencion a la ninez": ("heart", "Bienestar y niñez"),
+    "desarrollo urbano obras y servicios publicos": ("road", "Obras y calles"),
+    "igualdad de genero prevencion atencion y erradicacion de la violencia contra las mujeres": ("ppl", "Igualdad"),
+    "salud y asistencia publica": ("heart", "Salud"),
+    "medio ambiente y ecologia": ("leaf", "Medio ambiente"),
+    "proteccion civil y prevencion de riesgos": ("alert", "Protección civil"),
+}
+
+
+def tema_corto(comision: str) -> tuple[str, str]:
+    """(icono, tema corto) para tarjetas y filtros; el nombre oficial no se acorta aquí."""
+    clave = plano(comision or "").removeprefix("de ")
+    if clave in TEMAS_CORTOS:
+        return TEMAS_CORTOS[clave]
+    for palabra, tema in [("proteccion civil", ("alert", "Protección civil")), ("desarrollo urbano", ("road", "Obras y calles")),
+                          ("obras", ("road", "Obras y calles")), ("seguridad", ("shield", "Seguridad")),
+                          ("gobernacion", ("shield", "Seguridad")), ("salud", ("heart", "Salud")),
+                          ("educacion", ("book", "Educación")), ("cultura", ("book", "Cultura")),
+                          ("hacienda", ("coin", "Dinero del municipio")), ("patrimonio", ("coin", "Dinero del municipio")),
+                          ("bienestar", ("heart", "Bienestar y niñez")), ("ambiente", ("leaf", "Medio ambiente")),
+                          ("ecologia", ("leaf", "Medio ambiente")), ("turismo", ("pin", "Turismo y cultura")),
+                          ("comercio", ("store", "Comercio y campo")), ("agricultura", ("store", "Comercio y campo")),
+                          ("igualdad", ("ppl", "Igualdad")), ("vulnerables", ("hand", "Apoyo a la gente")),
+                          ("discapacidad", ("hand", "Apoyo a la gente")), ("agua", ("drop", "Agua"))]:
+        if palabra in clave:
+            return tema
+    return "otros", "Otro tema"
 
 
 def _n_documentos(con) -> int:
@@ -610,8 +671,12 @@ def gastos():
         urls = _urls(con)
     monedas = monedas_100(partidas)
     if not monedas:
-        return pagina("En qué se gasta", "<p>Todavía no hay partidas con monto en las fuentes revisadas.</p>",
-                      seccion="gastos")
+        return pagina("En qué se gasta", _vacio(
+            "coin", "Todavía no tenemos el gasto con montos",
+            "Sí sabemos que el gasto sale del Presupuesto de Egresos, pero en las fuentes revisadas "
+            "todavía no hay partidas con monto para repartir en 100 monedas.",
+            [("/actua", "Pide el presupuesto por transparencia", False),
+             ("/evidencia", "Ayúdanos a revisar más", True)]), seccion="gastos")
     total = sum(p["monto_mxn"] for p in partidas)
     orden = sorted(partidas, key=lambda p: -monedas[p["id"]])
     color = {p["id"]: PALETA_MONEDAS[i % len(PALETA_MONEDAS)] for i, p in enumerate(orden)}
@@ -652,10 +717,14 @@ def _tarjeta_persona(titulo, nombre, hace, fila_fuente, contacto, urls, enlace, 
         datos = " · ".join(x for x in [contacto.get("telefono"), contacto.get("direccion"), contacto.get("horario")] if x)
         contacto_html = (f'<p style="font-size:16px"><strong>Cómo encontrarle:</strong> {e(contacto["oficina"])}'
                          f'{(" — " + e(datos)) if datos else ""}</p>{_fuente_de(contacto, urls)}')
+    hace_html = (f'<p style="font-size:16px"><strong>Qué hace:</strong> {e(hace)}</p>' if hace else
+                 '<p style="font-size:16px"><strong>Qué hace:</strong> todavía no tenemos la descripción de este '
+                 'cargo en las fuentes revisadas de este municipio. Sí sabemos su cargo oficial, el de arriba; '
+                 'la descripción puedes pedirla por transparencia.</p>')
     return (f'<div class="card person"><div class="av {color}" style="margin:0" aria-hidden="true">{e(_iniciales(nombre))}</div><div>'
             f'<span class="tag">{e(distancia)}</span><h3>{e(nombre)}</h3>'
             f'<p class="sub" style="font-size:16px">{e(titulo)}</p>'
-            f'<p style="font-size:16px"><strong>Qué hace:</strong> {e(hace)}</p>{_fuente_de(fila_fuente, urls)}{contacto_html}'
+            f'{hace_html}{_fuente_de(fila_fuente, urls)}{contacto_html}'
             f'<p><a class="btn ghost" href="{e(enlace)}">Ver su trabajo</a></p></div></div>')
 
 
@@ -679,6 +748,23 @@ def representantes(junta: int = 0, m: str = "21019"):
         funciones = _gob(con, "funciones_cargo", m)
         contactos = _gob(con, "contacto_institucional", m)
         urls = _urls(con)
+        mun_fila = _filas(con, "SELECT * FROM municipios WHERE clave_inegi = ?", (m,))
+    if mun_fila and mun_fila[0]["estado_indexacion"] != "indexado":
+        # Sección F: sin revisar, toda la vista es la tarjeta de invitación, sin niveles vacíos.
+        mun = mun_fila[0]
+        estado = mun["estado_indexacion"]
+        if estado == "indexando":
+            accion = (f"/indexando/{m}", "Ver la revisión en vivo", False)
+        elif estado == "error":
+            accion = (f"/indexando/{m}", "Ver lo que pasó", False)
+        else:
+            accion = (f"/municipio/{m}", "Pídele a Muse que lo revise", False)
+        cuerpo = _vacio("spark", f"Aún no revisamos {mun['nombre']}",
+                        "Por eso todavía no sabemos quiénes integran su Cabildo. Muse puede buscar los "
+                        "documentos oficiales y leerlos por ti; cada dato llevará su fuente.",
+                        [accion, ("/representantes?m=21019", "Ver un ejemplo: Atlixco", True)])
+        return pagina("Estas personas trabajan para ti", cuerpo, paso=2,
+                      lugar=f'{mun["nombre"]}, {mun["estado"]}')
     elegida = next((j for j in juntas if j["id"] == junta), None)
     nivel_comunidad, nivel_presidencia = [], []
     if elegida:
@@ -690,10 +776,15 @@ def representantes(junta: int = 0, m: str = "21019"):
             elegida, _buscar_fila(contactos, "atención ciudadana", "ayuntamiento de atlixco"), urls,
             f"/actua?para={elegida['nombre']}", "Lo más cercano a ti"))
     f_insp = _buscar_fila(funciones, "inspector")
+    hace_insp = (f'<p><strong>Qué hace:</strong> {e(f_insp["funcion"])}</p>' if f_insp else
+                 '<p><strong>Qué hace:</strong> es la autoridad de tu colonia ante el Ayuntamiento. '
+                 'Eso sí lo sabemos; su función exacta no está en las fuentes revisadas.</p>')
     nivel_comunidad.append(f"""<div class="tarjeta persona"><div class="avatar" aria-hidden="true">IN</div><div>
 <span class="marca">Lo más cercano a ti</span><br><strong>El inspector o inspectora de tu colonia</strong><br>
-<p><strong>Qué hace:</strong> {e(f_insp['funcion']) if f_insp else ''}</p>
-<p class="debil">Su nombre no está en las fuentes oficiales revisadas; pregunta por él en tu junta auxiliar o en el Ayuntamiento.</p>
+{hace_insp}
+<p class="debil">Su nombre no está en las fuentes oficiales revisadas; así puedes conseguirlo:</p>
+<p><a class="btn ghost" href="/donde">Pregunta su nombre en tu junta auxiliar</a></p>
+<p><a class="btn ghost" href="/actua">Pídelo por transparencia</a></p>
 {_fuente_de(f_insp, urls) if f_insp else ''}</div></div>""")
     regidores = [f for f in funcionarios if f["comision"]]
     f_reg = _buscar_fila(funciones, "regidores")
@@ -705,11 +796,11 @@ def representantes(junta: int = 0, m: str = "21019"):
             f_sin["funcion"] if f_sin else "", sindico,
             _buscar_fila(contactos, "atención ciudadana", "ayuntamiento de atlixco"), urls,
             f"/revisar/{sindico['id']}", "Representa a todo el municipio", "a3"))
-    presidenta = _buscar_fila(funcionarios, "presidenta")
+    presidenta = _buscar_fila(funcionarios, "presidenta", "presidente")
     if presidenta:
         f_pre = _buscar_fila(funciones, "presidente municipal")
         nivel_presidencia.append(_tarjeta_persona(
-            "Presidenta municipal: encabeza el gobierno del municipio", presidenta["nombre"],
+            f"{presidenta['cargo']}: encabeza el gobierno del municipio", presidenta["nombre"],
             f_pre["funcion"] if f_pre else "", presidenta,
             _buscar_fila(contactos, "presidencia municipal"), urls, f"/revisar/{presidenta['id']}",
             "Representa a todo el municipio", "a3"))
@@ -721,13 +812,14 @@ def representantes(junta: int = 0, m: str = "21019"):
     if elegida:
         puntos.append(("50%", "22%", "", _iniciales(elegida["presidente"] or ""), "Presidente auxiliar"))
     if reg_obras:
-        puntos.append(("16%", "40%", "a2", _iniciales(reg_obras["nombre"]), "Regidora o regidor de obras"))
+        puntos.append(("16%", "40%", "a2", _iniciales(reg_obras["nombre"]), tema_corto(reg_obras["comision"])[1]))
     if n_reg:
         puntos.append(("84%", "40%", "a2", n_reg, "Regidores"))
     if sindico:
         puntos.append(("24%", "86%", "a3", _iniciales(sindico["nombre"]), "Síndico"))
     if presidenta:
-        puntos.append(("76%", "86%", "a3", _iniciales(presidenta["nombre"]), "Presidenta"))
+        puntos.append(("76%", "86%", "a3", _iniciales(presidenta["nombre"]),
+                       "Presidenta" if "presidenta" in plano(presidenta["cargo"]) else "Presidente"))
     anillos = "".join(f'<div class="p" style="left:{x};top:{y}"><div class="av {c}">{e(i)}</div>{e(t)}</div>'
                       for x, y, c, i, t in puntos)
     visual = (f'<div class="ring" role="img" aria-label="Tú al centro; cerca, tu presidente auxiliar; '
@@ -735,37 +827,60 @@ def representantes(junta: int = 0, m: str = "21019"):
               f'<div class="c"></div><div class="c c2"></div><div class="c c3"></div>{anillos}</div>'
               '<p class="sub" style="font-size:16px">Primero ves a quien tienes más cerca de tu casa y al final a quien '
               'gobierna para todo el municipio. Todas deciden juntas en el Cabildo.</p>')
-    temas_unicos = sorted({f["comision"] for f in regidores})
+    cortos_unicos = []
+    for f in regidores:
+        corto = tema_corto(f["comision"])
+        if corto not in cortos_unicos:
+            cortos_unicos.append(corto)
     botones = ('<button class="on" type="button" onclick="filtrarTemaBtn(this, \'\')">Todos</button>' + "".join(
-        f'<button type="button" onclick="filtrarTemaBtn(this, \'{e(t)}\')">{icono(_icono_tema(t), "Icono del tema " + t)}{e(t)}</button>'
-        for t in temas_unicos))
-    hace_reg = f_reg["funcion"] if f_reg else "Participa en las decisiones del Cabildo."
+        f'<button type="button" onclick="filtrarTemaBtn(this, \'{e(corto)}\')">{icono(ic, "Icono del tema " + corto)}{e(corto)}</button>'
+        for ic, corto in cortos_unicos))
     tarjetas_reg = []
     for i, f in enumerate(regidores):
+        ic_corto, corto = tema_corto(f["comision"])
         tarjetas_reg.append(
-            f'<details class="regcard{" mas" if i >= 6 else ""}" data-tema="{e(f["comision"])}"{" hidden" if i >= 6 else ""}><summary>'
+            f'<div class="regcard{" mas" if i >= 5 else ""}" data-tema="{e(corto)}"{" hidden" if i >= 5 else ""}>'
             f'<span class="av a2" aria-hidden="true">{e(_iniciales(f["nombre"]))}</span>'
-            f'<span>{e(f["nombre"])}<br><span class="small muted" style="font-weight:400">{icono(_icono_tema(f["comision"]), "Icono del tema " + f["comision"])} {e(f["comision"])}</span></span></summary>'
-            f'<p style="font-size:15px;margin-top:8px">{e(f["cargo"])}</p>'
-            f'<p style="font-size:15px"><strong>Qué hace:</strong> {e(hace_reg)}</p>{_fuente_de(f, urls)}'
-            f'<p><a class="btn ghost" href="/revisar/{f["id"]}">Ver su trabajo</a></p></details>')
+            f'<b class="nombre">{e(f["nombre"])}</b>'
+            f'<span class="t">{icono(ic_corto, "Icono del tema " + corto)}{e(corto)}</span>'
+            f'<span class="small muted">Tema corto: explicación general. El nombre oficial está en su ficha.</span>'
+            f'<a class="btn ghost" href="/revisar/{f["id"]}">Ver su trabajo</a></div>')
     reggrid = "".join(tarjetas_reg)
-    ver_mas = (f'<p><button class="btn ghost" type="button" onclick="verMasRegidores(this)">Ver las otras {len(regidores) - 6}</button></p>'
-               if len(regidores) > 6 else "")
+    ver_mas = (f'<p><button class="btn ghost" type="button" onclick="verMasRegidores(this)">Ver las otras {len(regidores) - 5}</button></p>'
+               if len(regidores) > 5 else "")
+    if regidores:
+        cabildo_html = (f'<div class="filters" role="group" aria-label="¿De qué se encarga?">{botones}</div>'
+                        f'<div class="tier"><h3>{icono("ppl", "Dibujo de personas")}Cabildo · {len(regidores)} regidurías</h3>'
+                        f'<div class="reggrid">{reggrid}</div>{ver_mas}</div>')
+    else:
+        cabildo_html = (f'<div class="tier"><h3>{icono("ppl", "Dibujo de personas")}Cabildo</h3>'
+                        + _vacio("ppl", "Todavía no encontramos las regidurías de este municipio",
+                                 "Sí sabemos que la presidencia, la sindicatura y las regidurías deciden juntas "
+                                 "en el Cabildo; sus nombres no están en las fuentes revisadas hasta hoy.",
+                                 [("/actua", "Pide información", False), ("/acuerdos", "Ver los acuerdos", True)]) + '</div>')
+    presidencia_html = "".join(nivel_presidencia) or _vacio(
+        "home", "Todavía no encontramos quién encabeza la presidencia",
+        "Sí sabemos que la presidencia encabeza el gobierno del municipio; su nombre no está en las "
+        "fuentes revisadas hasta hoy.",
+        [("/actua", "Pide información", False), ("/acuerdos", "Ver los acuerdos", True)])
     izquierda = ('<div style="display:flex;flex-direction:column;gap:20px">'
                  f'<div class="tier"><h3>{icono("pin", "Dibujo de un pin de mapa")}Tu comunidad</h3>'
                  + "".join(nivel_comunidad) + '</div>'
-                 f'<div class="filters" role="group" aria-label="¿De qué se encarga?">{botones}</div>'
-                 f'<div class="tier"><h3>{icono("ppl", "Dibujo de personas")}Cabildo · {len(regidores)} regidurías</h3>'
-                 f'<div class="reggrid">{reggrid}</div>{ver_mas}</div>'
-                 f'<div class="tier"><h3>{icono("home", "Dibujo de una casa")}Presidencia</h3>'
-                 + "".join(nivel_presidencia)
+                 + cabildo_html
+                 + f'<div class="tier"><h3>{icono("home", "Dibujo de una casa")}Presidencia</h3>'
+                 + presidencia_html
                  + """<div class="card"><h3>El Cabildo completo</h3>
 <p style="font-size:16px">Presidenta, síndico y regidores se reúnen, discuten y votan. Lo que acuerdan queda en documentos públicos.</p>
 <p><a class="btn" href="/temas">¿Qué te preocupa?</a></p>
 <p><a class="btn ghost" href="/acuerdos">Ver los acuerdos</a></p></div></div></div>""")
-    derecha = (f'<div class="card sticky" style="text-align:center">{visual}'
-               '<p class="small muted">Más cerca del centro = más cerca de ti.</p></div>')
+    if len(puntos) > 1:
+        derecha = (f'<div class="card sticky" style="text-align:center">{visual}'
+                   '<p class="small muted">Más cerca del centro = más cerca de ti.</p></div>')
+    else:
+        derecha = _vacio("ppl", "Todavía no podemos dibujar tu gobierno",
+                         "Aún no tenemos personas con cita verificada para poner en el diagrama; "
+                         "en cuanto las encontremos, aparecerán aquí alrededor de ti.",
+                         [("/actua", "Pide información", False), ("/acuerdos", "Ver los acuerdos", True)])
     cuerpo = f'<div class="grid g-side">{izquierda}{derecha}</div>'
     with _con() as con:
         mun = _filas(con, "SELECT nombre, estado FROM municipios WHERE clave_inegi = ?", (m,))
@@ -807,7 +922,7 @@ def tema(clave: str):
                    f'<p class="sub" style="font-size:15px">De {e(titulo.lower())} se encarga</p><h3>{e(regidor["nombre"])}</h3>'
                    f'<p style="font-size:16px">{e(regidor["cargo"])}</p>'
                    f'<p style="font-size:16px">Comisión: {e(comision["nombre"])}</p>{marca}'
-                   f'<p style="font-size:16px"><strong>Qué hace:</strong> {e(f_reg["funcion"]) if f_reg else ""}</p>'
+                   f'<p style="font-size:16px"><strong>Qué hace:</strong> {e(f_reg["funcion"]) if f_reg else "todavía no tenemos la descripción de qué hacen las regidurías en las fuentes revisadas; sí sabemos qué comisión atiende este tema, la de arriba."}</p>'
                    f'{_fuente_de(comision, urls)}{_fuente_de(regidor, urls)}'
                    f'<p><a class="btn" href="/revisar/{regidor["id"]}">Ver qué ha hecho</a></p></div></div>')
     else:
@@ -828,8 +943,14 @@ def revisar():
         f'<p><a class="btn ghost" href="/revisar/{f["id"]}">Revisa su trabajo</a></p></div></div>' for f in funcionarios)
     tarjetas += "".join(
         f'<div class="card person"><div class="av" style="margin:0" aria-hidden="true">{e(_iniciales(j["presidente"] or j["nombre"]))}</div><div>'
-        f'<h3>{e(j["presidente"] or "")}</h3><p class="sub" style="font-size:16px">Presidente auxiliar de {e(j["nombre"])}</p>'
+        f'<h3>{e(j["presidente"] or j["nombre"])}</h3><p class="sub" style="font-size:16px">'
+        f'{"Presidente auxiliar de " + e(j["nombre"]) if j["presidente"] else "Junta auxiliar de " + e(j["nombre"]) + ": todavía no tenemos el nombre de su presidente auxiliar en las fuentes revisadas"}</p>'
         f'<p><a class="btn ghost" href="/actua?para={e(j["nombre"])}">Pregúntale o pide información</a></p></div></div>' for j in juntas)
+    if not tarjetas:
+        return pagina("Revisa su trabajo", _vacio(
+            "ppl", "Todavía no tenemos personas para revisar",
+            "Aún no hay funcionarios ni juntas con cita verificada en las fuentes revisadas.",
+            [("/representantes", "Ver tu gobierno", False), ("/acuerdos", "Ver los acuerdos", True)]), paso=4)
     return pagina("Revisa su trabajo", "<p>Elige a una persona para ver qué propuso y qué se aprobó.</p>"
                   f'<div class="cols">{tarjetas}</div>', paso=4)
 
@@ -862,17 +983,28 @@ def revisar_persona(id_: int):
                        if ev["superpuesta"] else "")
                     + f'<p style="font-size:16px">{len(json.loads(ev["sam_resultado"]).get("objetos", []))} parte(s) marcada(s) · sin confirmar</p>'
                       f'<p><a href="/evidencia/{ev["id"]}">Ver la evidencia completa</a></p></div>' for ev in evidencias)
-    tag = (f'<span class="tag">{icono("road" if "desarrollo urbano" in plano(f["comision"] or "") else "doc", "Icono del tema")} '
-           f'{e(f["comision"])}</span>' if f["comision"] else f'<span class="tag">{e(f["cargo"])}</span>')
+    if f["comision"]:
+        ic_corto, corto = tema_corto(f["comision"])
+        tag = (f'<span class="tag">{icono(ic_corto, "Icono del tema")} {e(corto)}</span>'
+               f'<p class="small muted">Nombre oficial de su comisión: {e(f["comision"])}. '
+               'El tema corto de arriba es una explicación general, no el nombre oficial.</p>')
+    else:
+        tag = f'<span class="tag">{e(f["cargo"])}</span>'
     n_fotos = len(evidencias)
     izquierda = (f'<div style="display:flex;flex-direction:column;gap:16px">'
                  f'<div class="person"><div class="av a2 l" aria-hidden="true">{e(_iniciales(f["nombre"]))}</div>'
                  f'<div><h2 style="margin:0">{e(f["nombre"])}</h2>{tag}{_fuente_de(f, urls)}</div></div>'
-                 f'<div class="card"><h3>¿Qué hace?</h3><p style="font-size:16px">{e(f_fun["funcion"]) if f_fun else ""}</p>'
-                 f'{_fuente_de(f_fun, urls) if f_fun else ""}</div>'
+                 f'<div class="card"><h3>¿Qué hace?</h3>'
+                 + (f'<p style="font-size:16px">{e(f_fun["funcion"])}</p>{_fuente_de(f_fun, urls)}' if f_fun else
+                    '<p style="font-size:16px">Todavía no tenemos la descripción de qué hace este cargo en las '
+                    'fuentes revisadas. Sí sabemos su cargo oficial, el de arriba, con su fuente.</p>'
+                    f'<p><a class="btn ghost" href="/actua?para={e(f["nombre"])}">Pide la descripción por transparencia</a></p>')
+                 + '</div>'
                  f'<div class="card"><h3 style="margin-bottom:14px">Lo que ha propuesto</h3>'
                  + (f'<div class="tl">{linea}</div>' if acuerdos else
-                    '<p style="font-size:16px">En los acuerdos revisados no aparece como proponente. Esto solo cubre los documentos cargados hasta hoy.</p>')
+                    '<p style="font-size:16px">En los acuerdos revisados no aparece como proponente. '
+                    'Esto solo cubre los documentos cargados hasta hoy.</p>'
+                    '<p><a class="btn ghost" href="/acuerdos">Ver los acuerdos de Cabildo</a></p>')
                  + '</div>'
                  + '<div class="card"><h3>Lo que reportan vecinos</h3>'
                  + (fotos or '<p style="font-size:16px">Todavía no hay fotos ciudadanas registradas.</p>')
@@ -958,9 +1090,7 @@ def _buscador_html(q: str, resultados: list[dict], action: str = "/") -> tuple[s
             items += (f'<a href="{enlace}" data-nombre="{e(r["nom_loc"])}">{icono("pin", "Dibujo de un pin de mapa")}'
                       f'<span><b>{e(r["nom_loc"])}</b><br><span class="small muted">{e(r["nom_mun"])}, {e(r["nom_ent"])}</span></span>'
                       f'<small class="chip {clase}">{texto_chip}</small></a>')
-        sugg = (f'<div class="card sugg" id="lista-resultados">{items}</div>' if items else
-                '<p class="sub">No encontramos esa localidad en el catálogo de INEGI. '
-                'Revisa cómo se escribe o busca tu municipio.</p>')
+        sugg = (f'<div class="card sugg" id="lista-resultados">{items}</div>' if items else _sin_resultados(q))
     buscador = (f'<form method="get" action="{action}"><label class="search">{icono("srch", "Dibujo de una lupa")}'
                 f'<input name="q" type="search" value="{e(q)}" placeholder="Escribe tu localidad o municipio" '
                 'aria-label="Busca tu localidad o municipio">'
@@ -1002,7 +1132,7 @@ def inicio(q: str = ""):
 <div class="step"><span class="num">3</span><div><h3>Revisa y actúa</h3><p class="small muted">Con documentos oficiales y pasos claros.</p></div></div>
 </div>
 <h2>Municipios que ya revisamos</h2>
-<div class="card list">{ya}</div>"""
+{('<div class="card list">' + ya + '</div>') if ya else _vacio("spark", "Aún no revisamos ningún municipio", "Cuando Muse revise el primero, con aprobación de una persona del equipo, aparecerá aquí. Busca el tuyo aquí arriba y pídelo.", [("/donde", "Busca tu municipio", False)])}"""
     return pagina("¿Quién gobierna donde vives?", cuerpo, sin_titulo=True, seccion="inicio")
 
 
@@ -1025,9 +1155,7 @@ def donde(q: str = ""):
             else:
                 items += (f'<a href="/municipio/{e(r["clave_mun"])}" data-nombre="{e(r["nom_loc"])}">'
                           f'{icono("pin", "Dibujo de un pin de mapa")}{e(r["nom_loc"])} — {e(r["nom_mun"])}, {e(r["nom_ent"])}</a>')
-        resultados_html = (f'<div class="card list" id="lista-resultados">{items}</div>' if items else
-                           '<p class="sub">No encontramos esa localidad en el catálogo de INEGI. '
-                           'Revisa cómo se escribe o busca tu municipio.</p>')
+        resultados_html = (f'<div class="card list" id="lista-resultados">{items}</div>' if items else _sin_resultados(q))
     opciones = "".join(
         f'<a href="/representantes?junta={j["id"]}" data-nombre="{e(j["nombre"])} {e(j["presidente"] or "")}">'
         f'{icono("pin", "Dibujo de un pin de mapa")}{e(j["nombre"])}</a>' for j in juntas)
@@ -1046,7 +1174,7 @@ def donde(q: str = ""):
     cuerpo = f"""<p class="sub">Busca tu localidad en todo México (catálogo oficial de INEGI). Así te mostramos primero a las personas más cercanas a ti. No guardamos tu respuesta.</p>
 {buscador}{sugg}
 <h2>Municipios que ya revisamos</h2>
-<div class="card list">{ya}</div>
+{('<div class="card list">' + ya + '</div>') if ya else _vacio("spark", "Aún no revisamos ningún municipio", "Cuando Muse revise el primero, con aprobación de una persona del equipo, aparecerá aquí.", [("/", "Busca tu municipio", False)])}
 <h2>Si vives en Atlixco, elige tu junta auxiliar</h2>
 <div class="card list" id="lista-juntas">
 <a href="/representantes" data-nombre="atlixco centro colonias cabecera">{icono("pin", "Dibujo de un pin de mapa")}Atlixco centro y colonias</a>
@@ -1180,8 +1308,8 @@ def admin(token: str = ""):
     hist = "".join(f'<div class="tarjeta">{e(s["nombre"])}, {e(s["estado"])}: solicitud {e(s["estado"])} '
                    f'(decidida el {e(s["decidida"] or "—")}) · <a href="/indexando/{e(s["clave_inegi"])}">ver avance</a></div>'
                    for s in recientes)
-    cuerpo = ('<h2>Solicitudes por decidir</h2>' + (lista or '<p>No hay solicitudes pendientes.</p>')
-              + '<h2>Decisiones recientes</h2>' + hist)
+    cuerpo = ('<h2>Solicitudes por decidir</h2>' + (lista or '<p>No hay solicitudes pendientes. Cuando una persona pida revisar un municipio, aparecerá aquí para que la apruebes o la rechaces.</p>')
+              + '<h2>Decisiones recientes</h2>' + (hist or '<p>Todavía no hay decisiones. Las solicitudes que apruebes o rechaces quedarán aquí.</p>'))
     return pagina("Administración", cuerpo)
 
 
@@ -1266,7 +1394,11 @@ def indexando(clave: str):
                 citas_ok += f[1] or 0
             except sqlite3.OperationalError:
                 pass
-    feed = "".join(_evento_html(ev) for ev in reversed(eventos)) or '<p class="sub">Todavía no hay eventos.</p>'
+    feed = "".join(_evento_html(ev) for ev in reversed(eventos)) or _vacio(
+        "spark", "Todavía no hay pasos de esta revisión",
+        "Cuando una persona del equipo apruebe la solicitud, aquí verás paso a paso lo que Muse encuentra.",
+        [(f"/municipio/{clave}", "Ver el municipio", False),
+         ("/representantes?m=21019", "Ver un ejemplo: Atlixco", True)])
     estado = {"indexado": "Ya terminamos de revisar este municipio.",
               "indexando": "Muse está leyendo los documentos públicos de este municipio…",
               "solicitado": "Solicitud registrada. Falta que una persona del equipo la apruebe.",
@@ -1295,6 +1427,8 @@ def indexando(clave: str):
         vistos.add(nombre_paso)
         docs_html += (f'<div class="doc"{estado_doc}><span class="thumb">{icono("doc", "Dibujo de un documento")}</span>'
                       f'<div><b>{etiqueta}</b><br>{chip_}</div></div>')
+    docs_vacio = (f'<p class="small">Aún no empieza la búsqueda. Cuando empiece, aquí verás cada documento.</p>'
+                  f'<p><a href="/municipio/{e(clave)}">Ver el municipio</a></p>')
     costo = _costo_indexacion(clave)
     cuerpo = (f'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px">'
               f'<h2 style="margin:0">Revisando {e(m["nombre"])}</h2>{en_vivo}</div>'
@@ -1305,7 +1439,7 @@ def indexando(clave: str):
               f'<div class="card"><div class="kpis"><div class="kpi"><b>{len(docs)}</b><span class="small">documentos</span></div>'
               f'<div class="kpi"><b style="color:var(--ok)">{citas_ok}/{citas_total}</b><span class="small">citas verificadas</span></div>'
               f'<div class="kpi"><b>${costo:.2f}</b><span class="small">costo</span></div></div></div>'
-              f'<div class="card" style="display:flex;flex-direction:column;gap:10px"><h3>Documentos buscados</h3>{docs_html or "<p class=small>Aún no empieza la búsqueda.</p>"}</div>'
+              f'<div class="card" style="display:flex;flex-direction:column;gap:10px"><h3>Documentos buscados</h3>{docs_html or docs_vacio}</div>'
               + enlace + '</div></div>'
               + f"""<script>
 var fuente = new EventSource('/indexando/{e(clave)}/eventos');
@@ -1381,7 +1515,10 @@ def funcionarios():
         Acuerdos propuestos: {len(p['acuerdos'])} · Menciones: {p['menciones']} ({p['verificadas']} verificadas) ·
         Hallazgos relacionados: {p['hallazgos']}</div>"""
         for p in sorted(personas.values(), key=lambda x: x["nombre"]))
-    return pagina("Funcionarios", f'<div class="cols">{tarjetas}</div>' if tarjetas else "<p>Sin personas registradas en los acuerdos.</p>")
+    return pagina("Funcionarios", f'<div class="cols">{tarjetas}</div>' if tarjetas else _vacio(
+        "ppl", "Todavía no hay personas en los acuerdos revisados",
+        "Cuando un acuerdo nombre a quien lo propuso, esa persona aparecerá aquí con su cita.",
+        [("/acuerdos", "Ver los acuerdos", False), ("/representantes", "Ver tu gobierno", True)]))
 
 
 @app.get("/funcionarios/{clave}", response_class=HTMLResponse)
@@ -1402,7 +1539,7 @@ def funcionario(clave: str):
     cuerpo = f"""<p><span class="debil">Cargo tal como consta en la fuente:</span>
 {e(', '.join(sorted(c for c in p['cargos'] if c)) or 'sin cargo registrado')}</p>{ayudas}
 <p>Acuerdos propuestos: {len(p['acuerdos'])} · Menciones: {p['menciones']} ({p['verificadas']} verificadas,
-{p['menciones'] - p['verificadas']} no verificadas) · Hallazgos relacionados: {p['hallazgos']}</p>{acuerdos}"""
+{p['menciones'] - p['verificadas']} no verificadas) · Hallazgos relacionados: {p['hallazgos']}</p>{acuerdos or '<p>En los acuerdos revisados hasta hoy no aparece como proponente.</p>'}"""
     return pagina(p["nombre"], cuerpo)
 
 
@@ -1419,7 +1556,10 @@ def acuerdos():
     intro = ("<p>Estos son acuerdos que tomó el Ayuntamiento en sus reuniones. "
              "Abre uno para verlo en palabras simples, con el texto original y su fuente.</p>"
              + ayuda("Cabildo", glos, urls) + ayuda("Dictamen", glos, urls))
-    return pagina("Acuerdos de Cabildo", intro + (f'<div class="cols">{tarjetas}</div>' if tarjetas else "<p>Sin acuerdos registrados.</p>"))
+    return pagina("Acuerdos de Cabildo", intro + (f'<div class="cols">{tarjetas}</div>' if tarjetas else _vacio(
+        "doc", "Todavía no hay acuerdos registrados",
+        "Cuando leamos la primera gaceta o acta, sus acuerdos aparecerán aquí con su fuente.",
+        [("/actua", "Pide información", False), ("/representantes", "Ver tu gobierno", True)])))
 
 
 @app.get("/acuerdos/{id_}", response_class=HTMLResponse)
@@ -1437,7 +1577,7 @@ def acuerdo(id_: int):
         resumen = _resumen_html(con, "acuerdo", id_, urls)
         rutas = _rutas_html(con, f"el acuerdo «{a['acuerdo'][:120]}» del Ayuntamiento de Atlixco", urls)
     personas = "".join(f"<li>{e(p['nombre'])} — {e(p['cargo'] or 'sin cargo registrado')}</li>"
-                       for p in json.loads(a["propuesto_por"])) or "<li>Sin proponentes registrados</li>"
+                       for p in json.loads(a["propuesto_por"])) or "<li>Sin proponentes registrados en la fuente revisada; puedes pedir ese dato por transparencia.</li>"
     detalle_menciones = "".join(
         f"""<div class="tarjeta"><span class="marca">{e(m['verificacion'])}</span>
         Página {e(m['pagina'])} de {e(m['archivo'])}{fuente_html(m['archivo'], m['pagina'], m['fragmento'], urls)}</div>"""
@@ -1474,6 +1614,12 @@ def presupuesto_():
              + ayuda("Presupuesto de Egresos", glos, urls) + ayuda("Capítulo del gasto", glos, urls)
              + ayuda("Partida", glos, urls) + ayuda("Inversión Pública", glos, urls)
              + ayuda("Servicios Personales", glos, urls))
+    if not partidas:
+        return pagina("Presupuesto de Egresos 2026", intro + _vacio(
+            "coin", "Todavía no hay partidas en las fuentes revisadas",
+            "El Presupuesto de Egresos es el plan de gastos del año; en cuanto lo leamos, cada grupo "
+            "de gasto aparecerá aquí con su monto y su fuente.",
+            [("/gastos", "Ver el gasto en 100 monedas", False), ("/actua", "Pide el presupuesto", True)]) + rutas)
     return pagina("Presupuesto de Egresos 2026",
                   intro + f"<table class=\"cards\"><tr><th>Capítulo y partida</th><th>Monto</th><th>Verificación y cita</th></tr>{filas}</table>" + rutas)
 
@@ -1548,7 +1694,7 @@ sin metadatos de ubicación.</p>
 <label for="objeto">Objeto observado</label>
 <input id="objeto" type="text" name="objeto" required>
 <button type="submit">Enviar evidencia</button></form>
-<h2>Evidencias registradas</h2>{tarjetas or '<p>Sin evidencias registradas.</p>'}"""
+<h2>Evidencias registradas</h2>{tarjetas or _vacio("cam", "Todavía no hay fotos de vecinos", "Sube la primera: por ejemplo, un bache o una luminaria apagada. La foto se guarda sin datos de ubicación.", [("/evidencia#foto", "Sube una foto", False)])}"""
     return pagina("Evidencia ciudadana", cuerpo)
 
 
