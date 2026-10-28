@@ -753,6 +753,64 @@ def test_indexador_filtros_y_topes():
             pass
 
 
+def test_diagrama_interactivo_sin_nodos_inventados():
+    """Cada nodo del diagrama es un enlace con nombre accesible a una ficha existente."""
+    import re
+    import gobierno
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        cols_f = ["nombre", "cargo", "comision", "archivo", "pagina", "fragmento", "verificacion"]
+        base = {"archivo": "g.html", "pagina": 1, "verificacion": "ok"}
+        with gobierno.conectar() as con:
+            gobierno._guardar(con, "funcionarios", cols_f, [
+                {**base, "nombre": "Ana Presidenta", "cargo": "Presidenta Municipal", "comision": None, "fragmento": "Ana Presidenta"},
+                {**base, "nombre": "Beto Síndico", "cargo": "Sindicatura Municipal", "comision": None, "fragmento": "Beto Síndico"},
+                {**base, "nombre": "Cora Regidora", "cargo": "Regiduría de Desarrollo Urbano, Obras y Servicios Públicos",
+                 "comision": "Desarrollo Urbano, Obras y Servicios Públicos", "fragmento": "Cora Regidora"},
+                {**base, "nombre": "Elena Regidora", "cargo": "Regiduría de Gobernación, Justicia y Seguridad Pública",
+                 "comision": "Gobernación, Justicia y Seguridad Pública", "fragmento": "Elena Regidora"},
+                {**base, "nombre": "Fabián Regidor", "cargo": "Regiduría de Salud y Asistencia Pública",
+                 "comision": "Salud y Asistencia Pública", "fragmento": "Fabián Regidor"}])
+            gobierno._guardar(con, "juntas_auxiliares", ["nombre", "presidente", "localidades", "archivo", "pagina", "fragmento", "verificacion"], [
+                {**base, "nombre": "Metepec", "presidente": "Dario Auxiliar", "localidades": "[]", "fragmento": "Dario Auxiliar Metepec"}])
+        with municipios.conectar() as con:
+            con.execute("INSERT INTO municipios VALUES ('20999', 'Puebla', 'Nopales', 'sin_revisar')")
+            con.commit()
+        cliente = TestClient(web.app)
+        rep = cliente.get("/representantes?junta=1").text
+        nodos = re.findall(r'<a class="p nodo"[^>]*href="([^"]+)"[^>]*aria-label="([^"]+)"', rep)
+        assert nodos, rep  # el diagrama tiene personas enlazadas, no dibujos inertes
+        nombres_db = {"Ana Presidenta", "Beto Síndico", "Cora Regidora", "Elena Regidora",
+                      "Fabián Regidor", "Dario Auxiliar"}
+        for href, etiqueta in nodos:
+            assert ", ver su ficha" in etiqueta, etiqueta
+            assert any(etiqueta.startswith(n + ",") for n in nombres_db), etiqueta  # nadie inventado
+            if href.startswith("/revisar/"):
+                assert int(href.rsplit("/", 1)[1]) in {1, 2, 3, 4, 5}, href  # ficha que existe
+            assert cliente.get(href).status_code == 200, href
+        # Tab de cercano a lejano: auxiliar, regidora de obras, síndico, presidenta.
+        orden = [etiqueta for _, etiqueta in nodos]
+        assert orden.index(next(x for x in orden if x.startswith("Dario"))) < \
+            orden.index(next(x for x in orden if x.startswith("Cora"))) < \
+            orden.index(next(x for x in orden if x.startswith("Beto"))) < \
+            orden.index(next(x for x in orden if x.startswith("Ana"))), orden
+        assert "Persona Inventada" not in rep
+        assert 'id="grupo-reg"' in rep and 'aria-controls="reggrid"' in rep and 'id="reggrid"' in rep
+        assert 'id="tu-nodo"' in rep and 'href="#"' not in rep  # Tú no es un enlace
+        assert "Más cerca del centro = más cerca de ti" in rep
+        assert 'data-tema="Obras y calles"' in rep  # el filtro por tema también atenúa el diagrama
+        assert "prefers-reduced-motion: reduce" in web.CSS and ".nodo .tip" in web.CSS
+        assert "min-height: 44px" in web.CSS  # tamaño táctil mínimo de los nodos
+        sin = cliente.get("/representantes?m=20999").text
+        assert "Aún no revisamos Nopales" in sin
+        assert 'class="ring"' not in sin and 'class="p nodo"' not in sin  # sin nodos vacíos
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):

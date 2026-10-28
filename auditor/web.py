@@ -134,6 +134,15 @@ main .btn, main .boton { display: flex; width: 100%; }
 .ring { position: relative; width: 100%; max-width: 420px; aspect-ratio: 1; margin: 0 auto; }
 .ring .c { position: absolute; border-radius: 50%; border: 2px dashed var(--line); inset: 0; } .ring .c2 { inset: 17%; } .ring .c3 { inset: 34%; border-style: solid; background: var(--accent-soft); border-color: transparent; }
 .ring .p { position: absolute; transform: translate(-50%,-50%); text-align: center; font-size: 13px; font-weight: 600; width: 96px; line-height: 1.2; }
+.nodo, .nodo-tu { text-decoration: none; color: inherit; background: none; border: 0; font: inherit; cursor: pointer; min-width: 44px; min-height: 44px; padding: 2px; }
+.nodo .tip, .nodo-tu .tip { position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 10px; border-radius: 10px; font-size: 13px; line-height: 1.25; width: max-content; max-width: 190px; opacity: 0; pointer-events: none; transition: opacity .15s ease; z-index: 6; }
+.nodo:hover .tip, .nodo:focus-visible .tip, .nodo.show .tip, .nodo-tu:hover .tip, .nodo-tu:focus-visible .tip, .nodo-tu.show .tip { opacity: 1; }
+.tip .vf { display: none; margin-top: 6px; background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 8px 10px; font-weight: 700; }
+@media (hover: none) { .tip .vf { display: block; } }
+.ring.filtrando .nodo:not(.on) { opacity: .35; }
+.nodo.hl .av { box-shadow: 0 0 0 3px var(--accent); }
+.card.hl, .regcard.hl { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .nodo .tip, .nodo-tu .tip { transition: none; } }
 .av, .avatar { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; margin: 0 auto 4px; flex: none; background: var(--accent); font-size: 17px; }
 .av.l { width: 84px; height: 84px; font-size: 28px; }
 .av.you, .v4 { background: var(--ink); color: var(--bg); } .v1, .av { background: #5b3fd1; } .v2, .av.a2 { background: #0e7490; } .v3, .av.a3 { background: #475569; }
@@ -220,8 +229,9 @@ function filtrar(input, id){ var q = input.value.toLowerCase(); document.querySe
 function filtrarTema(sel){ document.querySelectorAll('[data-tema]').forEach(function(el){ el.style.display = (!sel.value || el.getAttribute('data-tema') === sel.value) ? '' : 'none'; }); }
 function menuA11y(){ var m = document.getElementById('menu-a11y'); if(m) m.hidden = !m.hidden; }
 function ponerTema(t){ try{ if(t === 'system'){ localStorage.removeItem('tema'); document.documentElement.removeAttribute('data-theme'); } else { localStorage.setItem('tema', t); document.documentElement.dataset.theme = t; } }catch(err){} }
-function filtrarTemaBtn(btn, tema){ document.querySelectorAll('.filters button').forEach(function(b){ b.classList.toggle('on', b === btn); }); var g = document.querySelector('.reggrid'); if(!g) return; g.classList.toggle('filtrando', !!tema); g.querySelectorAll('[data-tema]').forEach(function(el){ el.classList.toggle('on', !!tema && el.getAttribute('data-tema') === tema); }); }
-function verMasRegidores(btn){ document.querySelectorAll('.regcard.mas').forEach(function(el){ el.hidden = false; }); btn.remove(); }
+function filtrarTemaBtn(btn, tema){ document.querySelectorAll('.filters button').forEach(function(b){ b.classList.toggle('on', b === btn); }); var g = document.querySelector('.reggrid'); if(g){ g.classList.toggle('filtrando', !!tema); g.querySelectorAll('[data-tema]').forEach(function(el){ el.classList.toggle('on', !!tema && el.getAttribute('data-tema') === tema); }); } var r = document.querySelector('.ring'); if(r){ r.classList.toggle('filtrando', !!tema); r.querySelectorAll('.nodo').forEach(function(el){ var ts = el.getAttribute('data-temas') || el.getAttribute('data-tema') || ''; el.classList.toggle('on', !!tema && ts.split('|').indexOf(tema) !== -1); }); } }
+function expandirRegidores(){ document.querySelectorAll('.regcard.mas').forEach(function(el){ el.hidden = false; }); }
+function verMasRegidores(btn){ expandirRegidores(); btn.remove(); }
 async function compartir(url, texto){ try{ var r = await fetch(url); var b = await r.blob(); var f = new File([b], 'tarjeta.png', {type: 'image/png'}); if(navigator.canShare && navigator.canShare({files: [f]})){ await navigator.share({files: [f], text: texto}); return; } }catch(err){} var a = document.createElement('a'); a.href = url; a.download = 'tarjeta.png'; a.click(); }
 </script>"""
 
@@ -711,7 +721,7 @@ TEMAS = [
 ]
 
 
-def _tarjeta_persona(titulo, nombre, hace, fila_fuente, contacto, urls, enlace, distancia, color=""):
+def _tarjeta_persona(titulo, nombre, hace, fila_fuente, contacto, urls, enlace, distancia, color="", data_id=""):
     contacto_html = ""
     if contacto:
         datos = " · ".join(x for x in [contacto.get("telefono"), contacto.get("direccion"), contacto.get("horario")] if x)
@@ -721,7 +731,7 @@ def _tarjeta_persona(titulo, nombre, hace, fila_fuente, contacto, urls, enlace, 
                  '<p style="font-size:16px"><strong>Qué hace:</strong> todavía no tenemos la descripción de este '
                  'cargo en las fuentes revisadas de este municipio. Sí sabemos su cargo oficial, el de arriba; '
                  'la descripción puedes pedirla por transparencia.</p>')
-    return (f'<div class="card person"><div class="av {color}" style="margin:0" aria-hidden="true">{e(_iniciales(nombre))}</div><div>'
+    return (f'<div class="card person"{" data-tarjeta=\"" + e(data_id) + "\"" if data_id else ""}><div class="av {color}" style="margin:0" aria-hidden="true">{e(_iniciales(nombre))}</div><div>'
             f'<span class="tag">{e(distancia)}</span><h3>{e(nombre)}</h3>'
             f'<p class="sub" style="font-size:16px">{e(titulo)}</p>'
             f'{hace_html}{_fuente_de(fila_fuente, urls)}{contacto_html}'
@@ -738,6 +748,21 @@ def _icono_tema(texto_: str) -> str:
         if clave in t:
             return ic
     return "ppl"
+
+
+def _rol_corto(fila) -> str:
+    """Rol breve para el nombre accesible del nodo: 'regidora o regidor de obras y calles'."""
+    cargo, comision = fila.get("cargo") or "", fila.get("comision") or ""
+    p = plano(cargo)
+    if "presidenta" in p:
+        return "presidenta municipal"
+    if "presidente" in p:
+        return "presidente municipal"
+    if "sindic" in p:
+        return "síndico municipal"
+    if comision:
+        return f"regidora o regidor de {tema_corto(comision)[1].lower()}"
+    return (cargo or "funcionaria o funcionario").lower()
 
 
 @app.get("/representantes", response_class=HTMLResponse)
@@ -774,7 +799,7 @@ def representantes(junta: int = 0, m: str = "21019"):
             elegida["presidente"] or elegida["nombre"],
             f_aux["funcion"] if f_aux else "Atiende los asuntos de su junta auxiliar.",
             elegida, _buscar_fila(contactos, "atención ciudadana", "ayuntamiento de atlixco"), urls,
-            f"/actua?para={elegida['nombre']}", "Lo más cercano a ti"))
+            f"/actua?para={elegida['nombre']}", "Lo más cercano a ti", data_id=f"j{elegida['id']}"))
     f_insp = _buscar_fila(funciones, "inspector")
     hace_insp = (f'<p><strong>Qué hace:</strong> {e(f_insp["funcion"])}</p>' if f_insp else
                  '<p><strong>Qué hace:</strong> es la autoridad de tu colonia ante el Ayuntamiento. '
@@ -795,7 +820,7 @@ def representantes(junta: int = 0, m: str = "21019"):
             "Síndico municipal: representa legalmente al municipio", sindico["nombre"],
             f_sin["funcion"] if f_sin else "", sindico,
             _buscar_fila(contactos, "atención ciudadana", "ayuntamiento de atlixco"), urls,
-            f"/revisar/{sindico['id']}", "Representa a todo el municipio", "a3"))
+            f"/revisar/{sindico['id']}", "Representa a todo el municipio", "a3", data_id=str(sindico["id"])))
     presidenta = _buscar_fila(funcionarios, "presidenta", "presidente")
     if presidenta:
         f_pre = _buscar_fila(funciones, "presidente municipal")
@@ -803,28 +828,50 @@ def representantes(junta: int = 0, m: str = "21019"):
             f"{presidenta['cargo']}: encabeza el gobierno del municipio", presidenta["nombre"],
             f_pre["funcion"] if f_pre else "", presidenta,
             _buscar_fila(contactos, "presidencia municipal"), urls, f"/revisar/{presidenta['id']}",
-            "Representa a todo el municipio", "a3"))
-    # Diagrama de círculos concéntricos: tú al centro y cada autoridad más lejos.
+            "Representa a todo el municipio", "a3", data_id=str(presidenta["id"])))
+    # Diagrama interactivo de círculos concéntricos: tú al centro y cada autoridad más lejos.
+    # Cada persona es un enlace a su ficha; el presidente auxiliar, sin ficha propia,
+    # lleva a su página para preguntarle. Solo entran personas en la base con cita (_gob).
     lugar = elegida["nombre"] if elegida else "Tu comunidad"
     reg_obras = _buscar_fila(funcionarios, "desarrollo urbano") or (regidores[0] if regidores else None)
     n_reg = f"+{len(regidores) - 1}" if len(regidores) > 1 else ""
-    puntos = [("50%", "50%", "you", "Tú", lugar)]
-    if elegida:
-        puntos.append(("50%", "22%", "", _iniciales(elegida["presidente"] or ""), "Presidente auxiliar"))
+
+    def nodo(x, y, color, nombre, rol, tema, href, clave, tema_dato=""):
+        return (f'<a class="p nodo" style="left:{x};top:{y}" href="{e(href)}" data-nodo="{e(clave)}" '
+                f'data-tema="{e(tema_dato)}" aria-label="{e(nombre)}, {e(rol)}, ver su ficha">'
+                f'<span class="av {color}" aria-hidden="true">{e(_iniciales(nombre))}</span>{e(tema)}'
+                f'<span class="tip" aria-hidden="true"><b>{e(nombre)}</b> · {e(tema)}'
+                f'<span class="vf">Ver ficha</span></span></a>')
+
+    nodos = [f'<button type="button" class="p nodo-tu" id="tu-nodo" style="left:50%;top:50%" '
+             f'aria-label="Tú, en {e(lugar)}. Más cerca del centro = más cerca de ti">'
+             f'<span class="av you" aria-hidden="true">Tú</span>{e(lugar)}'
+             f'<span class="tip" aria-hidden="true">Más cerca del centro = más cerca de ti</span></button>']
+    if elegida and elegida["presidente"]:
+        nodos.append(nodo("50%", "22%", "", elegida["presidente"],
+                          f"presidente auxiliar de {elegida['nombre']}", "Presidente auxiliar",
+                          f"/actua?para={elegida['nombre']}", f"j{elegida['id']}"))
     if reg_obras:
-        puntos.append(("16%", "40%", "a2", _iniciales(reg_obras["nombre"]), tema_corto(reg_obras["comision"])[1]))
+        nodos.append(nodo("16%", "40%", "a2", reg_obras["nombre"], _rol_corto(reg_obras),
+                          tema_corto(reg_obras["comision"])[1], f"/revisar/{reg_obras['id']}",
+                          str(reg_obras["id"]), tema_corto(reg_obras["comision"])[1]))
     if n_reg:
-        puntos.append(("84%", "40%", "a2", n_reg, "Regidores"))
+        temas_grupo = "|".join(dict.fromkeys(tema_corto(f["comision"])[1] for f in regidores))
+        nodos.append(f'<button type="button" class="p nodo grupo" id="grupo-reg" style="left:84%;top:40%" '
+                     f'aria-expanded="false" aria-controls="reggrid" data-temas="{e(temas_grupo)}" '
+                     f'aria-label="Ver las {len(regidores)} regidurías">'
+                     f'<span class="av a2" aria-hidden="true">{e(n_reg)}</span>Regidores'
+                     f'<span class="tip" aria-hidden="true">{len(regidores)} regidurías: ver la lista completa'
+                     f'<span class="vf">Ver regidurías</span></span></button>')
     if sindico:
-        puntos.append(("24%", "86%", "a3", _iniciales(sindico["nombre"]), "Síndico"))
+        nodos.append(nodo("24%", "86%", "a3", sindico["nombre"], _rol_corto(sindico), "Síndico",
+                          f"/revisar/{sindico['id']}", str(sindico["id"])))
     if presidenta:
-        puntos.append(("76%", "86%", "a3", _iniciales(presidenta["nombre"]),
-                       "Presidenta" if "presidenta" in plano(presidenta["cargo"]) else "Presidente"))
-    anillos = "".join(f'<div class="p" style="left:{x};top:{y}"><div class="av {c}">{e(i)}</div>{e(t)}</div>'
-                      for x, y, c, i, t in puntos)
-    visual = (f'<div class="ring" role="img" aria-label="Tú al centro; cerca, tu presidente auxiliar; '
-              f'luego regidoras y regidores; más lejos, el síndico y la presidenta municipal">'
-              f'<div class="c"></div><div class="c c2"></div><div class="c c3"></div>{anillos}</div>'
+        etiqueta_pre = "Presidenta" if "presidenta" in plano(presidenta["cargo"]) else "Presidente"
+        nodos.append(nodo("76%", "86%", "a3", presidenta["nombre"], _rol_corto(presidenta), etiqueta_pre,
+                          f"/revisar/{presidenta['id']}", str(presidenta["id"])))
+    visual = (f'<div class="ring"><div class="c"></div><div class="c c2"></div><div class="c c3"></div>'
+              f'{"".join(nodos)}</div>'
               '<p class="sub" style="font-size:16px">Primero ves a quien tienes más cerca de tu casa y al final a quien '
               'gobierna para todo el municipio. Todas deciden juntas en el Cabildo.</p>')
     cortos_unicos = []
@@ -839,7 +886,7 @@ def representantes(junta: int = 0, m: str = "21019"):
     for i, f in enumerate(regidores):
         ic_corto, corto = tema_corto(f["comision"])
         tarjetas_reg.append(
-            f'<div class="regcard{" mas" if i >= 5 else ""}" data-tema="{e(corto)}"{" hidden" if i >= 5 else ""}>'
+            f'<div class="regcard{" mas" if i >= 5 else ""}" data-tema="{e(corto)}" data-tarjeta="{f["id"]}"{" hidden" if i >= 5 else ""}>'
             f'<span class="av a2" aria-hidden="true">{e(_iniciales(f["nombre"]))}</span>'
             f'<b class="nombre">{e(f["nombre"])}</b>'
             f'<span class="t">{icono(ic_corto, "Icono del tema " + corto)}{e(corto)}</span>'
@@ -851,7 +898,7 @@ def representantes(junta: int = 0, m: str = "21019"):
     if regidores:
         cabildo_html = (f'<div class="filters" role="group" aria-label="¿De qué se encarga?">{botones}</div>'
                         f'<div class="tier"><h3>{icono("ppl", "Dibujo de personas")}Cabildo · {len(regidores)} regidurías</h3>'
-                        f'<div class="reggrid">{reggrid}</div>{ver_mas}</div>')
+                        f'<div class="reggrid" id="reggrid" tabindex="-1">{reggrid}</div>{ver_mas}</div>')
     else:
         cabildo_html = (f'<div class="tier"><h3>{icono("ppl", "Dibujo de personas")}Cabildo</h3>'
                         + _vacio("ppl", "Todavía no encontramos las regidurías de este municipio",
@@ -873,7 +920,7 @@ def representantes(junta: int = 0, m: str = "21019"):
 <p style="font-size:16px">Presidenta, síndico y regidores se reúnen, discuten y votan. Lo que acuerdan queda en documentos públicos.</p>
 <p><a class="btn" href="/temas">¿Qué te preocupa?</a></p>
 <p><a class="btn ghost" href="/acuerdos">Ver los acuerdos</a></p></div></div></div>""")
-    if len(puntos) > 1:
+    if len(nodos) > 1:
         derecha = (f'<div class="card sticky" style="text-align:center">{visual}'
                    '<p class="small muted">Más cerca del centro = más cerca de ti.</p></div>')
     else:
@@ -881,7 +928,35 @@ def representantes(junta: int = 0, m: str = "21019"):
                          "Aún no tenemos personas con cita verificada para poner en el diagrama; "
                          "en cuanto las encontremos, aparecerán aquí alrededor de ti.",
                          [("/actua", "Pide información", False), ("/acuerdos", "Ver los acuerdos", True)])
-    cuerpo = f'<div class="grid g-side">{izquierda}{derecha}</div>'
+    # JS mínimo y en línea: resalta la tarjeta pareja del nodo (y al revés), en teléfono el
+    # primer toque solo muestra la etiqueta, "Tú" explica el centro y el grupo despliega
+    # la cuadrícula. Sin JS, cada nodo sigue siendo un enlace normal a su ficha.
+    guion = """<script>
+(function(){
+ document.querySelectorAll('.nodo[data-nodo]').forEach(function(n){
+  var t=document.querySelector('[data-tarjeta="'+n.getAttribute('data-nodo')+'"]'); if(!t) return;
+  ['mouseenter','focus'].forEach(function(ev){ n.addEventListener(ev,function(){ t.classList.add('hl'); n.classList.add('hl'); }); });
+  ['mouseleave','blur'].forEach(function(ev){ n.addEventListener(ev,function(){ t.classList.remove('hl'); n.classList.remove('hl'); }); });
+ });
+ document.querySelectorAll('[data-tarjeta]').forEach(function(t){
+  var n=document.querySelector('.nodo[data-nodo="'+t.getAttribute('data-tarjeta')+'"]'); if(!n) return;
+  ['mouseenter','focusin'].forEach(function(ev){ t.addEventListener(ev,function(){ n.classList.add('hl'); t.classList.add('hl'); }); });
+  ['mouseleave','focusout'].forEach(function(ev){ t.addEventListener(ev,function(){ n.classList.remove('hl'); t.classList.remove('hl'); }); });
+ });
+ if(window.matchMedia('(hover: none)').matches){
+  document.querySelectorAll('a.nodo').forEach(function(n){ n.addEventListener('click',function(ev){
+   if(!n.classList.contains('show')){ ev.preventDefault();
+    document.querySelectorAll('.nodo.show,.nodo-tu.show').forEach(function(x){ x.classList.remove('show'); });
+    n.classList.add('show'); } }); });
+ }
+ var tu=document.getElementById('tu-nodo');
+ if(tu) tu.addEventListener('click',function(){ tu.classList.toggle('show'); });
+ var g=document.getElementById('grupo-reg');
+ if(g) g.addEventListener('click',function(){ expandirRegidores(); g.setAttribute('aria-expanded','true');
+  var grid=document.getElementById('reggrid'); if(grid) grid.focus(); });
+})();
+</script>"""
+    cuerpo = f'<div class="grid g-side">{izquierda}{derecha}</div>{guion}'
     with _con() as con:
         mun = _filas(con, "SELECT nombre, estado FROM municipios WHERE clave_inegi = ?", (m,))
     lugar = f'{mun[0]["nombre"]}, {mun[0]["estado"]}' if mun else None
