@@ -72,8 +72,10 @@ section{padding:40px 0;border-bottom:8px solid var(--surface-2)}
 .chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.warn{background:var(--warn-soft);color:var(--warn)}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
 .note{margin-top:24px;border:2px dashed var(--accent);border-radius:14px;padding:12px 16px;font-size:15px;background:var(--accent-soft)}
-.grid{display:grid;gap:16px}
-@media (min-width:768px){.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g-side{grid-template-columns:1.4fr 1fr;align-items:start}}
+.grid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+.grid>*,.ev>*{min-width:0}
+.src,.doc,.copy{overflow-wrap:anywhere}
+@media (min-width:768px){.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g-side{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);align-items:start}}
 
 /* inicio */
 .hero{display:grid;gap:28px;align-items:center}
@@ -96,7 +98,7 @@ section{padding:40px 0;border-bottom:8px solid var(--surface-2)}
 @keyframes p{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.live i{animation:none}}
 .feed{display:flex;flex-direction:column}
-.ev{display:grid;grid-template-columns:40px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.ev{display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
 .ev:last-child{border:0}
 .dot{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--surface-2);color:var(--muted)}
 .dot.ok{background:var(--ok-soft);color:var(--ok)}.dot.warn{background:var(--warn-soft);color:var(--warn)}.dot.now{background:var(--accent);color:var(--accent-ink)}
@@ -112,15 +114,22 @@ section{padding:40px 0;border-bottom:8px solid var(--surface-2)}
 .ring .p{position:absolute;transform:translate(-50%,-50%);text-align:center;font-size:13px;font-weight:600;width:96px;line-height:1.2}
 .av{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;margin:0 auto 4px;flex:none}
 .av.l{width:84px;height:84px;font-size:28px}
-.v1{background:#5b3fd1}.v2{background:#0e7490}.v3{background:#475569}.v4{background:#1c1a2b}
+.v1{background:#5b3fd1}.v2{background:#0e7490}.v3{background:#475569}.v4{background:var(--ink);color:var(--bg)}
 .tier{display:flex;flex-direction:column;gap:10px}
 .tier h3{display:flex;align-items:center;gap:8px;font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .person{display:flex;gap:14px;align-items:center}
-.reg{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-@media (min-width:600px){.reg{grid-template-columns:repeat(3,1fr)}}
-@media (min-width:1000px){.reg{grid-template-columns:repeat(4,1fr)}}
-.rg{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;gap:10px;align-items:center;font-size:14px;line-height:1.25;min-height:64px}
-.rg .av{width:38px;height:38px;font-size:14px;margin:0}
+.reg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (min-width:1000px){.reg{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.rg{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.rg .av{width:44px;height:44px;font-size:15px;margin:0}
+.rg b{font-size:16px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rg .t{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rg .t svg.i{width:16px;height:16px;color:var(--accent)}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:32px 20px;border:2px dashed var(--line);border-radius:var(--r);background:var(--surface)}
+.empty .ico{width:72px;height:72px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.empty .ico svg.i{width:36px;height:36px}
+.empty .acts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+[id]{scroll-margin-top:84px}
 .rg.on{border:2px solid var(--accent);background:var(--accent-soft)}
 .filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
 .filters button{flex:none;display:flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:600 15px system-ui}
@@ -285,13 +294,12 @@ section{padding:40px 0;border-bottom:8px solid var(--surface-2)}
         <div class="card person"><span class="av v1">MH</span><div><b>Miguel Ángel Hurtado Melchor</b><br><span class="small muted">Presidente auxiliar de Metepec · la autoridad más cercana a ti</span></div></div></div>
       <div class="tier"><h3><svg class="i" style="width:18px;height:18px"><use href="#ppl"/></svg>Cabildo · 12 regidurías</h3>
         <div class="reg">
-          <div class="rg on"><span class="av v2">SR</span><span><b>Senaida Reyes</b><br>Obras y servicios</span></div>
-          <div class="rg"><span class="av v2">EG</span><span><b>Eberth Guarneros</b><br>Seguridad</span></div>
-          <div class="rg"><span class="av v2">RS</span><span><b>Refugio Sánchez</b><br>Salud</span></div>
-          <div class="rg"><span class="av v2">FS</span><span><b>Favian Sedeño</b><br>Educación</span></div>
-          <div class="rg"><span class="av v2">AA</span><span><b>Ariadna Aiza</b><br>Medio ambiente</span></div>
-          <div class="rg"><span class="av v2">MG</span><span><b>Ma. Ángeles Gómez</b><br>Hacienda</span></div>
-          <div class="rg"><span class="av v2">+6</span><span>Ver las otras 6</span></div>
+          <div class="rg on"><span class="av v2">SR</span><b>Senaida Reyes Alarcón</b><span class="t"><svg class="i"><use href="#road"/></svg>Obras y calles</span></div>
+          <div class="rg"><span class="av v2">EG</span><b>Eberth Shadai Guarneros Ortiz</b><span class="t"><svg class="i"><use href="#shield"/></svg>Seguridad</span></div>
+          <div class="rg"><span class="av v2">RS</span><b>Refugio Alejandro Sánchez García</b><span class="t"><svg class="i"><use href="#heart"/></svg>Salud</span></div>
+          <div class="rg"><span class="av v2">FS</span><b>Favian Sergio Sedeño Camarillo</b><span class="t"><svg class="i"><use href="#book"/></svg>Educación</span></div>
+          <div class="rg"><span class="av v2">AA</span><b>Ariadna Astrid Aiza Aguilar</b><span class="t"><svg class="i"><use href="#leaf"/></svg>Medio ambiente</span></div>
+          <div class="rg" style="justify-content:center;align-items:center;color:var(--accent);font-weight:700">Ver las otras 7</div>
         </div></div>
       <div class="tier"><h3><svg class="i" style="width:18px;height:18px"><use href="#home"/></svg>Presidencia</h3>
         <div class="grid g2"><div class="card person"><span class="av v3">AA</span><div><b>Ariadna Ayala Camarillo</b><br><span class="small muted">Presidenta municipal</span></div></div><div class="card person"><span class="av v3">IC</span><div><b>Iván Cortés Ambrosio</b><br><span class="small muted">Síndico · cuida los bienes y la legalidad</span></div></div></div></div>
@@ -309,7 +317,7 @@ section{padding:40px 0;border-bottom:8px solid var(--surface-2)}
       <p class="small muted">Más cerca del centro = más cerca de ti.</p>
     </div>
   </div>
-  <div class="note"><b>Nota para Muse:</b> tres niveles con encabezado e icono. Regidurías en cuadrícula compacta (2/3/4 columnas) con nombre corto + tema; los filtros por tema resaltan la tarjeta. En escritorio el diagrama queda fijo a la derecha; en teléfono va arriba y más pequeño. Mostrar 6 y "Ver las otras 6".</div>
+  <div class="note"><b>Nota para Muse:</b> tres niveles con encabezado e icono. Regidurías en tarjetas verticales (avatar arriba, nombre en máximo 2 líneas, tema corto con icono en 1 línea): 2 columnas en teléfono y tablet, 3 en escritorio, nunca 4 al lado del diagrama. El nombre oficial largo de la comisión ("Bienestar, Juventud, Protección…") va en la ficha, no en la tarjeta ni en los filtros: los filtros usan el tema corto. Mostrar 5 + "Ver las otras 7". En escritorio el diagrama queda fijo a la derecha; en teléfono va arriba y más pequeño. Mostrar 6 y "Ver las otras 6".</div>
 </div></section>
 
 <!-- E · FICHA -->
@@ -332,6 +340,26 @@ section{padding:40px 0;border-bottom:8px solid var(--surface-2)}
     </div>
   </div>
   <div class="note"><b>Nota para Muse:</b> contenido a la izquierda, acciones fijas a la derecha en escritorio (abajo en teléfono). Los ceros nunca van solos. El botón de compartir genera la tarjeta PNG.</div>
+</div></section>
+
+<!-- F · ESTADOS VACÍOS: SIEMPRE UNA ACCIÓN -->
+<section><div class="wrap">
+  <p class="lbl">F · Cuando no hay datos: siempre una acción</p>
+  <div class="grid g3">
+    <div class="empty"><span class="ico"><svg class="i"><use href="#spark"/></svg></span>
+      <h3>Aún no revisamos Cuernavaca</h3>
+      <p class="small muted">Por eso todavía no sabemos quiénes integran su Cabildo. Muse puede buscar los documentos oficiales y leerlos por ti.</p>
+      <div class="acts"><a class="btn" href="#">Pídele a Muse que lo revise</a><a class="btn ghost" href="#">Ver un ejemplo: Atlixco</a></div></div>
+    <div class="empty"><span class="ico"><svg class="i"><use href="#ppl"/></svg></span>
+      <h3>No encontramos el nombre de tu inspector</h3>
+      <p class="small muted">Sí sabemos qué hace: es la autoridad de tu colonia ante el Ayuntamiento. Su nombre no está en las fuentes revisadas.</p>
+      <div class="acts"><a class="btn" href="#">Pregunta su nombre en tu junta auxiliar</a><a class="btn ghost" href="#">Pídelo por transparencia</a></div></div>
+    <div class="empty"><span class="ico"><svg class="i"><use href="#srch"/></svg></span>
+      <h3>No encontramos “Cuetzalán del Progre”</h3>
+      <p class="small muted">Revisa cómo se escribe o busca tu municipio en lugar de tu colonia.</p>
+      <div class="acts"><a class="btn" href="#">Buscar por municipio</a><a class="btn ghost" href="#">Elegir en el mapa</a></div></div>
+  </div>
+  <div class="note"><b>Nota para Muse:</b> regla general: nunca una sección vacía, un "0" solo, un "Qué hace:" sin texto ni un diagrama sin personas. Si un nivel no tiene datos, se reemplaza por esta tarjeta con icono, una explicación de una línea y 1 o 2 botones de acción. Si el municipio entero no está revisado, toda la vista "Tu gobierno" se reemplaza por la primera tarjeta (y la sección B). Si falta solo un dato (el nombre del inspector), se dice qué sí sabemos y cómo conseguir lo que falta.</div>
 </div></section>
 
 <nav class="bottom" aria-label="Principal"><a class="on" href="#"><svg class="i"><use href="#home"/></svg>Inicio</a><a href="#"><svg class="i"><use href="#ppl"/></svg>Gobierno</a><a href="#"><svg class="i"><use href="#coin"/></svg>Gastos</a><a href="#"><svg class="i"><use href="#mega"/></svg>Actúa</a></nav>
