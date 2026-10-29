@@ -50,6 +50,11 @@ def conectar() -> sqlite3.Connection:
             id INTEGER PRIMARY KEY, oficina TEXT NOT NULL, telefono TEXT, direccion TEXT, horario TEXT,
             archivo TEXT NOT NULL, pagina INTEGER NOT NULL, fragmento TEXT NOT NULL, verificacion TEXT NOT NULL);
     """)
+    # Contacto institucional del directorio (nunca correos ni celulares personales).
+    cols_f = [r[1] for r in con.execute("PRAGMA table_info(funcionarios)")]
+    for col in ("correo", "telefono", "direccion"):
+        if cols_f and col not in cols_f:
+            con.execute(f"ALTER TABLE funcionarios ADD COLUMN {col} TEXT")
     con.commit()
     return con
 
@@ -110,9 +115,12 @@ BASE = """Extraes datos de una fuente oficial del Ayuntamiento de Atlixco, Puebl
 
 ESQ_FUNCIONARIOS = {"type": "object", "additionalProperties": False, "required": ["funcionarios"],
     "properties": {"funcionarios": {"type": "array", "items": {"type": "object", "additionalProperties": False,
-        "required": ["nombre", "cargo", "comision", "pagina", "fragmento"],
+        "required": ["nombre", "cargo", "comision", "correo", "telefono", "direccion", "pagina", "fragmento"],
         "properties": {"nombre": {"type": "string"}, "cargo": {"type": "string"},
                        "comision": nulo("string", description="Para regidurías: la denominación temática sin 'Regiduría de'; en otro caso null."),
+                       "correo": nulo("string", description="Solo correo institucional del dominio oficial (.gob.mx); null si es personal (gmail, hotmail, yahoo…) o no viene."),
+                       "telefono": nulo("string", description="Solo teléfono de oficina publicado como institucional; null si parece celular personal o no viene."),
+                       "direccion": nulo("string", description="Solo dirección de oficina; null si no viene."),
                        "pagina": {"type": "integer"}, "fragmento": {"type": "string"}}}}}}
 ESQ_COMISIONES = {"type": "object", "additionalProperties": False, "required": ["comisiones"],
     "properties": {"comisiones": {"type": "array", "items": {"type": "object", "additionalProperties": False,

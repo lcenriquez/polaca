@@ -2,26 +2,30 @@
 
 Uso: ../.venv/bin/python indexar.py <clave_inegi>    (lo lanza web.py al aprobar en /admin)
 
-Con Muse Spark (llm.MODELO_PUBLICO) y búsqueda web (Responses API, el único
-API de Meta con web_search) busca SOLO en dominios .gob.mx el portal de
-transparencia, la gaceta más reciente, el presupuesto de egresos y el directorio
-de cabildo del municipio. Descarga lo encontrado a datos/raw/ y corre los
-extractores existentes (extraer.py, presupuesto.py, gobierno.py) con las
-mismas citas y verificaciones. Cada paso queda en eventos_indexacion, que la
-página /indexando/<clave> muestra en vivo por SSE. Si una fuente no aparece,
-lo dice y no la inventa.
+Primero confirma el dominio oficial del municipio y lo RECORRE (menú, sitemap,
+robots.txt, búsqueda interna de WordPress y recorrido en anchura sin API)
+antes de volver a la búsqueda web. Solo descarga del dominio propio o de
+fuentes estatales/federales oficiales .gob.mx: un dominio de otro municipio
+se descarta sin descargar. Cada paso queda en eventos_indexacion, que la
+página /indexando/<clave> muestra en vivo por SSE. Antes de decir «no
+encontré» de un tipo de documento, agota todos los caminos de
+CAMINOS_AGOTAMIENTO y registra cuáles probó. Si una fuente no aparece tras
+agotarlos, lo dice y no la inventa.
 
 Topes de gasto: $1.00 por municipio y $5.00 por día (leídos de costos.jsonl,
 que llm.py escribe en cada llamada). Al llegar al tope se detiene y lo reporta.
 """
 import hashlib
+import html as _html
 import json
 import re
 import sys
 import urllib.request
+from collections import deque
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 import extraer
 import gobierno
@@ -33,6 +37,32 @@ TOPE_MUNICIPIO = 1.00
 TOPE_DIA = 5.00
 MAX_INTENTOS = 5  # candidatas por fuente: la búsqueda confunde municipios, se prueba hasta dar con el correcto
 MAX_PAGINAS_PDF = 40  # ponytail: primera pasada acotada; subir si el tope de gasto lo permite
+MAX_PAGINAS_RECORRIDO = 150
+MAX_PROFUNDIDAD = 3
+PALABRAS_RECORRIDO = ("cabildo", "regidor", "regiduria", "organigrama", "directorio", "ayuntamiento",
+                      "gaceta", "acta", "sesion", "presupuesto", "egresos", "licitaciones",
+                      "obra publica", "contratos", "transparencia")
+RUTAS_TECNICAS = ("/wp-content/plugins/", "/wp-includes/", "/wp-content/cache/")
+EXT_TECNICAS = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".css", ".js", ".zip", ".mp4", ".woff", ".woff2")
+CORREOS_PERSONALES = {"gmail.com", "hotmail.com", "hotmail.es", "yahoo.com", "yahoo.com.mx", "outlook.com",
+                      "outlook.es", "live.com", "live.com.mx", "icloud.com", "protonmail.com", "aol.com"}
+TIPOS_DOC = {"directorio": "el directorio", "gaceta": "la gaceta o actas",
+             "presupuesto": "el presupuesto", "contratos": "contratos u obra pública"}
+# Antes de decir «no encontré» de un tipo hay que haber probado TODOS estos caminos.
+CAMINOS_AGOTAMIENTO = ("menú del sitio", "sitemap", "búsqueda en el sitio", "recorrido del sitio",
+                       "búsqueda web en el dominio propio", "búsqueda web", "fuentes estatales oficiales")
+SINONIMOS = {
+    "directorio": ["integrantes del cabildo", "regidores", "síndico", "directorio de cabildo", "organigrama"],
+    "gaceta": ["gaceta municipal", "actas de cabildo", "sesión de cabildo"],
+    "presupuesto": ["presupuesto de egresos 2026", "presupuesto de egresos"],
+    "contratos": ["licitaciones", "contratos", "obra pública"],
+}
+PALABRAS_TIPO = {
+    "directorio": ["cabildo", "regidor", "regiduria", "organigrama", "directorio", "integrantes"],
+    "gaceta": ["gaceta", "acta", "sesion"],
+    "presupuesto": ["presupuesto", "egresos"],
+    "contratos": ["licitaciones", "contrato", "obra publica", "obra-publica", "obras"],
+}
 
 
 class TopeAlcanzado(Exception):
@@ -43,6 +73,289 @@ def es_gob_mx(url: str) -> bool:
     """Solo dominios oficiales: el host es gob.mx o termina en .gob.mx."""
     host = (urlparse(url).hostname or "").lower()
     return host == "gob.mx" or host.endswith(".gob.mx")
+
+
+def _slug(texto: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", municipios.sin_acentos(texto))
+
+
+def variantes_dominio(nombre: str, estado: str) -> list[str]:
+    """Variantes comunes del dominio oficial a probar antes de buscar en la web."""
+    m, e = _slug(nombre), _slug(estado)
+    return [f"{m}.gob.mx", f"{m}{e}.gob.mx", f"transparencia{m}.gob.mx", f"transparencia.{m}.gob.mx"]
+
+
+def dominio_permitido(url: str, nombre: str, estado: str = "", dominios=()) -> bool:
+    """True solo para el dominio propio confirmado o una fuente estatal/federal oficial.
+
+    Un .gob.mx de OTRO municipio (zihuatanejodeazueta.gob.mx para Cuernavaca) se
+    descarta aquí, sin descargar. Las fuentes estatales se reconocen porque el
+    nombre del estado es una etiqueta completa del host (morelos.gob.mx,
+    transparencia.morelos.gob.mx), no parte del nombre de otro municipio
+    (tepalcingomorelos.gob.mx no pasa)."""
+    if not es_gob_mx(url):
+        return False
+    host = (urlparse(url).hostname or "").lower()
+    if host in dominios or any(host.endswith("." + d) for d in dominios):
+        return True
+    compacto = host.replace(".", "").replace("-", "")
+    if _slug(nombre) and _slug(nombre) in compacto:
+        return True
+    etiquetas = host.split(".")
+    if _slug(estado) and _slug(estado) in etiquetas:
+        return True
+    return host in ("gob.mx", "www.gob.mx")
+
+
+def correo_institucional(correo: str | None, dominios=()) -> str | None:
+    """El correo solo si es del dominio oficial; nunca uno personal (gmail, hotmail…)."""
+    if not correo or "@" not in correo:
+        return None
+    correo = correo.strip().lower()
+    dominio = correo.rsplit("@", 1)[-1]
+    if dominio in CORREOS_PERSONALES:
+        return None
+    if dominios:
+        return correo if any(dominio == d or dominio.endswith("." + d) for d in dominios) else None
+    return correo if dominio.endswith(".gob.mx") else None
+
+
+def filtrar_contacto(fila: dict, dominios=()) -> dict:
+    """Privacidad: fuera correos personales y, sin correo institucional que lo respalde,
+    también el teléfono suelto (no se distingue un celular personal de uno de oficina)."""
+    f = dict(fila)
+    f["correo"] = correo_institucional(f.get("correo"), dominios)
+    if not f["correo"]:
+        f["telefono"] = None
+    return f
+
+
+def texto_plano(html_crudo: str) -> str:
+    crudo = re.sub(r"<(script|style).*?</\1>", " ", html_crudo or "", flags=re.S | re.I)
+    crudo = re.sub(r"<[^>]+>", "\n", crudo)
+    return re.sub(r"\s*\n\s*", "\n", _html.unescape(crudo)).strip()
+
+
+def obtener(url: str) -> str | None:
+    """GET sin API (recorrido, sitemaps, WP-JSON). None si falla o no es texto."""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (auditor-atlixco)"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            datos = r.read(3_000_000)
+    except Exception:
+        return None
+    if datos.startswith(b"%PDF"):
+        return None
+    return datos.decode("utf-8", errors="ignore")
+
+
+class _Enlaces(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.enlaces, self._href, self._texto = [], None, []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            self._href, self._texto = dict(attrs).get("href"), []
+
+    def handle_data(self, data):
+        if self._href is not None:
+            self._texto.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "a" and self._href:
+            self.enlaces.append((self._href, " ".join(self._texto).strip()))
+            self._href = None
+
+
+def extraer_enlaces(html_crudo: str, base: str) -> list[tuple[str, str]]:
+    p = _Enlaces()
+    try:
+        p.feed(html_crudo or "")
+    except Exception:
+        return []
+    vistos, salida = set(), []
+    for href, texto in p.enlaces:
+        url = urljoin(base, href).split("#", 1)[0]
+        if url.startswith(("http://", "https://")) and url not in vistos:
+            vistos.add(url)
+            salida.append((url, texto))
+    return salida
+
+
+def es_ruta_tecnica(url: str) -> bool:
+    ruta = urlparse(url).path.lower()
+    return any(t in ruta for t in RUTAS_TECNICAS) or ruta.endswith(EXT_TECNICAS)
+
+
+def _puntos_enlace(url: str, texto: str) -> int:
+    plano = municipios.sin_acentos(url + " " + texto)
+    return sum(p in plano for p in PALABRAS_RECORRIDO)
+
+
+def recorrer_sitio(fetch, inicio: str, max_paginas: int = MAX_PAGINAS_RECORRIDO,
+                   max_profundidad: int = MAX_PROFUNDIDAD) -> dict[str, str]:
+    """Recorrido en anchura dentro del mismo dominio, sin API.
+
+    Prioriza enlaces cuyo texto o URL suene a cabildo/gaceta/presupuesto/etc. e
+    ignora rutas técnicas (plugins, imágenes, CSS…). `fetch(url) -> str|None`
+    es inyectable para probar sin red."""
+    host = urlparse(inicio).hostname
+    paginas: dict[str, str] = {}
+    vistos = {inicio}
+    cola = deque([(inicio, 0)])
+    while cola and len(paginas) < max_paginas:
+        url, profundidad = cola.popleft()
+        html_crudo = fetch(url)
+        if not html_crudo:
+            continue
+        paginas[url] = html_crudo
+        if profundidad >= max_profundidad:
+            continue
+        enlaces = [(u, t) for u, t in extraer_enlaces(html_crudo, url)
+                   if urlparse(u).hostname == host and not es_ruta_tecnica(u)
+                   and not urlparse(u).path.lower().endswith(".pdf")]
+        for u, _t in sorted(enlaces, key=lambda x: -_puntos_enlace(x[0], x[1])):
+            if u not in vistos:
+                vistos.add(u)
+                cola.append((u, profundidad + 1))
+    return paginas
+
+
+def urls_sitemap(fetch, raiz: str) -> list[str]:
+    """robots.txt + sitemap.xml + wp-sitemap.xml del dominio."""
+    base = raiz.rstrip("/")
+    candidatas = []
+    robots = fetch(base + "/robots.txt") or ""
+    candidatas += re.findall(r"(?im)^\s*sitemap:\s*(\S+)", robots)
+    candidatas += [base + "/sitemap.xml", base + "/wp-sitemap.xml"]
+    urls = []
+    for c in dict.fromkeys(candidatas):
+        xml = fetch(c) or ""
+        urls += re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", xml)
+    return list(dict.fromkeys(u for u in urls if not es_ruta_tecnica(u)))
+
+
+def buscar_en_sitio_wp(fetch, raiz: str) -> list[str]:
+    """Si es WordPress: /wp-json/wp/v2/pages?search=… Sin API de Muse."""
+    urls = []
+    for palabra in ("cabildo", "regidores", "organigrama", "gaceta", "presupuesto", "transparencia"):
+        crudo = fetch(f"{raiz.rstrip('/')}/wp-json/wp/v2/pages?search={quote(palabra)}&per_page=20")
+        try:
+            for pagina in json.loads(crudo or "[]"):
+                if pagina.get("link"):
+                    urls.append(pagina["link"])
+        except (ValueError, AttributeError):
+            continue
+    return list(dict.fromkeys(urls))
+
+
+def candidatas_recorrido(paginas: dict[str, str], tipo: str) -> list[str]:
+    """Páginas del recorrido (y PDF enlazados) que suenan al tipo de documento."""
+    palabras = PALABRAS_TIPO[tipo]
+    es_pdf_tipo = tipo in ("gaceta", "presupuesto", "contratos")
+    puntos: dict[str, int] = {}
+
+    def anota(url, n):
+        if n > 0 and not es_ruta_tecnica(url):
+            puntos[url] = max(puntos.get(url, 0), n)
+
+    for url, html_crudo in paginas.items():
+        texto = texto_plano(html_crudo)
+        plano = municipios.sin_acentos(texto[:6000])
+        if not es_pdf_tipo:
+            # La URL manda (…/organigrama va antes que la portada, que también menciona cargos),
+            # y una página que nombra regidores varias veces manda sobre la que solo nombra al presidente.
+            anota(url, 3 * sum(p in municipios.sin_acentos(url) for p in palabras)
+                  + (2 if sum(p in plano for p in palabras) >= 2 else 0)
+                  + (min(plano.count("regidor"), 5) if tipo == "directorio" else 0))
+        for destino, etiqueta in extraer_enlaces(html_crudo, url):
+            if not (urlparse(destino).hostname == urlparse(url).hostname or es_gob_mx(destino)):
+                continue
+            plano_e = municipios.sin_acentos(destino + " " + etiqueta)
+            n = sum(p in plano_e for p in palabras)
+            if urlparse(destino).path.lower().endswith(".pdf"):
+                if es_pdf_tipo:
+                    anota(destino, n)
+            elif not es_pdf_tipo:
+                anota(destino, n)
+    return sorted(puntos, key=lambda u: -puntos[u])
+
+
+_CARGOS = ("presidente municipal", "presidenta municipal", "sindico", "sindica",
+           "regidor", "regidora", "regiduria")
+_NO_NOMBRE = {"regidurias", "gabinete", "presidencia", "direcciones", "coordinaciones", "municipio", "conoce"}
+
+
+def _es_nombre(linea: str) -> bool:
+    palabras = [p for p in re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ.]+", linea) if p.lower() not in ("lic.", "mtro.", "ing.", "c.")]
+    plano = municipios.sin_acentos(linea)
+    return (2 <= len(palabras) <= 6 and "@" not in linea and len(linea) <= 60
+            and not any(c in plano for c in _CARGOS) and bool(plano.split()) and plano.split()[0] not in _NO_NOMBRE
+            and not any(p in plano for p in ("direccion", "secretaria", "tesoreria", "contraloria", "instituto", "sistema")))
+
+
+def extraer_directorio_texto(texto: str, archivo: str) -> list[dict]:
+    """Integrantes del Cabildo en el texto plano de una página, con cita verificada.
+
+    Reconoce «Nombre / Cargo» en líneas vecinas y aplica el filtro de privacidad:
+    solo correo del dominio oficial; el teléfono solo viaja con ese correo."""
+    lineas = [l.strip() for l in texto.splitlines() if l.strip()]
+    textos = {1: extraer.normalizar(texto)}
+    salida, vistos = [], set()
+    for i, linea in enumerate(lineas):
+        plano = municipios.sin_acentos(linea)
+        if not any(plano == c or plano.startswith(c + " ") or plano.startswith(c + " de") for c in _CARGOS):
+            continue
+        cargo = linea
+        nombre = next((lineas[j] for j in (i - 1, i + 1, i - 2, i + 2)
+                       if 0 <= j < len(lineas) and _es_nombre(lineas[j])), None)
+        # Sin títulos (Lic., Ing.…): la misma persona no se duplica por su tratamiento.
+        clave_persona = re.sub(r"^(lic|mtro|ing|dra|dr)\.?\s+", "", municipios.sin_acentos(nombre or ""))
+        if not nombre or clave_persona in vistos:
+            continue
+        vistos.add(clave_persona)
+        correo = telefono = None
+        for vecina in lineas[i + 1:i + 5]:
+            if _es_nombre(vecina) or any(municipios.sin_acentos(vecina).startswith(c) for c in _CARGOS):
+                break  # empezó la siguiente persona: su contacto no es de esta
+            m = re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", vecina)
+            if m and correo is None:
+                correo = m.group(0)
+            digitos = re.sub(r"\D", "", vecina)
+            if len(digitos) == 10 and telefono is None and "@" not in vecina:
+                telefono = digitos
+        pagina, verif = extraer.verificar(f"{nombre} {cargo}", textos, 1)
+        fila = filtrar_contacto({"nombre": nombre, "cargo": cargo, "comision": None,
+                                 "correo": correo, "telefono": telefono, "direccion": None,
+                                 "archivo": archivo, "pagina": pagina,
+                                 "fragmento": f"{nombre} {cargo}", "verificacion": verif},
+                                set(re.findall(r"@([\w.-]+\.gob\.mx)", texto.lower())))
+        salida.append(fila)
+    return [f for f in salida if f["verificacion"] == "ok"]
+
+
+def anotar_camino(registro: dict, tipo: str, camino: str):
+    registro.setdefault(tipo, [])
+    if camino not in registro[tipo]:
+        registro[tipo].append(camino)
+
+
+def registrar_no_encontrado(con, clave: str, tipo: str, registro: dict) -> bool:
+    """Solo dice «no encontré» tras probar TODOS los caminos; si faltan, lo dice y vuelve False."""
+    probados = [c for c in CAMINOS_AGOTAMIENTO if c in registro.get(tipo, [])]
+    faltan = [c for c in CAMINOS_AGOTAMIENTO if c not in probados]
+    if faltan:
+        municipios.registrar_evento(
+            con, clave, tipo,
+            f"Todavía no puedo decir que no está {TIPOS_DOC[tipo]}: faltan caminos por probar ({', '.join(faltan)}).")
+        return False
+    municipios.registrar_evento(
+        con, clave, tipo,
+        f"No encontré {TIPOS_DOC[tipo]}. Probé {len(probados)} caminos para {tipo}: "
+        f"{', '.join(probados)}. No apareció; no invento la fuente.")
+    return True
+
 
 
 def _gastos() -> list[dict]:
@@ -125,9 +438,8 @@ def buscar(con, clave: str, inicio: str, paso: str, descripcion: str, consulta: 
         tools=[{"type": "web_search", "search_context_size": "medium"}],
         include=["web_search_call.results"])
     urls = elegir_candidatas(urls_de_respuesta(resp), palabras, pdf=pdf, nombre=nombre)
-    if not urls:
-        municipios.registrar_evento(con, clave, paso,
-                                    f"No encontré {descripcion} en un sitio .gob.mx. Lo dejo pendiente; no invento la fuente.")
+    # Sin «no encontré» aquí: eso solo se dice tras agotar todos los caminos
+    # (registrar_no_encontrado), no tras una sola búsqueda web.
     return urls
 
 
@@ -212,7 +524,8 @@ def leer_pdf(con, clave: str, inicio: str, archivo: str, tipo: str, nombre: str)
     return ok, len(filas)
 
 
-def leer_directorio(con, clave: str, inicio: str, archivo: str, nombre: str, estado: str) -> tuple[int, int]:
+def leer_directorio(con, clave: str, inicio: str, archivo: str, nombre: str, estado: str,
+                    dominios=()) -> tuple[int, int]:
     verificar_topes(inicio)
     municipios.registrar_evento(con, clave, "lectura", f"Leyendo el directorio de cabildo ({archivo})…")
     if archivo.endswith(".pdf"):
@@ -222,19 +535,28 @@ def leer_directorio(con, clave: str, inicio: str, archivo: str, nombre: str, est
         portada = gobierno.texto_html(archivo)
     if not menciona_municipio(portada, nombre):
         _descartar(con, clave, archivo, nombre)
-    instrucciones = gobierno.BASE.replace("del Ayuntamiento de Atlixco, Puebla",
-                                          f"del Ayuntamiento de {nombre}, {estado}") + \
-        "\nLista a cada integrante del Cabildo: nombre, cargo tal como viene y su comisión temática si la página la indica."
-    if archivo.endswith(".pdf"):
-        from pypdf import PdfReader
-        datos = gobierno._de_pdf(archivo, (1, min(10, len(PdfReader(extraer.RAW / archivo).pages))),
-                                 instrucciones, gobierno.ESQ_FUNCIONARIOS, "funcionarios", "funcionarios")
-    else:
-        datos = gobierno._de_html(archivo, instrucciones, gobierno.ESQ_FUNCIONARIOS, "funcionarios", "funcionarios")
+    # Primero el extractor sin API (nombre + cargo en líneas vecinas); solo si no
+    # encuentra a nadie se le pide a Muse que extraiga de la misma página.
+    datos = [] if archivo.endswith(".pdf") else extraer_directorio_texto(portada, archivo)
+    if not datos:
+        instrucciones = gobierno.BASE.replace("del Ayuntamiento de Atlixco, Puebla",
+                                              f"del Ayuntamiento de {nombre}, {estado}") + \
+            "\nLista a cada integrante del Cabildo: nombre, cargo tal como viene y su comisión temática si la página la indica." \
+            "\nContacto solo institucional: correo únicamente si es del dominio oficial, teléfono y dirección de oficina; " \
+            "nunca correos personales (gmail, hotmail, yahoo…) ni celulares personales: en esos casos null."
+        if archivo.endswith(".pdf"):
+            from pypdf import PdfReader
+            datos = gobierno._de_pdf(archivo, (1, min(10, len(PdfReader(extraer.RAW / archivo).pages))),
+                                     instrucciones, gobierno.ESQ_FUNCIONARIOS, "funcionarios", "funcionarios")
+        else:
+            datos = gobierno._de_html(archivo, instrucciones, gobierno.ESQ_FUNCIONARIOS, "funcionarios", "funcionarios")
+    datos = [filtrar_contacto(f, dominios) for f in datos]  # privacidad, también sobre lo que devuelva Muse
     con.execute("DELETE FROM funcionarios WHERE archivo = ? AND municipio_id = ?", (archivo, clave))
-    con.executemany("""INSERT INTO funcionarios (nombre, cargo, comision, archivo, pagina, fragmento, verificacion, municipio_id)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    [(f["nombre"], f["cargo"], f["comision"], f["archivo"], f["pagina"], f["fragmento"],
+    con.executemany("""INSERT INTO funcionarios (nombre, cargo, comision, correo, telefono, direccion,
+                       archivo, pagina, fragmento, verificacion, municipio_id)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    [(f["nombre"], f["cargo"], f["comision"], f.get("correo"), f.get("telefono"),
+                      f.get("direccion"), f["archivo"], f["pagina"], f["fragmento"],
                       f["verificacion"], clave) for f in datos])
     con.commit()
     ok = sum(f["verificacion"] == "ok" for f in datos)
@@ -258,60 +580,176 @@ def indexar(clave: str) -> int:
         return 2
     inicio = datetime.now(timezone.utc).isoformat(timespec="seconds")
     citas_ok = citas_total = fuentes_ok = 0
+    registro = {tipo: [] for tipo in TIPOS_DOC}
     try:
         municipios.registrar_evento(con, clave, "inicio",
                                     f"Empiezo a revisar {nombre}, {estado}. Solo uso fuentes oficiales .gob.mx "
                                     "y cada dato que guarde llevará su cita.")
-        candidatas = buscar(con, clave, inicio, "portal", f"el portal de transparencia de {nombre}, {estado}",
-                            f"portal de transparencia Ayuntamiento de {nombre} {estado} sitio gob.mx",
-                            ["transparencia"], nombre=nombre)
-        if candidatas:
-            portal = candidatas[0]
-            fuentes_ok += 1
-            municipios.registrar_evento(con, clave, "portal",
-                                        f"Encontré el portal de transparencia de {nombre}, {estado}: {portal}")
-            raiz = urlparse(portal)
-            municipios.registrar_evento(con, clave, "portal",
-                                        f"El sitio oficial es {raiz.scheme}://{raiz.netloc}; de ahí salen las demás búsquedas.")
-        host_oficial = urlparse(candidatas[0]).netloc if candidatas else ""
-        for tipo, descripcion, palabras, modulo in (
-                ("gaceta", f"la gaceta municipal más reciente de {nombre}", ["gaceta"], "gaceta"),
-                ("presupuesto", f"el presupuesto de egresos de {nombre}", ["presupuesto", "egresos"], "presupuesto")):
-            urls = buscar(con, clave, inicio, tipo, descripcion,
-                          f'{descripcion} del Ayuntamiento de "{nombre}", {estado} filetype:pdf'
-                          + (f" publicado en {host_oficial}" if host_oficial else " gob.mx"),
-                          palabras, pdf=True, nombre=nombre)
-            for url in urls[:MAX_INTENTOS]:  # si el documento es de otro municipio, pruebo la siguiente candidata
+        # 1) Dominio oficial: variantes comunes y búsqueda web; solo se acepta si
+        #    su página de inicio nombra al municipio. Se guardan todos (principal
+        #    y portal de transparencia) en el evento, visibles en /indexando.
+        dominios: set[str] = set()
+
+        def confirma(url_raiz: str) -> bool:
+            html_crudo = obtener(url_raiz)
+            host = urlparse(url_raiz).hostname or ""
+            if html_crudo and host and menciona_municipio(texto_plano(html_crudo), nombre):
+                dominios.add(host)
+                return True
+            return False
+
+        for variante in variantes_dominio(nombre, estado):
+            confirma(f"https://{variante}/")
+        candidatas_portal = buscar(con, clave, inicio, "portal", f"el portal de transparencia de {nombre}, {estado}",
+                                   f"portal de transparencia Ayuntamiento de {nombre} {estado} sitio gob.mx",
+                                   ["transparencia"], nombre=nombre)
+        for url in candidatas_portal:
+            p = urlparse(url)
+            if p.hostname and p.hostname not in dominios:
+                confirma(f"{p.scheme}://{p.netloc}/")
+        if dominios:
+            municipios.registrar_evento(con, clave, "dominio",
+                                        f"Dominios oficiales confirmados de {nombre} (su página de inicio lo nombra): "
+                                        f"{', '.join(sorted(dominios))}. Los guardo para esta revisión.")
+        else:
+            municipios.registrar_evento(con, clave, "dominio",
+                                        f"No confirmé el dominio oficial de {nombre} probando variantes ni con la "
+                                        "búsqueda del portal; sigo con búsqueda web y fuentes estatales.")
+        principal = next((d for d in sorted(dominios) if "transparencia" not in d), None) \
+            or next(iter(sorted(dominios)), None)
+        raiz = f"https://{principal}" if principal else ""
+
+        # 2) Recorrido del sitio oficial, sin API: sitemap, WP-JSON, menú y BFS.
+        paginas: dict[str, str] = {}
+        pool: dict[str, list[str]] = {tipo: [] for tipo in TIPOS_DOC}
+        if raiz:
+            del_sitemap = urls_sitemap(obtener, raiz)
+            de_wp = buscar_en_sitio_wp(obtener, raiz)
+            for tipo in TIPOS_DOC:
+                anotar_camino(registro, tipo, "sitemap")
+                anotar_camino(registro, tipo, "búsqueda en el sitio")
+            municipios.registrar_evento(con, clave, "recorrido",
+                                        f"Revisé robots.txt y los sitemaps de {raiz}: {len(del_sitemap)} direcciones; "
+                                        f"la búsqueda interna del sitio devolvió {len(de_wp)} páginas.")
+            paginas = recorrer_sitio(obtener, raiz + "/")
+            for tipo in TIPOS_DOC:
+                anotar_camino(registro, tipo, "menú del sitio")
+                anotar_camino(registro, tipo, "recorrido del sitio")
+                pool[tipo] = list(dict.fromkeys(
+                    candidatas_recorrido(paginas, tipo)
+                    + [u for u in de_wp + del_sitemap
+                       if any(p in municipios.sin_acentos(u) for p in PALABRAS_TIPO[tipo])]))
+            municipios.registrar_evento(con, clave, "recorrido",
+                                        f"Recorrí el sitio oficial: {len(paginas)} páginas (profundidad máximo "
+                                        f"{MAX_PROFUNDIDAD}, tope {MAX_PAGINAS_RECORRIDO}), ignorando rutas técnicas "
+                                        "como wp-content/plugins. De ahí salen las primeras candidatas de cada documento.")
+        else:
+            for tipo in TIPOS_DOC:  # sin sitio no hay menú que recorrer: caminos intentados y fallidos
+                for camino in CAMINOS_AGOTAMIENTO[:4]:
+                    anotar_camino(registro, tipo, camino)
+
+        def intentar(tipo: str, urls: list[str]) -> tuple[int, int] | None:
+            """Prueba candidatas: descarta SIN descargar las de otro municipio."""
+            nonlocal citas_ok, citas_total, fuentes_ok
+            for url in list(dict.fromkeys(urls))[:MAX_INTENTOS]:
+                if not dominio_permitido(url, nombre, estado, dominios):
+                    municipios.registrar_evento(con, clave, "descartado",
+                                                f"Descarté sin descargar {url}: su dominio no es el oficial de "
+                                                f"{nombre} ni una fuente estatal o federal oficial.")
+                    continue
+                if es_ruta_tecnica(url):
+                    continue
                 try:
                     archivo = descargar(con, clave, tipo, url)
-                    ok, total = leer_pdf(con, clave, inicio, archivo, modulo, nombre)
+                    if tipo == "directorio":
+                        ok, total = leer_directorio(con, clave, inicio, archivo, nombre, estado, dominios)
+                    else:
+                        ok, total = leer_pdf(con, clave, inicio, archivo,
+                                             "presupuesto" if tipo == "presupuesto" else "gaceta", nombre)
                 except TopeAlcanzado:
                     raise
                 except Exception as e:
                     municipios.registrar_evento(con, clave, tipo, f"No pude leer {url}: {e}. Pruebo la siguiente candidata.")
                     continue
-                municipios.registrar_evento(con, clave, tipo, f"Encontré {descripcion}: {url}")
+                municipios.registrar_evento(con, clave, tipo, f"Encontré {TIPOS_DOC[tipo]} de {nombre}: {url}")
                 citas_ok, citas_total = citas_ok + ok, citas_total + total
                 fuentes_ok += 1
-                break
-        descripcion = f"el directorio de cabildo de {nombre}"
-        urls = buscar(con, clave, inicio, "directorio", descripcion,
-                      f'directorio del Cabildo del Ayuntamiento de "{nombre}", {estado} presidente municipal '
-                      'y regidores, en el sitio oficial del Ayuntamiento',
-                      ["cabildo", "directorio", "integrantes"], nombre=nombre)
-        for url in urls[:MAX_INTENTOS]:
-            try:
-                archivo = descargar(con, clave, "directorio", url)
-                ok, total = leer_directorio(con, clave, inicio, archivo, nombre, estado)
-            except TopeAlcanzado:
-                raise
-            except Exception as e:
-                municipios.registrar_evento(con, clave, "directorio", f"No pude leer {url}: {e}. Pruebo la siguiente candidata.")
+                return ok, total
+            return None
+
+        def buscar_y_probar(tipo: str, camino: str, consultas: list[tuple[str, bool]]) -> bool:
+            anotar_camino(registro, tipo, camino)
+            for consulta, es_pdf in consultas:
+                urls = buscar(con, clave, inicio, tipo, f"{TIPOS_DOC[tipo]} de {nombre}",
+                              consulta, PALABRAS_TIPO[tipo], pdf=es_pdf, nombre=nombre)
+                if intentar(tipo, urls):
+                    return True
+            return False
+
+        for tipo in ("directorio", "gaceta", "presupuesto"):
+            if intentar(tipo, pool[tipo]):
                 continue
-            municipios.registrar_evento(con, clave, "directorio", f"Encontré {descripcion}: {url}")
-            citas_ok, citas_total = citas_ok + ok, citas_total + total
-            fuentes_ok += 1
-            break
+            # 3) Búsquedas dentro del dominio propio, con sinónimos.
+            encontrado = False
+            for dominio in sorted(dominios):
+                if buscar_y_probar(tipo, "búsqueda web en el dominio propio",
+                                   [(f"site:{dominio} {s} {nombre} {estado}", tipo != "directorio")
+                                    for s in SINONIMOS[tipo][:3]]):
+                    encontrado = True
+                    break
+            if encontrado:
+                continue
+            if not dominios:
+                anotar_camino(registro, tipo, "búsqueda web en el dominio propio")
+            # Búsqueda web general (filtrada antes de descargar) y fuentes estatales:
+            # periódico oficial del estado, transparencia estatal y congreso local.
+            if buscar_y_probar(tipo, "búsqueda web",
+                               [(f'{TIPOS_DOC[tipo]} del Ayuntamiento de "{nombre}", {estado} '
+                                 + ("filetype:pdf" if tipo != "directorio" else "presidente municipal y regidores"),
+                                 tipo != "directorio")]):
+                continue
+            buscar_y_probar(tipo, "fuentes estatales oficiales",
+                            [(f'"{nombre}" {s} periódico oficial {estado} gob.mx', tipo != "directorio")
+                             for s in SINONIMOS[tipo][:2]]
+                            + [(f'"{nombre}" {TIPOS_DOC[tipo]} transparencia {estado} congreso gob.mx',
+                                tipo != "directorio")])
+            registrar_no_encontrado(con, clave, tipo, registro)
+        # Contratos u obra pública: no hay extractor propio; se agotan los caminos
+        # y, si aparece una candidata permitida, queda registrada sin inventar datos.
+        tipo = "contratos"
+        candidatas_c = [u for u in pool[tipo] if dominio_permitido(u, nombre, estado, dominios)]
+        if candidatas_c:
+            municipios.registrar_evento(con, clave, tipo,
+                                        f"En el recorrido aparecieron candidatas de contratos u obra pública de {nombre}: "
+                                        f"{candidatas_c[0]}. Queda registrada para lectura; no guardo datos sin leerla.")
+        else:
+            encontrado = False
+            for dominio in sorted(dominios):
+                anotar_camino(registro, tipo, "búsqueda web en el dominio propio")
+                urls = []
+                for s in SINONIMOS[tipo]:
+                    urls += buscar(con, clave, inicio, tipo, f"contratos u obra pública de {nombre}",
+                                   f"site:{dominio} {s} {nombre}", PALABRAS_TIPO[tipo], nombre=nombre)
+                if any(dominio_permitido(u, nombre, estado, dominios) for u in urls):
+                    encontrado = True
+                    break
+            if not encontrado:
+                for camino, consultas in (
+                        ("búsqueda web", [f'licitaciones contratos obra pública Ayuntamiento "{nombre}", {estado} gob.mx']),
+                        ("fuentes estatales oficiales",
+                         [f'"{nombre}" licitaciones contratos periódico oficial {estado} gob.mx'])):
+                    anotar_camino(registro, tipo, camino)
+                    urls = buscar(con, clave, inicio, tipo, f"contratos u obra pública de {nombre}",
+                                  consultas[0], PALABRAS_TIPO[tipo], nombre=nombre)
+                    permitidas = [u for u in urls if dominio_permitido(u, nombre, estado, dominios)]
+                    if permitidas:
+                        municipios.registrar_evento(con, clave, tipo,
+                                                    f"Apareció una candidata de contratos u obra pública de {nombre}: "
+                                                    f"{permitidas[0]}. Queda registrada para lectura; no guardo datos sin leerla.")
+                        encontrado = True
+                        break
+            if not encontrado:
+                registrar_no_encontrado(con, clave, tipo, registro)
     except TopeAlcanzado as e:
         municipios.registrar_evento(con, clave, "tope", str(e))
         con.execute("UPDATE municipios SET estado_indexacion = 'error' WHERE clave_inegi = ?", (clave,))

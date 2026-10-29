@@ -811,6 +811,73 @@ def test_diagrama_interactivo_sin_nodos_inventados():
         assert 'class="ring"' not in sin and 'class="p nodo"' not in sin  # sin nodos vacíos
 
 
+def test_indexador_recorrido_cuernavaca():
+    """Sin red: desde el inicio de cuernavaca.gob.mx el recorrido llega al Organigrama
+    (page_id=408) y extrae presidente y regidores con cita, sin correos personales."""
+    import indexar
+    fixtures = Path(__file__).parent / "fixtures"
+    inicio_html = (fixtures / "cuernavaca_inicio.html").read_text(encoding="utf-8", errors="ignore")
+    organigrama_html = (fixtures / "cuernavaca_organigrama.html").read_text(encoding="utf-8", errors="ignore")
+    organigrama = "https://cuernavaca.gob.mx/?page_id=408"
+    paginas_web = {"https://cuernavaca.gob.mx/": inicio_html, organigrama: organigrama_html}
+    paginas = indexar.recorrer_sitio(paginas_web.get, "https://cuernavaca.gob.mx/", max_paginas=150, max_profundidad=3)
+    assert organigrama in paginas, "el recorrido debió llegar al Organigrama desde el menú del inicio"
+    assert all("wp-content/plugins" not in u for u in paginas)  # rutas técnicas fuera
+    assert indexar.candidatas_recorrido(paginas, "directorio")[0] == organigrama  # antes que la portada
+    datos = indexar.extraer_directorio_texto(indexar.texto_plano(organigrama_html), "cuernavaca_organigrama.html")
+    nombres = {d["nombre"] for d in datos}
+    assert any("Urióstegui" in n for n in nombres), nombres  # presidente municipal
+    assert sum("Regidor" in d["cargo"] for d in datos) >= 3, datos
+    assert all(d["verificacion"] == "ok" and d["fragmento"] for d in datos)  # cada fila con cita
+    # Privacidad: el correo institucional pasa; el @gmail.com de la misma página, nunca.
+    assert all(not d["correo"] or d["correo"].endswith("@cuernavaca.gob.mx") for d in datos), datos
+    assert not any("gmail" in (d["correo"] or "") for d in datos)
+    assert indexar.filtrar_contacto({"correo": "alguien@gmail.com", "telefono": "7770000000"},
+                                    {"cuernavaca.gob.mx"}) == {"correo": None, "telefono": None}
+    assert indexar.correo_institucional("gabriel.rivas@cuernavaca.gob.mx", {"cuernavaca.gob.mx"})
+    assert indexar.correo_institucional("ingjuanmiguel.serranogastelum@gmail.com", {"cuernavaca.gob.mx"}) is None
+
+
+def test_indexador_descarta_otro_municipio_sin_descargar():
+    """Un dominio de otro municipio se descarta por dominio_permitido, antes de descargar."""
+    import indexar
+    dominios = {"cuernavaca.gob.mx", "transparenciacuernavaca.gob.mx"}
+    assert indexar.dominio_permitido("https://cuernavaca.gob.mx/?page_id=408", "Cuernavaca", "Morelos", dominios)
+    assert indexar.dominio_permitido("https://transparenciacuernavaca.gob.mx/presupuesto.pdf", "Cuernavaca", "Morelos", dominios)
+    assert indexar.dominio_permitido("https://morelos.gob.mx/periodico/cuernavaca.pdf", "Cuernavaca", "Morelos", dominios)
+    for ajena in ("https://zihuatanejodeazueta.gob.mx/gaceta.pdf", "https://valledechalco.gob.mx/gaceta.pdf",
+                  "https://www.tepalcingomorelos.gob.mx/presupuesto.pdf", "https://transparenciafiscal.edomex.gob.mx/x.pdf",
+                  "https://www.ixitlan.gob.mx/presupuesto.pdf", "https://ejemplo.com/cuernavaca.pdf"):
+        assert not indexar.dominio_permitido(ajena, "Cuernavaca", "Morelos", dominios), ajena
+    assert set(indexar.variantes_dominio("Cuernavaca", "Morelos")) >= {"cuernavaca.gob.mx", "transparenciacuernavaca.gob.mx"}
+
+
+def test_indexador_no_encontrado_solo_tras_agotar():
+    """«No encontré» solo se registra después de probar todos los caminos, y queda la lista."""
+    import indexar
+    import municipios
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with municipios.conectar() as con:
+            registro = {"directorio": ["menú del sitio"]}
+            assert indexar_registro_parcial(con, registro) is False
+            mensajes = [m for (m,) in con.execute("SELECT mensaje FROM eventos_indexacion")]
+            assert not any(m.startswith("No encontré") for m in mensajes), mensajes  # todavía no se rinde
+            for camino in indexar.CAMINOS_AGOTAMIENTO:
+                indexar.anotar_camino(registro, "directorio", camino)
+            assert indexar.registrar_no_encontrado(con, "17007", "directorio", registro) is True
+            ultimo = con.execute("SELECT mensaje FROM eventos_indexacion ORDER BY id DESC LIMIT 1").fetchone()[0]
+            assert ultimo.startswith("No encontré el directorio. Probé 7 caminos para directorio:"), ultimo
+            assert "menú del sitio" in ultimo and "fuentes estatales oficiales" in ultimo
+
+
+def indexar_registro_parcial(con, registro):
+    import indexar
+    return indexar.registrar_no_encontrado(con, "17007", "directorio", registro)
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):

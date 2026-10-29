@@ -1066,9 +1066,16 @@ def revisar_persona(id_: int):
     else:
         tag = f'<span class="tag">{e(f["cargo"])}</span>'
     n_fotos = len(evidencias)
+    contacto_f = "".join(f'<p style="font-size:16px">{e(etiqueta)}: {e(f[campo])}</p>'
+                         for campo, etiqueta in (("correo", "Correo institucional"), ("telefono", "Teléfono de oficina"),
+                                                 ("direccion", "Oficina"))
+                         if f.get(campo))
+    if contacto_f:
+        contacto_f = f'<div class="card"><h3>Contacto institucional</h3>{contacto_f}</div>'
     izquierda = (f'<div style="display:flex;flex-direction:column;gap:16px">'
                  f'<div class="person"><div class="av a2 l" aria-hidden="true">{e(_iniciales(f["nombre"]))}</div>'
                  f'<div><h2 style="margin:0">{e(f["nombre"])}</h2>{tag}{_fuente_de(f, urls)}</div></div>'
+                 f'{contacto_f}'
                  f'<div class="card"><h3>¿Qué hace?</h3>'
                  + (f'<p style="font-size:16px">{e(f_fun["funcion"])}</p>{_fuente_de(f_fun, urls)}' if f_fun else
                     '<p style="font-size:16px">Todavía no tenemos la descripción de qué hace este cargo en las '
