@@ -485,9 +485,14 @@ def _sin_resultados(q: str) -> str:
                    ("/representantes?m=21019", "Ver un ejemplo: Atlixco", True)])
 
 
-def _gob(con, tabla: str, clave: str = "21019") -> list[dict]:
-    """Filas con cita verificada de un municipio (Atlixco por omisión; null = dato anterior al esquema)."""
+def _gob(con, tabla: str, clave: str | None = "21019") -> list[dict]:
+    """Filas con cita verificada de un municipio (Atlixco por omisión; null = dato anterior al esquema).
+
+    clave=None devuelve las de TODOS los municipios: hace falta al buscar a una
+    persona por id, porque su ficha no sabe de qué municipio viene el enlace."""
     try:
+        if clave is None:
+            return _filas(con, f"SELECT * FROM {tabla} WHERE verificacion = 'ok' ORDER BY id")
         return _filas(con, f"SELECT * FROM {tabla} WHERE verificacion = 'ok' AND (municipio_id = ? OR municipio_id IS NULL) ORDER BY id",
                       (clave,))
     except sqlite3.OperationalError:
@@ -643,7 +648,7 @@ def _compartir_html(url_png: str, texto: str) -> str:
 @app.get("/compartir/funcionario/{id_}.png")
 def compartir_funcionario(id_: int):
     with _con() as con:
-        filas = [f for f in _gob(con, "funcionarios") if f["id"] == id_]
+        filas = [f for f in _gob(con, "funcionarios", None) if f["id"] == id_]
         if not filas:
             return HTMLResponse("<p>No se encontró a la persona.</p>", status_code=404)
         f = filas[0]
@@ -815,7 +820,7 @@ def representantes(junta: int = 0, m: str = "21019"):
     # a secas (Cuernavaca); exigir comisión los hacía invisibles en esta vista.
     regidores = [f for f in funcionarios if f["comision"] or "regidor" in plano(f["cargo"])]
     f_reg = _buscar_fila(funciones, "regidores")
-    sindico = _buscar_fila(funcionarios, "sindicatura")
+    sindico = _buscar_fila(funcionarios, "sindic")
     if sindico:
         f_sin = _buscar_fila(funciones, "síndico", "sindico")
         nivel_presidencia.append(_tarjeta_persona(
@@ -823,7 +828,7 @@ def representantes(junta: int = 0, m: str = "21019"):
             f_sin["funcion"] if f_sin else "", sindico,
             _buscar_fila(contactos, "atención ciudadana", "ayuntamiento de atlixco"), urls,
             f"/revisar/{sindico['id']}", "Representa a todo el municipio", "a3", data_id=str(sindico["id"])))
-    presidenta = _buscar_fila(funcionarios, "presidenta", "presidente")
+    presidenta = _buscar_fila(funcionarios, "presidenta municipal", "presidente municipal")
     if presidenta:
         f_pre = _buscar_fila(funciones, "presidente municipal")
         nivel_presidencia.append(_tarjeta_persona(
@@ -1028,11 +1033,20 @@ def tema(clave: str):
 @app.get("/revisar", response_class=HTMLResponse)
 def revisar():
     with _con() as con:
-        funcionarios = _gob(con, "funcionarios")
-        juntas = _gob(con, "juntas_auxiliares")
+        funcionarios = _gob(con, "funcionarios", None)  # todos los municipios revisados, no solo Atlixco
+        juntas = _gob(con, "juntas_auxiliares", None)
+        try:
+            municipios = {m["clave_inegi"]: m for m in _filas(con, "SELECT * FROM municipios")}
+        except sqlite3.OperationalError:
+            municipios = {}
+
+    def lugar_de(f):
+        m = municipios.get(f.get("municipio_id") or "")
+        return f' · {e(m["nombre"])}, {e(m["estado"])}' if m else ""
+
     tarjetas = "".join(
         f'<div class="card person"><div class="av a2" style="margin:0" aria-hidden="true">{e(_iniciales(f["nombre"]))}</div><div>'
-        f'<h3>{e(f["nombre"])}</h3><p class="sub" style="font-size:16px">{e(f["cargo"])}</p>'
+        f'<h3>{e(f["nombre"])}</h3><p class="sub" style="font-size:16px">{e(f["cargo"])}{lugar_de(f)}</p>'
         f'<p><a class="btn ghost" href="/revisar/{f["id"]}">Revisa su trabajo</a></p></div></div>' for f in funcionarios)
     tarjetas += "".join(
         f'<div class="card person"><div class="av" style="margin:0" aria-hidden="true">{e(_iniciales(j["presidente"] or j["nombre"]))}</div><div>'
@@ -1051,7 +1065,9 @@ def revisar():
 @app.get("/revisar/{id_}", response_class=HTMLResponse)
 def revisar_persona(id_: int):
     with _con() as con:
-        funcionarios = _gob(con, "funcionarios")
+        # Por id y de cualquier municipio: el enlace viene de la página del
+        # municipio de la persona, no necesariamente de Atlixco.
+        funcionarios = _gob(con, "funcionarios", None)
         urls = _urls(con)
         f = next((x for x in funcionarios if x["id"] == id_), None)
         if not f:
@@ -1062,10 +1078,12 @@ def revisar_persona(id_: int):
         hallazgos_n = (con.execute("SELECT count(*) FROM hallazgos WHERE acuerdo_id IN (%s)"
                                    % ",".join("?" * len(ids)), ids).fetchone()[0] if ids else 0)
         n_docs = _n_documentos(con)
-        funciones = _gob(con, "funciones_cargo")
+        funciones = _gob(con, "funciones_cargo", f.get("municipio_id") or "21019")
         evidencias = _filas(con, "SELECT * FROM evidencias ORDER BY id DESC LIMIT 3")
-    claves = ("presidenta",) if not f["comision"] and "presidenta" in plano(f["cargo"]) else \
-             ("síndico", "sindico") if "sindicatura" in plano(f["cargo"]) else ("regidores",)
+    plano_cargo = plano(f["cargo"])
+    claves = ("presidenta municipal", "presidente municipal") if \
+        ("presidenta municipal" in plano_cargo or "presidente municipal" in plano_cargo) else \
+        ("síndico", "sindico") if "sindic" in plano_cargo else ("regidores",)
     f_fun = _buscar_fila(funciones, *claves)
     linea = "".join(f'<div><b>{e(a["fecha_sesion"] or "sin fecha registrada")}</b><br>'
                     f'<span style="font-size:16px">{e(a["acuerdo"])}</span>'

@@ -876,6 +876,65 @@ def test_regidor_sin_comision_se_muestra():
         assert "Gabinete y direcciones · 1" in texto and "Secre Ejemplo" in texto
 
 
+def test_ficha_de_otro_municipio_no_da_404():
+    """La ficha /revisar/<id>, la lista /revisar y el PNG buscan por id en TODOS los
+    municipios: un enlace desde /representantes?m=17007 no puede dar «No se encontró»."""
+    import gobierno
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with gobierno.conectar():
+            pass
+        with municipios.conectar() as con:
+            con.executemany("INSERT INTO municipios VALUES (?, ?, ?, ?)",
+                            [("17007", "Morelos", "Cuernavaca", "indexado"),
+                             ("21019", "Puebla", "Atlixco", "indexado")])
+            con.commit()
+        cols_f = ["nombre", "cargo", "comision", "archivo", "pagina", "fragmento", "verificacion", "municipio_id"]
+        with gobierno.conectar() as con:
+            gobierno._guardar(con, "funcionarios", cols_f, [
+                {"nombre": "Ana Atlixco", "cargo": "Presidenta Municipal", "comision": None, "archivo": "g.html",
+                 "pagina": 1, "fragmento": "Ana Atlixco", "verificacion": "ok", "municipio_id": "21019"},
+                {"nombre": "Regi Cuernavaca", "cargo": "Regidora", "comision": None, "archivo": "c.html",
+                 "pagina": 1, "fragmento": "Regi Cuernavaca", "verificacion": "ok", "municipio_id": "17007"}])
+        cliente = TestClient(web.app)
+        lista = cliente.get("/revisar").text
+        assert "Regi Cuernavaca" in lista and "Cuernavaca, Morelos" in lista  # la lista no es solo Atlixco
+        ficha = cliente.get("/revisar/2")
+        assert ficha.status_code == 200 and "Regi Cuernavaca" in ficha.text, ficha.status_code
+        assert "No se encontró a la persona" not in ficha.text
+        assert cliente.get("/compartir/funcionario/2.png").status_code == 200
+        assert cliente.get("/revisar/99").status_code == 404  # id inexistente: 404 correcto
+
+
+def test_equipo_paginado_completa_el_directorio():
+    """Las fichas ?team= y su archivo paginado traen a quien el organigrama no muestra
+    (síndica, más regidores), con su comisión; sin red: fetch falso."""
+    import indexar
+    raiz = "https://cuernavaca.gob.mx"
+
+    def pagina(nombre, cargo, extra=""):
+        return f"<html><body><p>{nombre}</p><p>{cargo}</p>{extra}</body></html>"
+
+    falsas = {
+        f"{raiz}/?post_type=team&paged=1": '<a href="/?team=paula-trade">Paula</a><a href="/?team=elia-ortiz">Elia</a>',
+        f"{raiz}/?post_type=team&paged=2": '<a href="/?team=paula-trade">Paula</a>',
+        f"{raiz}/?team=paula-trade": pagina("Paula Trade Hidalgo", "Síndica Municipal"),
+        f"{raiz}/?team=elia-ortiz": pagina("Elia Ortíz García", "Regidora",
+                                           "<p>Presidenta de la Comisión de Salud.</p>"),
+    }
+    datos = indexar.personas_equipo(falsas.get, raiz,
+                                    '<a href="https://cuernavaca.gob.mx/?team=paula-trade">Paula</a>', "dir.html")
+    por_nombre = {d["nombre"]: d for d in datos}
+    assert por_nombre["Paula Trade Hidalgo"]["cargo"] == "Síndica Municipal"
+    assert por_nombre["Elia Ortíz García"]["comision"] == "Salud"  # la comisión sale de su ficha
+    assert all(d["verificacion"] == "ok" for d in datos)
+
+
 def test_indexador_descarta_otro_municipio_sin_descargar():
     """Un dominio de otro municipio se descarta por dominio_permitido, antes de descargar."""
     import indexar

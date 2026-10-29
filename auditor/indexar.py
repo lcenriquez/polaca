@@ -328,13 +328,61 @@ def extraer_directorio_texto(texto: str, archivo: str) -> list[dict]:
             if len(digitos) == 10 and telefono is None and "@" not in vecina:
                 telefono = digitos
         pagina, verif = extraer.verificar(f"{nombre} {cargo}", textos, 1)
-        fila = filtrar_contacto({"nombre": nombre, "cargo": cargo, "comision": None,
+        fila = filtrar_contacto({"nombre": nombre.strip("⁠﻿ "), "cargo": cargo, "comision": None,
                                  "correo": correo, "telefono": telefono, "direccion": None,
                                  "archivo": archivo, "pagina": pagina,
                                  "fragmento": f"{nombre} {cargo}", "verificacion": verif},
                                 set(re.findall(r"@([\w.-]+\.gob\.mx)", texto.lower())))
         salida.append(fila)
     return [f for f in salida if f["verificacion"] == "ok"]
+
+
+def _clave_persona(nombre: str) -> str:
+    return re.sub(r"^(lic|mtro|ing|dra|dr)\.?\s+", "", municipios.sin_acentos(nombre or ""))
+
+
+def personas_equipo(fetch, raiz: str, html_pagina: str, archivo: str, url_pagina: str = "") -> list[dict]:
+    """Personas de las fichas de equipo (?team=…) enlazadas desde el directorio.
+
+    El organigrama de algunos sitios (Cuernavaca) solo muestra una parte del
+    equipo en sus tarjetas; las fichas individuales y el archivo paginado
+    ?post_type=team traen a todas (síndica y regidores incluidos). De cada ficha
+    se toma solo su primera persona: el resto de la página es su trayectoria.
+    Si una ficha abre la página de otra persona (error del sitio), la unión por
+    nombre la descarta sola: nadie se inventa."""
+    urls = {urljoin(raiz, u) for u in re.findall(r'href="([^"]*\?team=[^"]+)"', html_pagina or "")}
+    # Varias pasadas: hay sitios cuyo archivo y organigrama salen distintos en
+    # cada visita (cachés desincronizados); la unión de todas se acerca al
+    # equipo completo. Se para cuando una pasada entera ya no aporta a nadie.
+    for _pasada in range(4):
+        nuevos_en_pasada = False
+        fuentes = [fetch(url_pagina)] if url_pagina else []
+        fuentes += [fetch(f"{raiz}/?post_type=team&paged={pag}") for pag in range(1, 9)]
+        for h in fuentes:
+            if not h:
+                continue
+            nuevas = {urljoin(raiz, u) for u in re.findall(r'href="([^"]*\?team=[^"]+)"', h)}
+            nuevos_en_pasada = nuevos_en_pasada or bool(nuevas - urls)
+            urls |= nuevas
+        if not nuevos_en_pasada:
+            break
+    salida, vistos = [], set()
+    for url in sorted(urls)[:40]:  # ponytail: tope de fichas por directorio; subir si un equipo es mayor
+        h = fetch(url)
+        if not h:
+            continue
+        texto = texto_plano(h)
+        datos = extraer_directorio_texto(texto, archivo)
+        if not datos:
+            continue
+        fila = datos[0]
+        m = re.search(r"President[ae] de las? Comisi[oó]n(?:es)? de ([^.;\n]+)", texto)
+        if m and "regidor" in municipios.sin_acentos(fila["cargo"]):
+            fila["comision"] = m.group(1).strip()
+        if _clave_persona(fila["nombre"]) not in vistos:
+            vistos.add(_clave_persona(fila["nombre"]))
+            salida.append(fila)
+    return salida
 
 
 def anotar_camino(registro: dict, tipo: str, camino: str):
@@ -552,6 +600,27 @@ def leer_directorio(con, clave: str, inicio: str, archivo: str, nombre: str, est
                                      instrucciones, gobierno.ESQ_FUNCIONARIOS, "funcionarios", "funcionarios")
         else:
             datos = gobierno._de_html(archivo, instrucciones, gobierno.ESQ_FUNCIONARIOS, "funcionarios", "funcionarios")
+    if not archivo.endswith(".pdf"):
+        # El directorio puede mostrar solo parte del equipo: se completa con las
+        # fichas individuales enlazadas y su archivo paginado (sin API).
+        manifiesto_ruta = extraer.RAW / "manifiesto.json"
+        manifiesto = json.loads(manifiesto_ruta.read_text()) if manifiesto_ruta.exists() else []
+        url_origen = next((m.get("url") for m in manifiesto if m.get("archivo") == archivo), None)
+        if url_origen:
+            p = urlparse(url_origen)
+            crudo = (extraer.RAW / archivo).read_text(encoding="utf-8", errors="ignore")
+            por_nombre = {_clave_persona(f["nombre"]): f for f in datos}
+            for fila in personas_equipo(obtener, f"{p.scheme}://{p.netloc}", crudo, archivo, url_origen):
+                anterior = por_nombre.get(_clave_persona(fila["nombre"]))
+                if anterior is None:
+                    datos.append(fila)
+                    por_nombre[_clave_persona(fila["nombre"])] = fila
+                else:  # la ficha trae la comisión/correo que el listado general no trae
+                    for campo in ("comision", "correo", "telefono", "direccion"):
+                        if not anterior.get(campo) and fila.get(campo):
+                            anterior[campo] = fila[campo]
+            municipios.registrar_evento(con, clave, "lectura",
+                                        f"Completé el directorio con las fichas individuales del equipo: {len(datos)} personas.")
     datos = [filtrar_contacto(f, dominios) for f in datos]  # privacidad, también sobre lo que devuelva Muse
     con.execute("DELETE FROM funcionarios WHERE archivo = ? AND municipio_id = ?", (archivo, clave))
     con.executemany("""INSERT INTO funcionarios (nombre, cargo, comision, correo, telefono, direccion,
