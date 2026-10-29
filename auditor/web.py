@@ -811,7 +811,9 @@ def representantes(junta: int = 0, m: str = "21019"):
 <p><a class="btn ghost" href="/donde">Pregunta su nombre en tu junta auxiliar</a></p>
 <p><a class="btn ghost" href="/actua">Pídelo por transparencia</a></p>
 {_fuente_de(f_insp, urls) if f_insp else ''}</div></div>""")
-    regidores = [f for f in funcionarios if f["comision"]]
+    # Regidor también sin comisión: hay ayuntamientos que solo publican «Regidor»
+    # a secas (Cuernavaca); exigir comisión los hacía invisibles en esta vista.
+    regidores = [f for f in funcionarios if f["comision"] or "regidor" in plano(f["cargo"])]
     f_reg = _buscar_fila(funciones, "regidores")
     sindico = _buscar_fila(funcionarios, "sindicatura")
     if sindico:
@@ -885,12 +887,13 @@ def representantes(junta: int = 0, m: str = "21019"):
     tarjetas_reg = []
     for i, f in enumerate(regidores):
         ic_corto, corto = tema_corto(f["comision"])
+        etiqueta = corto if f["comision"] else f["cargo"]  # sin comisión publicada: su cargo, no un tema inventado
         tarjetas_reg.append(
             f'<div class="regcard{" mas" if i >= 5 else ""}" data-tema="{e(corto)}" data-tarjeta="{f["id"]}"{" hidden" if i >= 5 else ""}>'
             f'<span class="av a2" aria-hidden="true">{e(_iniciales(f["nombre"]))}</span>'
             f'<b class="nombre">{e(f["nombre"])}</b>'
-            f'<span class="t">{icono(ic_corto, "Icono del tema " + corto)}{e(corto)}</span>'
-            f'<span class="small muted">Tema corto: explicación general. El nombre oficial está en su ficha.</span>'
+            f'<span class="t">{icono(ic_corto, "Icono del tema " + corto)}{e(etiqueta)}</span>'
+            f'<span class="small muted">{"Tema corto: explicación general. El nombre oficial está en su ficha." if f["comision"] else "Su comisión no viene en la fuente revisada."}</span>'
             f'<a class="btn ghost" href="/revisar/{f["id"]}">Ver su trabajo</a></div>')
     reggrid = "".join(tarjetas_reg)
     ver_mas = (f'<p><button class="btn ghost" type="button" onclick="verMasRegidores(this)">Ver las otras {len(regidores) - 5}</button></p>'
@@ -910,12 +913,27 @@ def representantes(junta: int = 0, m: str = "21019"):
         "Sí sabemos que la presidencia encabeza el gobierno del municipio; su nombre no está en las "
         "fuentes revisadas hasta hoy.",
         [("/actua", "Pide información", False), ("/acuerdos", "Ver los acuerdos", True)])
+    # Gabinete y direcciones del directorio oficial: no son Cabildo, pero también
+    # son personas funcionarias con cita y la gente debe poder verlas y revisarlas.
+    usados = {f["id"] for f in regidores} | {x["id"] for x in (sindico, presidenta) if x}
+    otros = [f for f in funcionarios if f["id"] not in usados]
+    gabinete_html = ""
+    if otros:
+        tarjetas_otros = "".join(
+            f'<div class="regcard"><span class="av a2" aria-hidden="true">{e(_iniciales(f["nombre"]))}</span>'
+            f'<b class="nombre">{e(f["nombre"])}</b><span class="t">{e(f["cargo"])}</span>'
+            f'{_fuente_de(f, urls)}'
+            f'<a class="btn ghost" href="/revisar/{f["id"]}">Ver su trabajo</a></div>' for f in otros)
+        gabinete_html = (f'<div class="tier"><h3>{icono("ppl", "Dibujo de personas")}'
+                         f'Gabinete y direcciones · {len(otros)}</h3>'
+                         f'<div class="reggrid">{tarjetas_otros}</div></div>')
     izquierda = ('<div style="display:flex;flex-direction:column;gap:20px">'
                  f'<div class="tier"><h3>{icono("pin", "Dibujo de un pin de mapa")}Tu comunidad</h3>'
                  + "".join(nivel_comunidad) + '</div>'
                  + cabildo_html
                  + f'<div class="tier"><h3>{icono("home", "Dibujo de una casa")}Presidencia</h3>'
                  + presidencia_html
+                 + gabinete_html
                  + """<div class="card"><h3>El Cabildo completo</h3>
 <p style="font-size:16px">Presidenta, síndico y regidores se reúnen, discuten y votan. Lo que acuerdan queda en documentos públicos.</p>
 <p><a class="btn" href="/temas">¿Qué te preocupa?</a></p>

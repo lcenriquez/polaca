@@ -828,6 +828,9 @@ def test_indexador_recorrido_cuernavaca():
     nombres = {d["nombre"] for d in datos}
     assert any("Urióstegui" in n for n in nombres), nombres  # presidente municipal
     assert sum("Regidor" in d["cargo"] for d in datos) >= 3, datos
+    # El Organigrama es el directorio completo: también secretarios, tesorero y directores.
+    assert len(datos) >= 10, datos
+    assert any("Tesorero" in d["cargo"] for d in datos) and any("Secretario" in d["cargo"] for d in datos), datos
     assert all(d["verificacion"] == "ok" and d["fragmento"] for d in datos)  # cada fila con cita
     # Privacidad: el correo institucional pasa; el @gmail.com de la misma página, nunca.
     assert all(not d["correo"] or d["correo"].endswith("@cuernavaca.gob.mx") for d in datos), datos
@@ -836,6 +839,41 @@ def test_indexador_recorrido_cuernavaca():
                                     {"cuernavaca.gob.mx"}) == {"correo": None, "telefono": None}
     assert indexar.correo_institucional("gabriel.rivas@cuernavaca.gob.mx", {"cuernavaca.gob.mx"})
     assert indexar.correo_institucional("ingjuanmiguel.serranogastelum@gmail.com", {"cuernavaca.gob.mx"}) is None
+
+
+def test_regidor_sin_comision_se_muestra():
+    """Un regidor con cargo a secas («Regidor», sin comisión) también sale en /representantes."""
+    import gobierno
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with gobierno.conectar():
+            pass  # crea funcionarios antes de que municipios agregue municipio_id
+        with municipios.conectar() as con:
+            con.execute("INSERT INTO municipios VALUES ('17007', 'Morelos', 'Cuernavaca', 'indexado')")
+            con.commit()
+        cols_f = ["nombre", "cargo", "comision", "archivo", "pagina", "fragmento", "verificacion", "municipio_id"]
+        base = {"archivo": "g.html", "pagina": 1, "verificacion": "ok", "municipio_id": "17007"}
+        with gobierno.conectar() as con:
+            gobierno._guardar(con, "funcionarios", cols_f, [
+                {**base, "nombre": "Presi Ejemplo", "cargo": "Presidente municipal de Cuernavaca",
+                 "comision": None, "fragmento": "Presi Ejemplo"},
+                {**base, "nombre": "Regi Ejemplo", "cargo": "Regidor",
+                 "comision": None, "fragmento": "Regi Ejemplo"},
+                {**base, "nombre": "Secre Ejemplo", "cargo": "Secretario de Obras Públicas",
+                 "comision": None, "fragmento": "Secre Ejemplo"}])
+            # _guardar no escribe municipio_id: se marca como hace municipios/indexar
+            con.execute("UPDATE funcionarios SET municipio_id = '17007'")
+            con.commit()
+        texto = TestClient(web.app).get("/representantes", params={"m": "17007"}).text
+        assert "Regi Ejemplo" in texto and "Presi Ejemplo" in texto, texto
+        assert "Cabildo · 1 regidurías" in texto
+        assert "Su comisión no viene en la fuente revisada" in texto
+        assert "Gabinete y direcciones · 1" in texto and "Secre Ejemplo" in texto
 
 
 def test_indexador_descarta_otro_municipio_sin_descargar():

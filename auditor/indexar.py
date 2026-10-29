@@ -282,8 +282,10 @@ def candidatas_recorrido(paginas: dict[str, str], tipo: str) -> list[str]:
     return sorted(puntos, key=lambda u: -puntos[u])
 
 
-_CARGOS = ("presidente municipal", "presidenta municipal", "sindico", "sindica",
-           "regidor", "regidora", "regiduria")
+_CARGOS = ("presidente municipal", "presidenta municipal", "presidente", "presidenta", "sindico", "sindica",
+           "regidor", "regidora", "regiduria", "secretario", "secretaria", "tesorero", "tesorera",
+           "contralor", "contralora", "contraloria", "director general", "directora general",
+           "direccion general", "consejeria", "coordinador", "coordinadora")
 _NO_NOMBRE = {"regidurias", "gabinete", "presidencia", "direcciones", "coordinaciones", "municipio", "conoce"}
 
 
