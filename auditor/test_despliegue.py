@@ -134,6 +134,35 @@ def test_admin_requiere_token_largo():
                 os.environ["ADMIN_TOKEN"] = previo
 
 
+def test_revisar_privacidad():
+    """El script de privacidad sale 1 con datos personales y 0 con contacto solo institucional."""
+    import sqlite3
+    script = Path(__file__).resolve().parent.parent / "scripts" / "revisar_privacidad.py"
+    with tempfile.TemporaryDirectory() as d:
+        ruta = Path(d) / "t.db"
+        con = sqlite3.connect(ruta)
+        con.executescript("""
+            CREATE TABLE acuerdos (fragmento TEXT);
+            CREATE TABLE funcionarios (correo TEXT, telefono TEXT);
+            CREATE TABLE contacto_institucional (telefono TEXT);
+            CREATE TABLE documentos (sha256 TEXT);
+            INSERT INTO funcionarios VALUES ('oficina@cuernavaca.gob.mx', '777 000 0000');
+            INSERT INTO contacto_institucional VALUES ('244 000 0000');
+            INSERT INTO documentos VALUES ('a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2');
+        """)
+        con.commit()
+        con.close()
+        r = subprocess.run([sys.executable, str(script), str(ruta)], capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout  # gob.mx, contacto institucional y un hash: no es hallazgo
+        con = sqlite3.connect(ruta)
+        con.execute("INSERT INTO acuerdos VALUES ('escriban a juan.perez@gmail.com o al 55 1234 5678')")
+        con.commit()
+        con.close()
+        r = subprocess.run([sys.executable, str(script), str(ruta)], capture_output=True, text=True)
+        assert r.returncode == 1 and r.stdout.count("REVISAR:") == 2, r.stdout
+        assert "juan.perez" not in r.stdout and "1234" not in r.stdout  # salida enmascarada
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):
