@@ -321,10 +321,17 @@ def guardar(con, hallazgos: list[dict]):
     con.commit()
 
 
+def actualizar(con) -> list[dict]:
+    """Recalcula y guarda la tabla hallazgos. Lo usan main y el indexador al terminar
+    una pasada: sin esta llamada, cargar contratos nuevos nunca llena la tabla."""
+    hallazgos = generar(con) + cruzar_pmd(con)
+    guardar(con, hallazgos)
+    return hallazgos
+
+
 def main():
     with conectar() as con:
-        hallazgos = generar(con) + cruzar_pmd(con)
-        guardar(con, hallazgos)
+        hallazgos = actualizar(con)
         c = cobertura(con)
         concentracion = concentracion_proveedores(con)
     print("Cobertura del cruce:")

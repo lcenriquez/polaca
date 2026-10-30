@@ -180,6 +180,25 @@ def test_promesa_sin_registro():
             assert _tipos(con, "promesa_sin_registro") == []
 
 
+def test_actualizar_llena_la_tabla_hallazgos():
+    """La tabla hallazgos no se llena sola al guardar contratos: hace falta actualizar().
+
+    Es lo que el indexador llama al terminar una pasada (y cruzar.py en su main);
+    sin esa llamada la tabla quedaba en 0 aunque hubiera discrepancias."""
+    import contratos
+    import cruzar
+    with tempfile.TemporaryDirectory() as d:
+        with _base(d) as con:
+            contratos.guardar(con, "convocatoria.pdf", 1, [_contrato(monto_con_iva_mxn=1_000_000.0)], (1, 1), "17007")
+            contratos.guardar(con, "fallo.pdf", 1, [_contrato(monto_con_iva_mxn=1_250_000.0,
+                                                             fragmento="$1,250,000.00")], (1, 1), "17007")
+            assert con.execute("SELECT count(*) FROM hallazgos").fetchone()[0] == 0  # guardar contratos no cruza
+            assert len(cruzar.actualizar(con)) == 1
+            [fila] = con.execute("SELECT tipo, archivo_presupuesto, archivo_acuerdo FROM hallazgos").fetchall()
+            assert tuple(fila) == ("monto_difiere_entre_fuentes", "convocatoria.pdf", "fallo.pdf")
+            assert len(cruzar.actualizar(con)) == 1  # recalcular reemplaza, no duplica
+
+
 def test_concentracion_es_descriptiva():
     """Muchos contratos a un proveedor no generan hallazgo: solo un dato descriptivo."""
     import contratos

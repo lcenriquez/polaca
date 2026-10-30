@@ -30,6 +30,7 @@ from urllib.parse import quote, urljoin, urlparse
 
 import extraer
 import contratos
+import cruzar
 import gobierno
 import llm
 import municipios
@@ -847,6 +848,11 @@ def indexar(clave: str, solo_contratos: bool = False) -> int:
         con.execute("UPDATE municipios SET estado_indexacion = ? WHERE clave_inegi = ?",
                     ("indexado" if exito else "error", clave))
     con.commit()
+    with cruzar.conectar() as con_cruce:  # la tabla hallazgos solo se llena aquí o corriendo cruzar.py a mano
+        n_hallazgos = len(cruzar.actualizar(con_cruce))
+    municipios.registrar_evento(con, clave, "cruce",
+                                f"Volví a cruzar los documentos guardados: {n_hallazgos} diferencia(s) "
+                                "verificable(s) entre fuentes en total.")
     gasto = sum(g["usd"] for g in _gastos() if g["ts"] >= inicio)
     municipios.registrar_evento(
         con, clave, "fin",
