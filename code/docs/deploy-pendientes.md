@@ -8,34 +8,41 @@ asumiendo estos cambios.
 
 ## 1. Leer `DATA_DIR` para todo lo persistente
 
-- [ ] La base SQLite, `datos/` y la caché se resuelven desde la variable
+- [x] La base SQLite, `datos/` y la caché se resuelven desde la variable
       de entorno `DATA_DIR` (en Fly vale `/data`, el volumen).
-- [ ] Sin `DATA_DIR`, el comportamiento local actual no cambia
+- [x] Sin `DATA_DIR`, el comportamiento local actual no cambia
       (default: la carpeta `datos/` del repo).
-- [ ] Ninguna ruta absoluta ni relativa al cwd debe quedar suelta:
+- [x] Ninguna ruta absoluta ni relativa al cwd debe quedar suelta:
       buscar todos los `Path("datos/...")` y constantes equivalentes.
 
 ## 2. Cabeceras de seguridad en todas las respuestas
 
-- [ ] `Content-Security-Policy` sin recursos externos (todo inline o
+- [x] `Content-Security-Policy` sin recursos externos (todo inline o
       del mismo origen): `default-src 'self'` y lo mínimo que la UI
       necesite, sin CDN.
-- [ ] `X-Content-Type-Options: nosniff`
-- [ ] `Referrer-Policy: no-referrer` (o `same-origin` si algo lo exige)
-- [ ] `frame-ancestors 'none'` en la CSP (nadie incrusta la consola).
+- [x] `X-Content-Type-Options: nosniff`
+- [x] `Referrer-Policy: no-referrer` (o `same-origin` si algo lo exige)
+- [x] `frame-ancestors 'none'` en la CSP (nadie incrusta la consola).
 
 ## 3. Límite de 10 MB en subidas
 
-- [ ] Rechazar con `413` cualquier subida mayor a 10 MB (evidencia y
+- [x] Rechazar con `413` cualquier subida mayor a 10 MB (evidencia y
       cualquier otro endpoint con `UploadFile`), contando el tamaño
       real leído, no solo el encabezado `Content-Length`.
 
 ## 4. Límite de solicitudes por IP
 
-- [ ] Tope por IP en `/solicitar`, `/evidencia` y `/admin`
+- [x] Tope por IP en `/solicitar`, `/evidencia` y `/admin`
       (ventana corta, p. ej. decenas por minuto; `/admin` más estricto).
-- [ ] Responder `429` al excederlo. Sin dependencias nuevas si se puede:
+- [x] Responder `429` al excederlo. Sin dependencias nuevas si se puede:
       contador en memoria basta para una sola máquina (ver ADR Fly).
+
+## Hecho además (pase de octubre 2026)
+
+- `/admin` solo existe si `ADMIN_TOKEN` tiene al menos 32 caracteres; si no, responde 404.
+- `GET /salud` responde 200 sin tocar la base; el health check de `fly.toml` apunta ahí.
+- `scripts/revisar_privacidad.py`: revisa la base a subir y sale con código 1 si
+  encuentra correos no `.gob.mx` o teléfonos fuera de los campos de contacto institucional.
 
 ## Fuera de alcance aquí
 

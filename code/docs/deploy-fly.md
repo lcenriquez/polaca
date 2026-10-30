@@ -68,10 +68,10 @@ ciudadanas). Si tu app se llama distinto: `FLY_APP=<nombre> bash scripts/subir_d
 ```bash
 fly status --app polaca-demo
 fly logs --app polaca-demo
-curl -i https://polaca-demo.fly.dev/
+curl -i https://polaca-demo.fly.dev/salud
 ```
 
-Debe responder `200` en `/` (el health check de `fly.toml` apunta ahí).
+Debe responder `200` en `/salud` (el health check de `fly.toml` apunta ahí).
 Abre también la URL en el navegador y confirma que se ven los datos.
 
 ## Problemas frecuentes
