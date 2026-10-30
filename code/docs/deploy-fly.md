@@ -1,5 +1,8 @@
 # Guía de despliegue de la demo en Fly.io
 
+> **No se usa:** Fly pide tarjeta. El despliegue actual es Render;
+> sigue [deploy-render.md](deploy-render.md). Esto queda como referencia.
+
 Comandos exactos, en orden, desde la raíz del repo. Requisitos: `flyctl`
 instalado, sesión iniciada (`fly auth login`) y los valores reales de los
 secretos a la mano (nunca se escriben en el repo ni en archivos del repo).

@@ -1,6 +1,6 @@
 # ADR: despliegue de la demo en Fly.io
 
-- Estado: aceptado (solo demo)
+- Estado: sustituido por Render (Fly pide tarjeta; no se usa) — ver deploy-render.md
 - Fecha: 2026-10-29
 
 ## Decisión
