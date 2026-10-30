@@ -14,6 +14,7 @@ import io
 import json
 import os
 import re
+import shutil
 import sqlite3
 import unicodedata
 from datetime import datetime, timezone
@@ -28,6 +29,22 @@ RAIZ = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", RAIZ / "datos"))
 RAW = DATA_DIR / "raw"
 DB = DATA_DIR / "auditor.db"
+SEMILLA = RAIZ / "datos" / "semilla"
+
+
+def sembrar(data_dir: Path = DATA_DIR, semilla: Path = SEMILLA) -> None:
+    """Sin disco persistente (p. ej. Render): al primer arranque copia la semilla
+    incluida en la imagen. Nunca sobrescribe una base que ya exista."""
+    destino = data_dir / "auditor.db"
+    if destino.exists() or not (semilla / "auditor.db").exists():
+        return
+    data_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(semilla / "auditor.db", destino)
+    if (semilla / "raw").exists():
+        shutil.copytree(semilla / "raw", data_dir / "raw", dirs_exist_ok=True)
+
+
+sembrar()
 TRAMO = 20
 
 

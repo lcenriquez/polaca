@@ -625,6 +625,24 @@ def test_hero_mapa_y_titular_un_solo_componente():
         assert 'class="mapa-pie"' in inicio and "municipios revisados" in inicio
 
 
+def test_sembrar_copia_la_semilla_sin_sobrescribir():
+    """Primera corrida sin disco: se copian base y fuentes de la semilla; una base existente jamás se pisa."""
+    import extraer
+    with tempfile.TemporaryDirectory() as d:
+        raiz = Path(d)
+        semilla = raiz / "semilla"
+        (semilla / "raw").mkdir(parents=True)
+        (semilla / "auditor.db").write_bytes(b"semilla")
+        (semilla / "raw" / "fuente.pdf").write_bytes(b"%PDF")
+        datos = raiz / "datos"
+        extraer.sembrar(datos, semilla)
+        assert (datos / "auditor.db").read_bytes() == b"semilla"
+        assert (datos / "raw" / "fuente.pdf").read_bytes() == b"%PDF"
+        (datos / "auditor.db").write_bytes(b"existente")
+        extraer.sembrar(datos, semilla)
+        assert (datos / "auditor.db").read_bytes() == b"existente"
+
+
 def test_sin_municipio_por_defecto_redirige_y_cookie_recuerda():
     """Sin ?m= ni cookie todo pide elegir en /donde; al elegir, la cookie manda en chip y rutas."""
     import municipios
