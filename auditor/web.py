@@ -48,7 +48,14 @@ _MUN_COOKIE = contextvars.ContextVar("municipio_cookie", default="")
 @app.middleware("http")
 async def _recordar_municipio(request: Request, call_next):
     _MUN_COOKIE.set(request.cookies.get("municipio", ""))
-    return await call_next(request)
+    resp = await call_next(request)
+    # Cabeceras de seguridad en todo (también /static y errores): sin recursos de otros orígenes.
+    resp.headers["Content-Security-Policy"] = ("default-src 'self'; script-src 'self' 'unsafe-inline'; "
+                                               "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+                                               "frame-ancestors 'none'")
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["Referrer-Policy"] = "no-referrer"
+    return resp
 
 
 def _elegida(request: Request, m: str = "") -> str | None:

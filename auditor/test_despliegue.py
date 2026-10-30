@@ -32,6 +32,34 @@ def test_data_dir_env():
     assert local[3].endswith("datos/costos.jsonl") and local[4].endswith("datos/evidencia")
 
 
+def _cliente(d: str):
+    """TestClient con la base en un tmp (mismo patrón que test_auditor.test_web)."""
+    import extraer
+    import cruzar
+    import evidencia
+    extraer.DB = Path(d) / "t.db"
+    extraer.RAW = Path(d)
+    evidencia.EVIDENCIA = Path(d) / "evidencia"
+    with cruzar.conectar():
+        pass
+    import web
+    from fastapi.testclient import TestClient
+    return TestClient(web.app, follow_redirects=False)
+
+
+def test_cabeceras_seguridad():
+    with tempfile.TemporaryDirectory() as d:
+        r = _cliente(d).get("/")
+        assert r.status_code == 200
+        csp = r.headers["content-security-policy"]
+        assert "default-src 'self'" in csp and "frame-ancestors 'none'" in csp
+        assert "http" not in csp  # ningún host externo
+        assert r.headers["x-content-type-options"] == "nosniff"
+        assert r.headers["referrer-policy"] == "no-referrer"
+        r404 = _cliente(d).get("/no-existe")
+        assert r404.headers["x-content-type-options"] == "nosniff"  # también en errores
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):
