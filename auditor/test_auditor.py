@@ -693,7 +693,7 @@ def test_temas_cortos_y_estados_vacios():
         assert "Ver un ejemplo: Atlixco" in sin and "0 regidurías" not in sin and "Qué hace:</strong> </p>" not in sin
         assert 'class="ring"' not in sin  # sin diagrama vacío ni secciones huecas
         rep = cliente.get("/representantes").text
-        assert "Obras y calles" in rep and "Bienestar y niñez" in rep and "Ver las otras 2" in rep
+        assert "Obras y calles" in rep and "Bienestar y niñez" in rep and "Ver todos" in rep
         assert "Bienestar, Juventud, Protección y Atención a la Niñez" not in rep  # oficial largo: solo en la ficha
         ficha = cliente.get("/revisar/2").text
         assert "Bienestar, Juventud, Protección y Atención a la Niñez" in ficha and "explicación general" in ficha
@@ -973,6 +973,100 @@ def test_indexador_no_encontrado_solo_tras_agotar():
 def indexar_registro_parcial(con, registro):
     import indexar
     return indexar.registrar_no_encontrado(con, "17007", "directorio", registro)
+
+
+def test_indexando_solo_ultima_corrida_urls_cortas_y_resumen():
+    """Sin red: fuera del desplegable solo va la última corrida; las URLs se ven como dominio."""
+    import re
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with municipios.conectar() as con:
+            con.execute("INSERT INTO municipios VALUES ('17007', 'Morelos', 'Cuernavaca', 'indexando')")
+            con.commit()
+            for paso, msg in [
+                    ("aprobada", "Aprobada vieja"), ("inicio", "Empiezo viejo"),
+                    ("gaceta", "Evento viejo https://cuernavaca.gob.mx/gaceta/vieja-larga.pdf"),
+                    ("aprobada", "Aprobada nueva"), ("inicio", "Empiezo nuevo"),
+                    ("gaceta", "Encontré Gaceta municipal de Cuernavaca: https://cuernavaca.gob.mx/gaceta/nueva-larga.pdf"),
+                    ("presupuesto", "No encontré el presupuesto de Cuernavaca")]:
+                municipios.registrar_evento(con, "17007", paso, msg)
+        texto = TestClient(web.app).get("/indexando/17007").text
+        assert "Documentos leídos" in texto and "Citas verificadas" in texto and "Costo" in texto
+        assert "Qué se encontró: Gaceta municipal" in texto and "Qué no se encontró: Presupuesto de egresos" in texto
+        fuera, _, dentro = texto.partition("Revisiones anteriores")
+        assert "Encontré Gaceta municipal" in fuera and "Evento viejo" not in fuera
+        assert "Evento viejo" in dentro
+        assert "<details class=\"anteriores\"><summary>Revisiones anteriores" in texto
+        assert "<details class=\"anteriores\" open" not in texto  # cerrado por defecto
+        visible = re.sub(r"<[^>]+>", " ", texto)
+        assert "https://cuernavaca.gob.mx/gaceta/nueva-larga.pdf" not in visible
+        assert "https://cuernavaca.gob.mx/gaceta/vieja-larga.pdf" not in visible
+        assert "cuernavaca.gob.mx · ver documento" in texto
+        assert "--muted-2:#d6d2e6" in web.CSS and ".ev time { color: var(--muted-2)" in web.CSS  # AA en oscuro
+
+
+def test_cuernavaca_sin_junta_inspector_al_final_y_chip_corto():
+    """Cuernavaca (Morelos) no menciona junta auxiliar; el chip usa «Mor.» y cabe en una línea."""
+    import gobierno
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with gobierno.conectar():
+            pass
+        with municipios.conectar() as con:
+            con.execute("INSERT INTO municipios VALUES ('17007', 'Morelos', 'Cuernavaca', 'indexado')")
+            con.commit()
+        cols_f = ["nombre", "cargo", "comision", "archivo", "pagina", "fragmento", "verificacion", "municipio_id"]
+        base = {"archivo": "g.html", "pagina": 1, "verificacion": "ok", "municipio_id": "17007"}
+        with gobierno.conectar() as con:
+            gobierno._guardar(con, "funcionarios", cols_f, [
+                {**base, "nombre": "Presi Ejemplo", "cargo": "Presidente municipal de Cuernavaca",
+                 "comision": None, "fragmento": "Presi Ejemplo"},
+                {**base, "nombre": "Regi Ejemplo", "cargo": "Regidor",
+                 "comision": None, "fragmento": "Regi Ejemplo"}])
+            con.execute("UPDATE funcionarios SET municipio_id = '17007'")
+            con.commit()
+        texto = TestClient(web.app).get("/representantes", params={"m": "17007"}).text
+        assert "junta auxiliar" not in texto.lower() and "inspector" not in texto.lower()
+        assert "Cuernavaca, Mor." in texto and '<span class="place-t">' in texto  # chip en una línea, con elipsis
+        assert "Regi Ejemplo" in texto and "Ver la fuente" in texto  # persona conocida, con cita
+        assert "@media (max-width: 767px)" in web.CSS and ".regcard { flex-direction: row" in web.CSS
+
+
+def test_presupuesto_plegable_y_sin_tarjetas_vacias():
+    """Sin red: /presupuesto agrupa en tarjetas plegables por capítulo y ninguna tarjeta sale vacía."""
+    import re
+    import presupuesto
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with presupuesto.conectar() as con:
+            presupuesto.guardar(con, "pres.pdf", 10, [
+                {"capitulo": "1000", "nombre": "Servicios Personales", "monto_mxn": 100.0, "pagina": 6,
+                 "fragmento": "$100.00", "verificacion": "ok", "verificacion_nombre": "ok"},
+                {"capitulo": "6000", "nombre": "Inversión Pública", "monto_mxn": 50.0, "pagina": 6,
+                 "fragmento": "$50.00", "verificacion": "ok", "verificacion_nombre": "ok"}], (5, 6))
+        cliente = TestClient(web.app)
+        pres = cliente.get("/presupuesto").text
+        assert pres.count('<details class="cap">') == 2 and "<table" not in pres
+        assert "1000 · Sueldos del personal" in pres and "6000 · Obra pública" in pres
+        for ruta in ("/presupuesto", "/gastos"):
+            html_ruta = cliente.get(ruta).text
+            assert not re.search(r'<div class="(?:card|tarjeta)[^"]*"[^>]*>\s*</div>', html_ruta), ruta
+            for tarjeta in re.findall(r'<div class="(?:card|tarjeta)[^"]*"[^>]*>(.*?)</div>', html_ruta, flags=re.S):
+                assert re.sub(r"<[^>]+>", "", tarjeta).strip(), ruta  # ninguna tarjeta vacía
 
 
 if __name__ == "__main__":
