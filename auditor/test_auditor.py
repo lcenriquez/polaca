@@ -845,6 +845,8 @@ def test_solicitud_sin_aprobacion_no_dispara_agente():
             r = cliente.post("/solicitar/15054", follow_redirects=False)
             assert r.status_code == 303 and lanzadas == []  # pedir no dispara nada
             assert "token" in cliente.get("/admin").text.lower()  # sin token: formulario, no la lista
+            panel = cliente.get("/admin", params={"token": "token-de-prueba-de-32-caracteres-ok"}).text
+            assert "se borran cuando el servicio se reinicia" in panel  # aviso de datos volátiles en Render
             assert cliente.post("/admin/decision", data={"token": "malo", "solicitud": 1,
                                                          "decision": "aprobar"}).status_code == 403
             assert lanzadas == []

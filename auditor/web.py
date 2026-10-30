@@ -1665,7 +1665,10 @@ def admin(token: str = ""):
     hist = "".join(f'<div class="tarjeta">{e(s["nombre"])}, {e(s["estado"])}: solicitud {e(s["estado"])} '
                    f'(decidida el {e(s["decidida"] or "—")}) · <a href="/indexando/{e(s["clave_inegi"])}">ver avance</a></div>'
                    for s in recientes)
-    cuerpo = ('<h2>Solicitudes por decidir</h2>' + (lista or '<p>No hay solicitudes pendientes. Cuando una persona pida revisar un municipio, aparecerá aquí para que la apruebes o la rechaces.</p>')
+    cuerpo = ('<p class="aviso">Este servicio no tiene disco permanente: las solicitudes nuevas y la evidencia '
+              'que suba la ciudadanía se borran cuando el servicio se reinicia; al arrancar se restaura la '
+              'copia incluida en la imagen.</p>'
+              '<h2>Solicitudes por decidir</h2>' + (lista or '<p>No hay solicitudes pendientes. Cuando una persona pida revisar un municipio, aparecerá aquí para que la apruebes o la rechaces.</p>')
               + '<h2>Decisiones recientes</h2>' + (hist or '<p>Todavía no hay decisiones. Las solicitudes que apruebes o rechaces quedarán aquí.</p>'))
     return pagina("Administración", cuerpo)
 
