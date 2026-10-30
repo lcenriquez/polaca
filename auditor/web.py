@@ -2018,6 +2018,38 @@ def _evidencia_html(ev: dict, con) -> str:
     return "".join(partes)
 
 
+# ponytail: límites por IP en memoria de este proceso; Fly corre 1 máquina — si hay varias, contar en SQLite.
+_LIMITES = {"buscar": 60, "evidencia": 10, "solicitar": 20, "admin": 10}  # máximo por minuto e IP
+_hits: dict[tuple[str, str], list[float]] = {}
+
+
+def _limite_para(request: Request) -> str | None:
+    ruta, metodo = request.url.path, request.method
+    if ruta.startswith("/admin"):
+        return "admin"
+    if metodo == "POST" and ruta == "/evidencia":
+        return "evidencia"
+    if metodo == "POST" and ruta.startswith("/solicitar/"):
+        return "solicitar"
+    if metodo == "GET" and ruta in ("/", "/donde") and request.query_params.get("q"):
+        return "buscar"
+    return None
+
+
+@app.middleware("http")
+async def _limite_peticiones(request: Request, call_next):
+    clave = _limite_para(request)
+    if clave:
+        ip = request.client.host if request.client else "?"
+        ahora = time.monotonic()
+        recientes = [t for t in _hits.get((clave, ip), []) if ahora - t < 60]
+        if len(recientes) >= _LIMITES[clave]:
+            return HTMLResponse("<p>Estás haciendo muchas solicitudes muy rápido. "
+                                "Espera un minuto y vuelve a intentarlo.</p>", status_code=429)
+        _hits[(clave, ip)] = recientes + [ahora]
+    return await call_next(request)
+
+
 @app.get("/evidencia", response_class=HTMLResponse)
 def evidencia_form():
     with _con() as con:
@@ -2040,8 +2072,9 @@ sin metadatos de ubicación.</p>
 @app.post("/evidencia")
 async def evidencia_subir(foto: UploadFile = File(...), objeto: str = Form(...)):
     contenido = await foto.read()
-    if len(contenido) > 10 * 1024 * 1024:
-        return HTMLResponse("<p>La foto supera el máximo de 10 MB.</p>", status_code=400)
+    if len(contenido) > 10 * 1024 * 1024:  # tamaño real leído, no el encabezado
+        return HTMLResponse("<p>La foto supera el máximo de 10 MB. Sube una foto más ligera, por favor.</p>",
+                            status_code=413)
     # Solo JPEG y PNG, por contenido (no por el nombre que mande la persona).
     extension = ".jpg" if contenido[:3] == b"\xff\xd8\xff" else ".png" if contenido[:8] == b"\x89PNG\r\n\x1a\n" else None
     if extension is None:

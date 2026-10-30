@@ -60,6 +60,48 @@ def test_cabeceras_seguridad():
         assert r404.headers["x-content-type-options"] == "nosniff"  # también en errores
 
 
+def test_limites_por_ip():
+    import web
+    with tempfile.TemporaryDirectory() as d:
+        cliente = _cliente(d)
+        web._hits.clear()
+        tope = web._LIMITES["solicitar"]
+        web._LIMITES["solicitar"] = 3
+        try:
+            for _ in range(3):
+                assert cliente.post("/solicitar/99999").status_code == 404  # pasa el límite, no el municipio
+            r = cliente.post("/solicitar/99999")
+            assert r.status_code == 429 and "Espera un minuto" in r.text
+            # Otra ruta no comparte contador:
+            assert cliente.get("/donde", params={"q": "x"}).status_code == 200
+            # La búsqueda también tiene tope:
+            web._LIMITES["buscar"] = 2
+            cliente.get("/donde", params={"q": "x"})
+            cliente.get("/donde", params={"q": "x"})
+            assert cliente.get("/donde", params={"q": "x"}).status_code == 429
+            # Sin q no es búsqueda: no cuenta.
+            assert cliente.get("/donde").status_code == 200
+        finally:
+            web._LIMITES["solicitar"] = tope
+            web._LIMITES["buscar"] = 60
+            web._hits.clear()
+
+
+def test_subida_maximo_10mb():
+    import web
+    with tempfile.TemporaryDirectory() as d:
+        cliente = _cliente(d)
+        web._hits.clear()
+        grande = b"\xff\xd8\xff" + b"x" * (10 * 1024 * 1024)
+        r = cliente.post("/evidencia", files={"foto": ("grande.jpg", grande, "image/jpeg")},
+                         data={"objeto": "bache"})
+        assert r.status_code == 413 and "10 MB" in r.text  # se rechaza antes de llamar a la API
+        # Una foto chica no-JPEG/PNG sigue rechazada por tipo, no por tamaño:
+        r = cliente.post("/evidencia", files={"foto": ("nota.txt", b"hola", "text/plain")},
+                         data={"objeto": "bache"})
+        assert r.status_code == 400
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):
