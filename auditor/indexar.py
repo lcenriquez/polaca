@@ -1,6 +1,7 @@
 """Agente indexador: lleva el auditor a un municipio nuevo, solo tras aprobación humana.
 
 Uso: ../.venv/bin/python indexar.py <clave_inegi>    (lo lanza web.py al aprobar en /admin)
+     ../.venv/bin/python indexar.py <clave_inegi> --contratos   (solo contratos y PMD; municipio ya indexado)
 
 Primero confirma el dominio oficial del municipio y lo RECORRE (menú, sitemap,
 robots.txt, búsqueda interna de WordPress y recorrido en anchura sin API)
@@ -28,6 +29,7 @@ from pathlib import Path
 from urllib.parse import quote, urljoin, urlparse
 
 import extraer
+import contratos
 import gobierno
 import llm
 import municipios
@@ -37,6 +39,7 @@ TOPE_MUNICIPIO = 1.00
 TOPE_DIA = 5.00
 MAX_INTENTOS = 5  # candidatas por fuente: la búsqueda confunde municipios, se prueba hasta dar con el correcto
 MAX_PAGINAS_PDF = 40  # ponytail: primera pasada acotada; subir si el tope de gasto lo permite
+MAX_PAGINAS_PMD = 120  # las metas medibles del PMD suelen estar en los capítulos finales
 MAX_PAGINAS_RECORRIDO = 150
 MAX_PROFUNDIDAD = 3
 PALABRAS_RECORRIDO = ("cabildo", "regidor", "regiduria", "organigrama", "directorio", "ayuntamiento",
@@ -47,7 +50,8 @@ EXT_TECNICAS = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".css"
 CORREOS_PERSONALES = {"gmail.com", "hotmail.com", "hotmail.es", "yahoo.com", "yahoo.com.mx", "outlook.com",
                       "outlook.es", "live.com", "live.com.mx", "icloud.com", "protonmail.com", "aol.com"}
 TIPOS_DOC = {"directorio": "el directorio", "gaceta": "la gaceta o actas",
-             "presupuesto": "el presupuesto", "contratos": "contratos u obra pública"}
+             "presupuesto": "el presupuesto", "contratos": "contratos y obra pública",
+             "pmd": "el Plan Municipal de Desarrollo 2024-2027"}
 # Antes de decir «no encontré» de un tipo hay que haber probado TODOS estos caminos.
 CAMINOS_AGOTAMIENTO = ("menú del sitio", "sitemap", "búsqueda en el sitio", "recorrido del sitio",
                        "búsqueda web en el dominio propio", "búsqueda web", "fuentes estatales oficiales")
@@ -55,13 +59,16 @@ SINONIMOS = {
     "directorio": ["integrantes del cabildo", "regidores", "síndico", "directorio de cabildo", "organigrama"],
     "gaceta": ["gaceta municipal", "actas de cabildo", "sesión de cabildo"],
     "presupuesto": ["presupuesto de egresos 2026", "presupuesto de egresos"],
-    "contratos": ["licitaciones", "contratos", "obra pública"],
+    "contratos": ["licitaciones", "contratos", "obra pública", "adjudicaciones directas"],
+    "pmd": ["plan municipal de desarrollo 2024-2027", "plan municipal de desarrollo", "PMD 2024-2027"],
 }
 PALABRAS_TIPO = {
     "directorio": ["cabildo", "regidor", "regiduria", "organigrama", "directorio", "integrantes"],
     "gaceta": ["gaceta", "acta", "sesion"],
     "presupuesto": ["presupuesto", "egresos"],
-    "contratos": ["licitaciones", "contrato", "obra publica", "obra-publica", "obras"],
+    "contratos": ["licitaciones", "contrato", "obra publica", "obra-publica", "obras", "adjudicacion",
+                  "mids", "fismdf"],
+    "pmd": ["plan municipal", "plan-municipal", "plan_municipal", "pmd"],
 }
 
 
@@ -239,7 +246,8 @@ def urls_sitemap(fetch, raiz: str) -> list[str]:
 def buscar_en_sitio_wp(fetch, raiz: str) -> list[str]:
     """Si es WordPress: /wp-json/wp/v2/pages?search=… Sin API de Muse."""
     urls = []
-    for palabra in ("cabildo", "regidores", "organigrama", "gaceta", "presupuesto", "transparencia"):
+    for palabra in ("cabildo", "regidores", "organigrama", "gaceta", "presupuesto", "transparencia",
+                    "licitaciones", "obra publica", "plan municipal de desarrollo"):
         crudo = fetch(f"{raiz.rstrip('/')}/wp-json/wp/v2/pages?search={quote(palabra)}&per_page=20")
         try:
             for pagina in json.loads(crudo or "[]"):
@@ -253,7 +261,7 @@ def buscar_en_sitio_wp(fetch, raiz: str) -> list[str]:
 def candidatas_recorrido(paginas: dict[str, str], tipo: str) -> list[str]:
     """Páginas del recorrido (y PDF enlazados) que suenan al tipo de documento."""
     palabras = PALABRAS_TIPO[tipo]
-    es_pdf_tipo = tipo in ("gaceta", "presupuesto", "contratos")
+    es_pdf_tipo = tipo in ("gaceta", "presupuesto", "contratos", "pmd")
     puntos: dict[str, int] = {}
 
     def anota(url, n):
@@ -553,7 +561,16 @@ def leer_pdf(con, clave: str, inicio: str, archivo: str, tipo: str, nombre: str)
     if not menciona_municipio(portada, nombre):
         _descartar(con, clave, archivo, nombre)
     total = len(reader.pages)
-    fin = min(total, MAX_PAGINAS_PDF)
+    fin = min(total, MAX_PAGINAS_PMD if tipo == "pmd" else MAX_PAGINAS_PDF)
+    if tipo in ("contratos", "pmd"):
+        def antes(i, tope, total_):
+            verificar_topes(inicio)
+            municipios.registrar_evento(con, clave, "lectura", f"Leyendo las páginas {i} a {tope} de {total_}…")
+        filas = contratos.leer(archivo, (1, fin), clave, pmd=tipo == "pmd", antes_de_cada_tramo=antes)
+        ok = sum(f["verificacion"] == "ok" for f in filas)
+        municipios.registrar_evento(con, clave, "verificacion",
+                                    f"Verifiqué {ok} de {len(filas)} citas de {archivo} contra el texto de su página.")
+        return ok, len(filas)
     if fin < total:
         municipios.registrar_evento(con, clave, "lectura",
                                     f"El documento tiene {total} páginas; en esta primera pasada leo las primeras {fin}.")
@@ -636,7 +653,9 @@ def leer_directorio(con, clave: str, inicio: str, archivo: str, nombre: str, est
     return ok, len(datos)
 
 
-def indexar(clave: str) -> int:
+def indexar(clave: str, solo_contratos: bool = False) -> int:
+    """Indexación completa (tras aprobación en /admin) o, con solo_contratos, solo contratos y PMD
+    de un municipio que ya fue aprobado e indexado: nunca crea ni aprueba solicitudes."""
     with extraer.conectar(), presupuesto.conectar(), gobierno.conectar():
         pass  # asegura todas las tablas antes de que municipios agregue municipio_id
     con = municipios.conectar()
@@ -645,13 +664,18 @@ def indexar(clave: str) -> int:
         print(f"Municipio {clave} no está en el catálogo.", file=sys.stderr)
         return 2
     _, estado, nombre, estado_idx = fila
-    if estado_idx != "indexando":
+    if solo_contratos and estado_idx != "indexado":
+        print(f"{nombre}: estado_indexacion = {estado_idx}; contratos solo corre sobre municipios ya aprobados e indexados.",
+              file=sys.stderr)
+        return 2
+    if not solo_contratos and estado_idx != "indexando":
         print(f"{nombre}: estado_indexacion = {estado_idx}; el agente solo corre tras una aprobación en /admin.",
               file=sys.stderr)
         return 2
     inicio = datetime.now(timezone.utc).isoformat(timespec="seconds")
     citas_ok = citas_total = fuentes_ok = 0
     registro = {tipo: [] for tipo in TIPOS_DOC}
+    tipos = ("contratos", "pmd") if solo_contratos else tuple(TIPOS_DOC)
     try:
         municipios.registrar_evento(con, clave, "inicio",
                                     f"Empiezo a revisar {nombre}, {estado}. Solo uso fuentes oficiales .gob.mx "
@@ -719,10 +743,19 @@ def indexar(clave: str) -> int:
                 for camino in CAMINOS_AGOTAMIENTO[:4]:
                     anotar_camino(registro, tipo, camino)
 
-        def intentar(tipo: str, urls: list[str]) -> tuple[int, int] | None:
-            """Prueba candidatas: descarta SIN descargar las de otro municipio."""
+        probadas: set[tuple[str, str]] = set()
+
+        def intentar(tipo: str, urls: list[str], saltos: int = 1) -> tuple[int, int] | None:
+            """Prueba candidatas: descarta SIN descargar las de otro municipio.
+
+            Contratos lee TODAS las candidatas válidas (hasta MAX_INTENTOS): el cruce
+            necesita al menos dos documentos que hablen del mismo contrato. Un documento
+            leído sin ninguna fila no cuenta como encontrado. Si un tipo PDF cae en una
+            página HTML (p. ej. …/Transparencia/PMD), se prueban sus PDF enlazados (un salto)."""
             nonlocal citas_ok, citas_total, fuentes_ok
-            for url in list(dict.fromkeys(urls))[:MAX_INTENTOS]:
+            leidas = None
+            for url in [u for u in dict.fromkeys(urls) if (tipo, u.lower()) not in probadas][:MAX_INTENTOS]:
+                probadas.add((tipo, url.lower()))  # otra búsqueda que la repita no la vuelve a descargar
                 if not dominio_permitido(url, nombre, estado, dominios):
                     municipios.registrar_evento(con, clave, "descartado",
                                                 f"Descarté sin descargar {url}: su dominio no es el oficial de "
@@ -732,21 +765,38 @@ def indexar(clave: str) -> int:
                     continue
                 try:
                     archivo = descargar(con, clave, tipo, url)
+                    if tipo != "directorio" and archivo.endswith(".html"):
+                        crudo = (extraer.RAW / archivo).read_text(encoding="utf-8", errors="ignore")
+                        enlazados = [u for u, t in extraer_enlaces(crudo, url)
+                                     if urlparse(u).path.lower().endswith(".pdf")
+                                     and any(p in municipios.sin_acentos(u + " " + t) for p in PALABRAS_TIPO[tipo])]
+                        hallado = intentar(tipo, enlazados, 0) if saltos and enlazados else None
+                        if hallado:
+                            leidas = (hallado[0] + (leidas or (0, 0))[0], hallado[1] + (leidas or (0, 0))[1])
+                            if tipo != "contratos":
+                                return leidas
+                        continue
                     if tipo == "directorio":
                         ok, total = leer_directorio(con, clave, inicio, archivo, nombre, estado, dominios)
                     else:
                         ok, total = leer_pdf(con, clave, inicio, archivo,
-                                             "presupuesto" if tipo == "presupuesto" else "gaceta", nombre)
+                                             tipo if tipo in ("presupuesto", "contratos", "pmd") else "gaceta", nombre)
                 except TopeAlcanzado:
                     raise
                 except Exception as e:
                     municipios.registrar_evento(con, clave, tipo, f"No pude leer {url}: {e}. Pruebo la siguiente candidata.")
                     continue
+                if total == 0:
+                    municipios.registrar_evento(con, clave, tipo, f"Leí {url}, pero no trae {TIPOS_DOC[tipo]} "
+                                                                  "con datos que pueda citar. Pruebo la siguiente candidata.")
+                    continue
                 municipios.registrar_evento(con, clave, tipo, f"Encontré {TIPOS_DOC[tipo]} de {nombre}: {url}")
                 citas_ok, citas_total = citas_ok + ok, citas_total + total
                 fuentes_ok += 1
-                return ok, total
-            return None
+                if tipo != "contratos":
+                    return ok, total
+                leidas = (ok + (leidas or (0, 0))[0], total + (leidas or (0, 0))[1])
+            return leidas
 
         def buscar_y_probar(tipo: str, camino: str, consultas: list[tuple[str, bool]]) -> bool:
             anotar_camino(registro, tipo, camino)
@@ -757,7 +807,7 @@ def indexar(clave: str) -> int:
                     return True
             return False
 
-        for tipo in ("directorio", "gaceta", "presupuesto"):
+        for tipo in tipos:
             if intentar(tipo, pool[tipo]):
                 continue
             # 3) Búsquedas dentro del dominio propio, con sinónimos.
@@ -785,64 +835,32 @@ def indexar(clave: str) -> int:
                             + [(f'"{nombre}" {TIPOS_DOC[tipo]} transparencia {estado} congreso gob.mx',
                                 tipo != "directorio")])
             registrar_no_encontrado(con, clave, tipo, registro)
-        # Contratos u obra pública: no hay extractor propio; se agotan los caminos
-        # y, si aparece una candidata permitida, queda registrada sin inventar datos.
-        tipo = "contratos"
-        candidatas_c = [u for u in pool[tipo] if dominio_permitido(u, nombre, estado, dominios)]
-        if candidatas_c:
-            municipios.registrar_evento(con, clave, tipo,
-                                        f"En el recorrido aparecieron candidatas de contratos u obra pública de {nombre}: "
-                                        f"{candidatas_c[0]}. Queda registrada para lectura; no guardo datos sin leerla.")
-        else:
-            encontrado = False
-            for dominio in sorted(dominios):
-                anotar_camino(registro, tipo, "búsqueda web en el dominio propio")
-                urls = []
-                for s in SINONIMOS[tipo]:
-                    urls += buscar(con, clave, inicio, tipo, f"contratos u obra pública de {nombre}",
-                                   f"site:{dominio} {s} {nombre}", PALABRAS_TIPO[tipo], nombre=nombre)
-                if any(dominio_permitido(u, nombre, estado, dominios) for u in urls):
-                    encontrado = True
-                    break
-            if not encontrado:
-                for camino, consultas in (
-                        ("búsqueda web", [f'licitaciones contratos obra pública Ayuntamiento "{nombre}", {estado} gob.mx']),
-                        ("fuentes estatales oficiales",
-                         [f'"{nombre}" licitaciones contratos periódico oficial {estado} gob.mx'])):
-                    anotar_camino(registro, tipo, camino)
-                    urls = buscar(con, clave, inicio, tipo, f"contratos u obra pública de {nombre}",
-                                  consultas[0], PALABRAS_TIPO[tipo], nombre=nombre)
-                    permitidas = [u for u in urls if dominio_permitido(u, nombre, estado, dominios)]
-                    if permitidas:
-                        municipios.registrar_evento(con, clave, tipo,
-                                                    f"Apareció una candidata de contratos u obra pública de {nombre}: "
-                                                    f"{permitidas[0]}. Queda registrada para lectura; no guardo datos sin leerla.")
-                        encontrado = True
-                        break
-            if not encontrado:
-                registrar_no_encontrado(con, clave, tipo, registro)
     except TopeAlcanzado as e:
         municipios.registrar_evento(con, clave, "tope", str(e))
-        con.execute("UPDATE municipios SET estado_indexacion = 'error' WHERE clave_inegi = ?", (clave,))
+        if not solo_contratos:
+            con.execute("UPDATE municipios SET estado_indexacion = 'error' WHERE clave_inegi = ?", (clave,))
         con.commit()
         print(str(e), file=sys.stderr)
         return 1
     exito = citas_total > 0
-    con.execute("UPDATE municipios SET estado_indexacion = ? WHERE clave_inegi = ?",
-                ("indexado" if exito else "error", clave))
+    if not solo_contratos:  # una pasada de contratos no cambia el estado de un municipio ya indexado
+        con.execute("UPDATE municipios SET estado_indexacion = ? WHERE clave_inegi = ?",
+                    ("indexado" if exito else "error", clave))
     con.commit()
     gasto = sum(g["usd"] for g in _gastos() if g["ts"] >= inicio)
     municipios.registrar_evento(
         con, clave, "fin",
         (f"Terminé. Fuentes encontradas y leídas: {fuentes_ok}. Citas verificadas: {citas_ok} de {citas_total}. "
          f"Gasto de esta revisión: ${gasto:.4f} USD." if exito else
-         "No logré leer ningún documento con citas verificables. Lo dejo marcado para revisión manual; no inventé datos."))
+         "No logré leer ningún documento con citas verificables. "
+         + ("El municipio sigue indexado; no cambié su estado. " if solo_contratos else "Lo dejo marcado para revisión manual; ")
+         + "No inventé datos."))
     print(f"{nombre}: {'indexado' if exito else 'sin datos'}, {citas_ok}/{citas_total} citas, ${gasto:.4f}")
     return 0 if exito else 1
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Uso: indexar.py <clave_inegi>", file=sys.stderr)
+    if len(sys.argv) not in (2, 3) or sys.argv[2:] not in ([], ["--contratos"]):
+        print("Uso: indexar.py <clave_inegi> [--contratos]", file=sys.stderr)
         raise SystemExit(2)
-    raise SystemExit(indexar(sys.argv[1]))
+    raise SystemExit(indexar(sys.argv[1], solo_contratos=sys.argv[2:] == ["--contratos"]))
