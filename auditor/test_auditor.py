@@ -466,6 +466,48 @@ def test_chip_ubicacion_sin_municipio_no_va_a_atlixco():
     assert '<a class="place" href="/donde">' in con and "Atlixco, Pue." in con
 
 
+def test_mapa_real_32_estados_y_puntos_dentro_de_su_estado():
+    """El SVG generado pesa <80 KB, trae los 32 estados y el punto de Atlixco cae dentro de Puebla."""
+    import re
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    ruta = Path(__file__).parent / "static" / "mapa-mexico.svg"
+    assert ruta.exists() and ruta.stat().st_size < 80 * 1024
+    svg = ruta.read_text(encoding="utf-8")
+    estados = re.findall(r'<path data-estado="([^"]+)" d="([^"]+)">', svg)
+    assert len(estados) == 32 and "Puebla" in dict(estados) and "Ciudad de México" in dict(estados)
+    assert all(f"<title>{n}</title>" in svg for n, _ in estados)  # nombre accesible por estado
+    lon0, lat1, escala, coseno, ox, oy = (float(v) for v in re.search(r'data-proy="([^"]+)"', svg).group(1).split(","))
+
+    def dentro(d, x, y):  # ray casting sobre cada subcontorno del path (solo M/L/Z)
+        ok = False
+        for sub in d.split("M")[1:]:
+            nums = [float(v) for v in re.findall(r"-?[\d.]+", sub)]
+            pts = list(zip(nums[::2], nums[1::2]))
+            for (x1, y1), (x2, y2) in zip(pts, pts[1:] + pts[:1]):
+                if (y1 > y) != (y2 > y) and x < (x2 - x1) * (y - y1) / (y2 - y1) + x1:
+                    ok = not ok
+        return ok
+
+    ax, ay = ox + (-98.434004 - lon0) * coseno * escala, oy + (lat1 - 18.909282) * escala  # cabecera de Atlixco, INEGI
+    assert dentro(dict(estados)["Puebla"], ax, ay)
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with municipios.conectar() as con:
+            con.execute("INSERT INTO municipios VALUES ('21019', 'Puebla', 'Atlixco', 'indexado')")
+            con.execute("INSERT INTO cabeceras VALUES ('21019', 18.909282, -98.434004)")
+            con.commit()
+        inicio = TestClient(web.app).get("/").text
+        assert 'data-estado' not in inicio  # la página compone enlaces, no pega el archivo tal cual
+        assert "Puebla — 1 municipio revisado" in inicio and 'href="/donde?estado=Puebla"' in inicio
+        assert 'class="punto"' in inicio and "Natural Earth" in inicio and "INEGI" in inicio
+        donde = TestClient(web.app).get("/donde", params={"estado": "Puebla"}).text
+        assert "Municipios de Puebla" in donde and "/representantes?m=21019" in donde
+
+
 def test_buscador_nacional():
     """El buscador encuentra localidades con y sin acentos y distingue municipios ya revisados."""
     import municipios

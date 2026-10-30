@@ -46,6 +46,8 @@ def conectar() -> sqlite3.Connection:
             clave_geo TEXT PRIMARY KEY, clave_mun TEXT NOT NULL, nom_loc TEXT NOT NULL,
             nom_mun TEXT NOT NULL, nom_ent TEXT NOT NULL, nombre_norm TEXT NOT NULL, mun_norm TEXT NOT NULL);
         CREATE INDEX IF NOT EXISTS idx_loc_norm ON localidades(nombre_norm);
+        CREATE TABLE IF NOT EXISTS cabeceras (
+            clave_mun TEXT PRIMARY KEY, lat REAL, lon REAL);
         CREATE TABLE IF NOT EXISTS solicitudes (
             id INTEGER PRIMARY KEY, clave_inegi TEXT NOT NULL, estado TEXT NOT NULL DEFAULT 'pendiente',
             creada TEXT NOT NULL, decidida TEXT, notas TEXT);
@@ -149,8 +151,10 @@ def leer_xlsx(ruta: Path) -> list[dict]:
 
 def cargar_catalogo(con, rutas: list[Path]) -> tuple[int, int]:
     con.execute("DELETE FROM localidades")
+    con.execute("DELETE FROM cabeceras")
     total_loc = 0
     municipios = {}
+    cabeceras = []
     for ruta in rutas:
         filas = leer_xlsx(ruta)
         con.executemany(
@@ -160,8 +164,14 @@ def cargar_catalogo(con, rutas: list[Path]) -> tuple[int, int]:
               sin_acentos(f["NOM_LOC"]), sin_acentos(f["NOM_MUN"])) for f in filas])
         for f in filas:
             municipios[f["CVE_ENT"] + f["CVE_MUN"]] = (f["NOM_ENT"], f["NOM_MUN"])
+            if f["CVE_LOC"] == "0001":  # cabecera municipal: su punto en el mapa
+                try:
+                    cabeceras.append((f["CVE_ENT"] + f["CVE_MUN"], float(f["LAT_DECIMAL"]), float(f["LON_DECIMAL"])))
+                except (KeyError, TypeError, ValueError):
+                    pass  # sin coordenadas en la fuente: null, no se inventa el punto
         total_loc += len(filas)
         print(f"  {ruta.name}: {len(filas)} localidades")
+    con.executemany("INSERT OR REPLACE INTO cabeceras (clave_mun, lat, lon) VALUES (?, ?, ?)", cabeceras)
     con.executemany(
         "INSERT INTO municipios (clave_inegi, estado, nombre, estado_indexacion) VALUES (?, ?, ?, 'sin_revisar') "
         "ON CONFLICT(clave_inegi) DO UPDATE SET estado = excluded.estado, nombre = excluded.nombre",

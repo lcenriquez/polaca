@@ -113,6 +113,11 @@ main .btn, main .boton { display: flex; width: 100%; }
 .mx { width: 100%; height: auto; }
 .mx .st { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.5; }
 .mx .on { fill: var(--accent); }
+.mx a .st { transition: fill .18s ease, stroke .18s ease; }
+.mx a:hover .st, .mx a:focus-visible .st { fill: var(--accent-soft); stroke: var(--accent); }
+.mx a:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.mx .punto { fill: var(--accent); stroke: var(--surface); stroke-width: 1.5; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .mx a .st { transition: none; } }
 .meter { height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; } .meter i { display: block; height: 100%; background: var(--accent); min-width: 6px; }
 .step { display: flex; gap: 14px; } .n, .num { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; flex: none; }
 .steps { display: flex; flex-direction: column; gap: 12px; }
@@ -1263,6 +1268,41 @@ def _buscador_html(q: str, resultados: list[dict], action: str = "/") -> tuple[s
     return buscador, sugg
 
 
+_MAPA_SVG = Path(__file__).resolve().parent / "static" / "mapa-mexico.svg"
+
+
+def _mapa_html(con) -> str:
+    """Mapa real (scripts/generar_mapa.py): estados tocables y un punto por municipio revisado."""
+    try:
+        texto = _MAPA_SVG.read_text(encoding="utf-8")
+        lon0, lat1, escala, coseno, ox, oy = (float(v) for v in re.search(r'data-proy="([^"]+)"', texto).group(1).split(","))
+        vista = re.search(r'viewBox="([^"]+)"', texto).group(1)
+    except (OSError, AttributeError, ValueError):
+        return ""  # sin el SVG generado no se inventa un contorno a mano
+    revisados = {f["estado"]: f["n"] for f in _filas(
+        con, "SELECT estado, count(*) n FROM municipios WHERE estado_indexacion = 'indexado' GROUP BY estado")}
+
+    def titulo(estado: str) -> str:
+        n = revisados.get(estado, 0)
+        return f"{estado} — {n} municipio{'s' if n != 1 else ''} revisado{'s' if n != 1 else ''}"
+
+    estados = "".join(
+        f'<a href="/donde?estado={quote(estado)}" aria-label="{e(titulo(estado))}. Toca para buscar en este estado.">'
+        f'<title>{e(titulo(estado))}</title><path class="st" d="{d}"/></a>'
+        for estado, d in re.findall(r'<path data-estado="([^"]+)" d="([^"]+)">', texto))
+    puntos = ""
+    for m in _filas(con, """SELECT m.clave_inegi, m.nombre, m.estado, c.lat, c.lon FROM municipios m
+                            JOIN cabeceras c ON c.clave_mun = m.clave_inegi
+                            WHERE m.estado_indexacion = 'indexado' AND c.lat IS NOT NULL AND c.lon IS NOT NULL"""):
+        x, y = ox + (m["lon"] - lon0) * coseno * escala, oy + (lat1 - m["lat"]) * escala
+        puntos += (f'<a href="/representantes?m={e(m["clave_inegi"])}"><title>{e(m["nombre"])}, {e(m["estado"])} — Revisado</title>'
+                   f'<circle class="punto" cx="{x:.1f}" cy="{y:.1f}" r="6"/></a>')
+    return (f'<svg class="mx" viewBox="{vista}" role="img" aria-label="Mapa de México: toca un estado para buscar ahí; '
+            f'los puntos son los municipios ya revisados">{estados}{puntos}</svg>'
+            '<p class="small muted">Límites estatales: Natural Earth (dominio público). '
+            'Puntos: cabecera municipal, catálogo de INEGI.</p>')
+
+
 @app.get("/", response_class=HTMLResponse)
 def inicio(q: str = ""):
     with _con() as con:
@@ -1270,6 +1310,7 @@ def inicio(q: str = ""):
         total_mun = con.execute("SELECT count(*) FROM municipios").fetchone()[0]
         revisados = con.execute("SELECT count(*) FROM municipios WHERE estado_indexacion = 'indexado'").fetchone()[0]
         indexados = _filas(con, "SELECT * FROM municipios WHERE estado_indexacion = 'indexado' ORDER BY nombre")
+        mapa = _mapa_html(con)
     buscador, sugg = _buscador_html(q, resultados)
     pct = round(100 * revisados / total_mun) if total_mun else 0
     ya = "".join(f'<a href="/representantes?m={e(m["clave_inegi"])}">{icono("pin", "Dibujo de un pin de mapa")}'
@@ -1283,11 +1324,7 @@ def inicio(q: str = ""):
 <p class="aviso">Los hallazgos son discrepancias verificables entre documentos públicos, no acusaciones.</p>
 </div>
 <div class="card" style="display:flex;flex-direction:column;gap:14px">
-<svg class="mx" viewBox="0 0 320 200" role="img" aria-label="Mapa estilizado de México con los municipios revisados resaltados">
-<path class="st" d="M10 30l60-8 40 30 30 10 20 30 30 10 20 25 40 5 30-20 25 5-5 25-35 15-40 0-25 20-40 10-30-15-15-25-35-15-20-30-25-20-10-30z"/>
-<path class="st" d="M20 40l10 50 15 35" fill="none"/>
-<circle class="on" cx="190" cy="132" r="7"/><circle class="on" cx="205" cy="122" r="5" opacity=".6"/>
-</svg>
+{mapa}
 <div><b style="font-size:28px">{revisados}</b> <span class="muted">de {total_mun:,} municipios revisados</span><div class="meter" style="margin-top:8px"><i style="width:{pct}%"></i></div></div>
 <p class="small muted">¿No está el tuyo? Pídele a Muse que lo revise: busca tu localidad aquí arriba.</p>
 </div></div>
@@ -1302,13 +1339,15 @@ def inicio(q: str = ""):
 
 
 @app.get("/donde", response_class=HTMLResponse)
-def donde(q: str = ""):
+def donde(q: str = "", estado: str = ""):
     with _con() as con:
         juntas = _gob(con, "juntas_auxiliares")
         urls = _urls(con)
         cobertura = _cobertura_html(cruzar.cobertura(con))
         resultados = municipios.buscar_localidades(con, q) if q else []
         indexados = _filas(con, "SELECT * FROM municipios WHERE estado_indexacion = 'indexado' ORDER BY nombre")
+        del_estado = (_filas(con, "SELECT * FROM municipios WHERE estado = ? ORDER BY nombre", (estado,))
+                      if estado else [])
     resultados_html = ""
     if q:
         items = ""
@@ -1336,8 +1375,21 @@ def donde(q: str = ""):
     ya = "".join(f'<a href="/representantes?m={e(m["clave_inegi"])}">{icono("pin", "Dibujo de un pin de mapa")}'
                  f'{e(m["nombre"])}, {e(m["estado"])}</a>' for m in indexados)
     buscador, sugg = _buscador_html(q, resultados, action="/donde")
+    estado_html = ""
+    if estado:
+        def _link_estado(m):
+            href = (f'/representantes?m={m["clave_inegi"]}' if m["estado_indexacion"] == "indexado"
+                    else f'/municipio/{m["clave_inegi"]}')
+            chip = '<small class="chip ok">Revisado</small>' if m["estado_indexacion"] == "indexado" else ""
+            return (f'<a href="{href}">{icono("pin", "Dibujo de un pin de mapa")}'
+                    f'{e(m["nombre"])}, {e(m["estado"])}{chip}</a>')
+        links = "".join(_link_estado(m) for m in del_estado)
+        estado_html = (f'<h2>Municipios de {e(estado)}</h2><div class="card list">{links}</div>' if links else
+                       _vacio("pin", f"No encontramos municipios de “{estado}”",
+                              "Toca otro estado en el mapa del inicio o busca tu localidad aquí arriba.",
+                              [("/", "Volver al mapa", False)]))
     cuerpo = f"""<p class="sub">Busca tu localidad en todo México (catálogo oficial de INEGI). Así te mostramos primero a las personas más cercanas a ti. No guardamos tu respuesta.</p>
-{buscador}{sugg}
+{buscador}{sugg}{estado_html}
 <h2>Municipios que ya revisamos</h2>
 {('<div class="card list">' + ya + '</div>') if ya else _vacio("spark", "Aún no revisamos ningún municipio", "Cuando Muse revise el primero, con aprobación de una persona del equipo, aparecerá aquí.", [("/", "Busca tu municipio", False)])}
 <h2>Si vives en Atlixco, elige tu junta auxiliar</h2>
