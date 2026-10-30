@@ -524,7 +524,18 @@ def test_mapa_real_32_estados_y_puntos_dentro_de_su_estado():
         inicio = TestClient(web.app).get("/").text
         assert 'data-estado' not in inicio  # la página compone enlaces, no pega el archivo tal cual
         assert "Puebla — 1 municipio revisado" in inicio and 'href="/donde?estado=Puebla"' in inicio
-        assert 'class="punto"' in inicio and "Natural Earth" in inicio and "INEGI" in inicio
+        assert 'class="st on"' in inicio and 'class="pulso"' in inicio and 'class="punto"' in inicio
+        assert ">Atlixco</text>" in inicio and "Natural Earth" in inicio and "INEGI" in inicio
+        assert "minmax(0,.75fr) minmax(0,1.25fr)" in web.CSS  # el mapa ocupa ≥60% del héroe en escritorio
+
+        def lum(hexa):
+            rgb = [int(hexa[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+            rgb = [v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4 for v in rgb]
+            return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]
+
+        for fondo, tinte in zip(re.findall(r"--bg:(#[0-9a-f]{6})", web.CSS), re.findall(r"--mapa:(#[0-9a-f]{6})", web.CSS)):
+            claro, oscuro = sorted((lum(tinte), lum(fondo)), reverse=True)
+            assert (claro + 0.05) / (oscuro + 0.05) >= 3.0, (fondo, tinte)  # tinte visible 3:1 en claro y oscuro
         donde = TestClient(web.app).get("/donde", params={"estado": "Puebla"}).text
         assert "Municipios de Puebla" in donde and "/representantes?m=21019" in donde
 

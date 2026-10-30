@@ -76,16 +76,16 @@ body, .btn, .boton, .seg button, .filters button, .search input, input, select, 
   --accent:#5b3fd1; --accent-ink:#fff; --accent-soft:#ece8fc; --ok:#1e7a4c; --ok-soft:#e3f4ea; --warn:#8a5a00; --warn-soft:#fdf3dc;
   --shadow:0 1px 2px #1c1a2b0f,0 8px 24px #1c1a2b0f; --r:18px;
   --card:#fff; --accent-tx:#5b3fd1; --aviso-bg:#fdf3dc; --aviso-line:#8a5a00; --aviso-ink:#5c3d00; --copy-bg:#f0eef8; --dash:#c9c3e6;
-  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; }
+  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; --mapa:#8a76d9; }
 @media (prefers-color-scheme: dark) {
 :root:not([data-theme="light"]) { color-scheme: dark; --bg:#12101a; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --muted-2:#d6d2e6; --line:#2f2c40;
   --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:0 1px 2px #0008,0 8px 24px #0006; --r:18px;
   --card:#1c1a27; --accent-tx:#9d8cff; --aviso-bg:#352a12; --aviso-line:#f2c46b; --aviso-ink:#f7e3ac; --copy-bg:#252233; --dash:#4a4568;
-  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; } }
+  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; --mapa:#7563b8; } }
 :root[data-theme="dark"] { color-scheme: dark; --bg:#12101a; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --muted-2:#d6d2e6; --line:#2f2c40;
   --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:0 1px 2px #0008,0 8px 24px #0006; --r:18px;
   --card:#1c1a27; --accent-tx:#9d8cff; --aviso-bg:#352a12; --aviso-line:#f2c46b; --aviso-ink:#f7e3ac; --copy-bg:#252233; --dash:#4a4568;
-  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; }
+  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; --mapa:#7563b8; }
 * { box-sizing: border-box; margin: 0; }
 body { font: 18px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); overflow-x: clip; padding-bottom: 84px; }
 @media (min-width: 768px) { body { padding-bottom: 0; } }
@@ -142,7 +142,7 @@ main .btn, main .boton { display: flex; width: 100%; }
 .grid { display: grid; gap: 16px; grid-template-columns: minmax(0,1fr); }
 @media (min-width: 768px) { .g2 { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } .g3 { grid-template-columns: repeat(3,minmax(0,1fr)); } .g-side { grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); align-items: start; } }
 .hero { display: grid; gap: 28px; align-items: center; grid-template-columns: minmax(0,1fr); }
-@media (min-width: 900px) { .hero { grid-template-columns: minmax(0,1.1fr) minmax(0,.9fr); } }
+@media (min-width: 900px) { .hero { grid-template-columns: minmax(0,.75fr) minmax(0,1.25fr); } }
 .search { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 2px solid var(--accent); border-radius: 16px; padding: 6px 6px 6px 16px; box-shadow: var(--shadow); }
 .search input { flex: 1; border: 0; background: transparent; font: 18px system-ui; color: var(--ink); min-height: 48px; outline: none; min-width: 0; width: auto; }
 .sugg { margin-top: 8px; padding: 6px; }
@@ -150,13 +150,16 @@ main .btn, main .boton { display: flex; width: 100%; }
 .sugg a:hover { background: var(--surface-2); }
 .sugg small { margin-left: auto; }
 .mx { width: 100%; height: auto; }
-.mx .st { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.5; }
-.mx .on { fill: var(--accent); }
+.mx .st { fill: var(--mapa); stroke: var(--bg); stroke-width: 1; }
+.mx .st.on { fill: var(--accent); }
 .mx a .st { transition: fill .18s ease, stroke .18s ease; }
-.mx a:hover .st, .mx a:focus-visible .st { fill: var(--accent-soft); stroke: var(--accent); }
+.mx a:hover .st, .mx a:focus-visible .st { fill: var(--accent); stroke: var(--bg); }
 .mx a:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
-.mx .punto { fill: var(--accent); stroke: var(--surface); stroke-width: 1.5; pointer-events: none; }
-@media (prefers-reduced-motion: reduce) { .mx a .st { transition: none; } }
+.mx .punto { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.mx .pulso { fill: none; stroke: var(--accent); stroke-width: 2; pointer-events: none; animation: pulso 2.2s ease-out infinite; }
+@keyframes pulso { from { r: 10px; opacity: .75; } to { r: 26px; opacity: 0; } }
+.mx .mapa-etiqueta { font-size: 13px; font-weight: 700; fill: var(--ink); paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+@media (prefers-reduced-motion: reduce) { .mx a .st { transition: none; } .mx .pulso { animation: none; opacity: 0; } }
 .meter { height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; } .meter i { display: block; height: 100%; background: var(--accent); min-width: 6px; }
 .step { display: flex; gap: 14px; } .n, .num { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; flex: none; }
 .steps { display: flex; flex-direction: column; gap: 12px; }
@@ -1360,15 +1363,18 @@ def _mapa_html(con) -> str:
 
     estados = "".join(
         f'<a href="/donde?estado={quote(estado)}" aria-label="{e(titulo(estado))}. Toca para buscar en este estado.">'
-        f'<title>{e(titulo(estado))}</title><path class="st" d="{d}"/></a>'
+        f'<title>{e(titulo(estado))}</title><path class="st{" on" if revisados.get(estado) else ""}" d="{d}"/></a>'
         for estado, d in re.findall(r'<path data-estado="([^"]+)" d="([^"]+)">', texto))
     puntos = ""
     for m in _filas(con, """SELECT m.clave_inegi, m.nombre, m.estado, c.lat, c.lon FROM municipios m
                             JOIN cabeceras c ON c.clave_mun = m.clave_inegi
                             WHERE m.estado_indexacion = 'indexado' AND c.lat IS NOT NULL AND c.lon IS NOT NULL"""):
         x, y = ox + (m["lon"] - lon0) * coseno * escala, oy + (lat1 - m["lat"]) * escala
+        ancla, lx = ("end", x - 14) if x > 560 else ("start", x + 14)
         puntos += (f'<a href="/representantes?m={e(m["clave_inegi"])}"><title>{e(m["nombre"])}, {e(m["estado"])} — Revisado</title>'
-                   f'<circle class="punto" cx="{x:.1f}" cy="{y:.1f}" r="6"/></a>')
+                   f'<circle class="pulso" cx="{x:.1f}" cy="{y:.1f}" r="10"/>'
+                   f'<circle class="punto" cx="{x:.1f}" cy="{y:.1f}" r="10"/>'
+                   f'<text class="mapa-etiqueta" x="{lx:.1f}" y="{y + 4:.1f}" text-anchor="{ancla}">{e(m["nombre"])}</text></a>')
     return (f'<svg class="mx" viewBox="{vista}" role="img" aria-label="Mapa de México: toca un estado para buscar ahí; '
             f'los puntos son los municipios ya revisados">{estados}{puntos}</svg>'
             '<p class="small muted">Límites estatales: Natural Earth (dominio público). '
