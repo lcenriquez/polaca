@@ -1,30 +1,35 @@
-# Demo POLACA en Fly.io. Ver code/docs/deploy-fly.md y code/docs/adr-fly.md.
-# El nombre `app` lo confirma `fly launch --no-deploy`; cámbialo si ya está tomado.
-app = "polaca-demo"
-primary_region = "qro"
+# fly.toml app configuration file generated for polaca on 2026-10-30T01:41:14Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'polaca'
+primary_region = 'dfw'
+
+[build]
 
 [env]
-  DATA_DIR = "/data"
+  DATA_DIR = '/data'
+
+[[mounts]]
+  source = 'polaca_data'
+  destination = '/data'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "off"
+  auto_stop_machines = 'off'
   auto_start_machines = true
   min_machines_running = 1
-  processes = ["app"]
+  processes = ['app']
 
   [[http_service.checks]]
-    grace_period = "10s"
-    interval = "15s"
-    method = "GET"
-    timeout = "5s"
-    path = "/salud"
+    interval = '15s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/salud'
 
-[[mounts]]
-  source = "polaca_data"
-  destination = "/data"
-
-[vm]
-  size = "shared-cpu-1x"
-  memory = "512mb"
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '512mb'
