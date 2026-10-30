@@ -1,0 +1,439 @@
+[
+  {
+    "archivo": "GACETA_AGOSTO-DICIEMBRE_2025.pdf",
+    "url": "https://transparencia.atlixco.gob.mx/Admin24-27/2025/Gaceta/GACETA_AGOSTO-DICIEMBRE_2025.pdf",
+    "sha256": "89b23d10d1c4735e95be93f82ca8e37d850a30df8c662a420bbc092d9c4779cf",
+    "bytes": 2623333,
+    "descargado": "2026-10-26T19:09:51+00:00"
+  },
+  {
+    "archivo": "VERSION_CIUDADANA_PRESUPUESTO_EGRESOS_2026.pdf",
+    "url": "https://transparencia.atlixco.gob.mx/Admin24-27/2026/Armonizacion_Contable/Informacion_Anual/VERSION_CIUDADANA_PRESUPUESTO_EGRESOS_2026.pdf",
+    "sha256": "563e179b358cd52d300ad2a7ed8a3230739ad32f1da66c7af93bdb9aff5a7ea1",
+    "bytes": 8984426,
+    "descargado": "2026-10-26T19:10:31+00:00"
+  },
+  {
+    "archivo": "Reglamento_Interior_de_Cabildo_del_Municipio_de_Atlixco_T2_08072025.pdf",
+    "url": "https://ojp.puebla.gob.mx/media/k2/attachments/Reglamento_Interior_de_Cabildo_del_Municipio_de_Atlixco_T2_08072025.pdf",
+    "sha256": "82621a54a0bb13a11d2197add5114c66bb049dcae209ddc1102c29ece0c9d69a",
+    "bytes": 480624,
+    "descargado": "2026-10-26T19:10:31+00:00"
+  },
+  {
+    "archivo": "9C.3-011215.pdf",
+    "url": "https://transparencia.atlixco.gob.mx/Atlixco/gaceta/2015/9C.3-011215.pdf",
+    "sha256": "2695315f24e850f00866c2a4e287f01ee2154c60ad3dd1d75f1504ee22b71790",
+    "bytes": 1745993,
+    "descargado": "2026-10-26T19:10:37+00:00"
+  },
+  {
+    "archivo": "GACETA_JULIO_2022.pdf",
+    "url": "https://transparencia.atlixco.gob.mx/Atlixco/gaceta/2022/GACETA_JULIO_2022.pdf",
+    "sha256": "264e7bcf75382b823712870566f004fb7eea539dd016c3848aef0e09ef06ce87",
+    "bytes": 1344224,
+    "descargado": "2026-10-26T19:10:41+00:00"
+  },
+  {
+    "archivo": "Cabildo.html",
+    "url": "https://atlixco.gob.mx/Pages/Ayuntamiento/Cabildo.aspx",
+    "sha256": "963e8d622389f3482eaecafafc47644701bf15182e7a5f44c305fbe65686ecc2",
+    "bytes": 37475,
+    "descargado": "2026-10-27T18:29:33+00:00"
+  },
+  {
+    "archivo": "Juntas_Auxiliares.html",
+    "url": "https://atlixco.gob.mx/Pages/Ayuntamiento/Juntas_Auxiliares.aspx",
+    "sha256": "ec39819e93e2e9025d56fbcf09779904acadb24839e25df7e095c5feebf1391d",
+    "bytes": 22094,
+    "descargado": "2026-10-27T18:29:34+00:00"
+  },
+  {
+    "archivo": "Contacto.html",
+    "url": "https://atlixco.gob.mx/Pages/Ayuntamiento/Contacto.aspx",
+    "sha256": "410aaed5d296f990e0c21a8d30ee6f4966dd8287b69cdb7b8bfc90807c0a645c",
+    "bytes": 86168,
+    "descargado": "2026-10-27T18:29:34+00:00"
+  },
+  {
+    "archivo": "Ley_Organica_Municipal_TEV_08062026.pdf",
+    "url": "https://ojp.puebla.gob.mx/media/k2/attachments/Ley_Organica_Municipal_TEV_08062026.pdf",
+    "sha256": "2c6e15429037adb218375147c23b74b9bb0f390f8f7a977ea441c1ea08c0d970",
+    "bytes": 1155923,
+    "descargado": "2026-10-27T18:29:35+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_01.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=01&busqueda=cve_ent=01&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "883f684ae800a31754f1107a47f08cc0d9f0cb759368a84c2decf2c5dd91bde9",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_02.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=02&busqueda=cve_ent=02&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "8940c93bdada448470c9c66c691e34bd1e7d64837fe3e823b7b0196affe659b8",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_03.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=03&busqueda=cve_ent=03&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "e78f2e193eb2ab05b292bd80482d2c9c00f8dc5a0a60aba1e026bbbaad4237fa",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_04.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=04&busqueda=cve_ent=04&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "351ca8f75e17c50cc38b3403c118ebd19490f0ac8fad56d109a28193320c83ab",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_05.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=05&busqueda=cve_ent=05&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "c39e9f0941ee336bfbe64bdd2a1e717e508bafdc56bdf2747d4b7826d70af8cd",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_06.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=06&busqueda=cve_ent=06&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "b42ca6eb2ca506889f3e388dda8b20567a2804480bc476f47daad858c557f2cf",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_07.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=07&busqueda=cve_ent=07&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "f33fdb860bec822fb19744d895830ea6198dd69e2924611cd87467985440d52b",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_08.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=08&busqueda=cve_ent=08&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "8bde6251046c76e6eee907945490b68b16b0428135cf2e564762ad6d3e7c8055",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_09.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=09&busqueda=cve_ent=09&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "347ea3a05c242c28898bd240ee54f9d192a79a8d60c6a7800d038222e3dcbe72",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_10.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=10&busqueda=cve_ent=10&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "249fefdacf691b56f005cf881be62099872b9710906e07b8b6978be652124fa2",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_11.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=11&busqueda=cve_ent=11&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "57163aba32080e9250a0d64a14efd2e8186418d3cef4b7dd593a89806d7ae9cd",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_12.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=12&busqueda=cve_ent=12&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "9cca0dc29527e82a278d7252c0ad45f41cc49a38163fc66412d5b72338b7849f",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_13.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=13&busqueda=cve_ent=13&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "8c003fc10606c09b02822fd51e9dee8700d31a695dba4099331a0368a434a122",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_14.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=14&busqueda=cve_ent=14&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "3c305e70a204339fc38654ea8feed6025ffaaf206fb7e6e6e0e41206144b58bf",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_15.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=15&busqueda=cve_ent=15&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "108e6eaa63992e599788ffe1b65a915d72f66f5d2a4855f3187db31eca9d9a9e",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_16.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=16&busqueda=cve_ent=16&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "b08c67d0584ee633b13297868ca489f2700524abbe8fc0681cab038e1dfd14df",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_17.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=17&busqueda=cve_ent=17&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "0c8a088dadb0dc04f5d2ef228ef7d886e1ad7756ed13117e5a7f942e39b86311",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_18.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=18&busqueda=cve_ent=18&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "3ef26086b37c5fd8008ee37796ec126e969f595325053bcd6d1bb084c28b3b4f",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_19.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=19&busqueda=cve_ent=19&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "c7f7083b1f8dd6258a3b6ffd31f1e555ea51b67543191e1243bece501257a1a8",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_20.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=20&busqueda=cve_ent=20&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "02cccb99cb180bbce24b5a91052e58c3059135c59dc6c17fd70ecb4a501b4218",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_21.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=21&busqueda=cve_ent=21&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "761b7b06174cdff05c7454e5738b976645cde97be52f5e31c4d80e5f5dee4797",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_22.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=22&busqueda=cve_ent=22&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "8b5c8bc77c357e43cae1d45c58b0d6256228a496ef24033b98cca6bf866ffaeb",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_23.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=23&busqueda=cve_ent=23&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "7c6f57c9f2360142385d6a952906dde41a8aa71d49f504912f43db0be6f1894a",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_24.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=24&busqueda=cve_ent=24&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "1866eb5b6546a055b5a34bd6776f4b3fd6f19fcf126edb557295f97607f8b047",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_25.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=25&busqueda=cve_ent=25&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "38a42565213d44ad2e9bd2a6266ab32347efb6de4aafe78b305ca8fcb9be9bb4",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_26.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=26&busqueda=cve_ent=26&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "d06d41f5f21851262ca88c4401e764f8cf518a6534eed5b9d26329923c23de38",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_27.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=27&busqueda=cve_ent=27&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "df316ce02ea37774f380ff3f0da7c818ce99666841208a4fa0570949c74c917d",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_28.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=28&busqueda=cve_ent=28&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "71e61e491bb6afcd717d3010be8976246dcc4b17c1fe6f42c7cd2a5174eec053",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_29.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=29&busqueda=cve_ent=29&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "49f4e6f8077e60a798eda76dcdf5d6b8bf0c02668207c3a6fb38dccd996acd18",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_30.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=30&busqueda=cve_ent=30&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "0c09d5d5e77c8127cef18b04318afc4fc7174f735311afdd62b550731a915a0e",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_31.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=31&busqueda=cve_ent=31&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "99b7d68f07b06c20d9bfdd50a0bf02f9e22c0c11037040004b33dc535e46d95d",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "catalogo_inegi_32.xlsx",
+    "url": "https://www.inegi.org.mx/app/api/cateml/catuniAPI/EXPLOCAGEML/?nquery=4&entidad=32&busqueda=cve_ent=32&fecha=01/01/2016&forNom=3&ri=0&rf=100000&orden=0%20asc&union=0&type_=1&encodingType=utf8",
+    "sha256": "d6c4d47a2abb8abfb653616c97f404168b596b821cf29add1be911e9a26a35f5",
+    "descargado": "2026-10-27T19:13:22+00:00"
+  },
+  {
+    "archivo": "17007_directorio_pagina.html",
+    "url": "https://cuernavaca.gob.mx/?page_id=408",
+    "sha256": "3720ba0a3af90e40871c514c65152c973416a37227559914ca90871542ca0f7c",
+    "bytes": 227358,
+    "descargado": "2026-10-29T03:17:09+00:00"
+  },
+  {
+    "archivo": "17007_gaceta_GACETAI.pdf",
+    "url": "https://cuernavaca.gob.mx/wp-content/uploads/2022/05/GACETAI.pdf",
+    "sha256": "a9155af058fa6adba25513b032be066edf0acb1e7b553555a2c8b18ed91ec277",
+    "bytes": 5616422,
+    "descargado": "2026-10-29T14:22:16+00:00"
+  },
+  {
+    "archivo": "17007_contratos_licitaciones-ago-2026.pdf",
+    "url": "https://cuernavaca.gob.mx/wp-content/uploads/2026/08/licitaciones-ago-2026.pdf",
+    "sha256": "7e459015e17170146e96af1dbfb73b7fb5428eb5a9708cdbffc3e5049560e6b0",
+    "bytes": 130643,
+    "descargado": "2026-10-29T22:56:21+00:00"
+  },
+  {
+    "archivo": "17007_contratos_Licitaciones-octubre-2026.pdf",
+    "url": "https://cuernavaca.gob.mx/wp-content/uploads/2026/10/Licitaciones-octubre-2026.pdf",
+    "sha256": "40e90297dd27203c2902eab2b4c85bc2f139fe7d01771649f60f3a1ff3cb1e82",
+    "bytes": 192823,
+    "descargado": "2026-10-29T22:56:22+00:00"
+  },
+  {
+    "archivo": "17007_contratos_Robaplana-Licitaciones-septiembre-2026.pdf",
+    "url": "https://cuernavaca.gob.mx/wp-content/uploads/2026/10/Robaplana-Licitaciones-septiembre-2026.pdf",
+    "sha256": "0fd442471885d25086c242d636205406ba8b38c1b7a608f9396a174b4d262410",
+    "bytes": 129326,
+    "descargado": "2026-10-29T22:56:37+00:00"
+  },
+  {
+    "archivo": "17007_contratos_RobaplanaLicitacionesAbril2026.pdf",
+    "url": "https://cuernavaca.gob.mx/wp-content/uploads/2026/05/RobaplanaLicitacionesAbril2026.pdf",
+    "sha256": "5223eb5c1ed5092fdd5a2d53f1f6c226220ac36d6b392321296b7f35e4a20bcc",
+    "bytes": 194914,
+    "descargado": "2026-10-29T22:56:50+00:00"
+  },
+  {
+    "archivo": "21019_contratos_F6dLDFClasificaciondeServiciosPersonales.pdf",
+    "url": "https://cuentapublica.puebla.gob.mx/images/doc_cuentapublica/01-cuentapublica2020sinlogos/01-Cuentapublica2020sinlogos/TOMO_VII/Entidades_Paraestatales/30-ITS_de_Atlixco/5Ley_de_Disciplina_Financiera/F6dLDFClasificaciondeServiciosPersonales.pdf",
+    "sha256": "662ca0a3b6a101599f9b64b6f18a95ee3fb486378eb36c80d829e43e50189c01",
+    "bytes": 157044,
+    "descargado": "2026-10-29T23:09:12+00:00"
+  },
+  {
+    "archivo": "21019_contratos_F6b_Estado_Analitico_de_Egresos-LDF_Clasificacion_Administrativa.pdf",
+    "url": "https://cuentapublica.puebla.gob.mx/images/doc_cuentapublica/cuentapublica2019/TOMO_VII/Entidades_Paraestatales/30-ITS_de_Atlixco/5Ley_de_Disciplina_Financiera/F6b_Estado_Analitico_de_Egresos-LDF_Clasificacion_Administrativa.pdf",
+    "sha256": "b87d3b3ebe9e87a39830b3de8ed11ed50b1cd995a9084acfb60b47190bf8b587",
+    "bytes": 68013,
+    "descargado": "2026-10-29T23:09:50+00:00"
+  },
+  {
+    "archivo": "21019_contratos_PYPI_3T_2016.pdf",
+    "url": "http://transparencia.atlixco.gob.mx/Atlixco/armonizacion-contable/2016/3er_trimestre/3.INFORMACION_PROGRAMATICA/PYPI_3T_2016.pdf",
+    "sha256": "51c999164ff042ef4df2d660129d3ae510a567447ef967fdade31ab10a158d83",
+    "bytes": 63598,
+    "descargado": "2026-10-29T23:10:04+00:00"
+  },
+  {
+    "archivo": "21019_contratos_F6bLDFClasificacionAdministrativa.pdf",
+    "url": "https://cuentapublica.puebla.gob.mx/images/doc_cuentapublica/01-cuentapublica2020sinlogos/01-Cuentapublica2020sinlogos/TOMO_VII/Entidades_Paraestatales/30-ITS_de_Atlixco/5Ley_de_Disciplina_Financiera/F6bLDFClasificacionAdministrativa.pdf",
+    "sha256": "4020d2729c99cd7348512d51badca60efeeed1e633f56f4945ac0fb8c0f3b2b8",
+    "bytes": 74946,
+    "descargado": "2026-10-29T23:10:04+00:00"
+  },
+  {
+    "archivo": "21019_contratos_F6cClasificacionFuncionalFinalidadyFuncion.pdf",
+    "url": "https://cuentapublica.puebla.gob.mx/images/doc_cuentapublica/01-cuentapublica2020sinlogos/01-Cuentapublica2020sinlogos/TOMO_VII/Entidades_Paraestatales/30-ITS_de_Atlixco/5Ley_de_Disciplina_Financiera/F6cClasificacionFuncionalFinalidadyFuncion.pdf",
+    "sha256": "b67c6b7674e13306b7b982546d879ecf7a54209143624bb744ae954d1bb22598",
+    "bytes": 198762,
+    "descargado": "2026-10-29T23:10:04+00:00"
+  },
+  {
+    "archivo": "21019_contratos_F6d_Estado_Analitico_de_Egresos-LDF_Clasificacion_Servicios_Personales.pdf",
+    "url": "https://cuentapublica.puebla.gob.mx/images/doc_cuentapublica/cuentapublica2019/TOMO_VII/Entidades_Paraestatales/30-ITS_de_Atlixco/5Ley_de_Disciplina_Financiera/F6d_Estado_Analitico_de_Egresos-LDF_Clasificacion_Servicios_Personales.pdf",
+    "sha256": "354ad0dd5be23abde45fe44124ae0ef98846dfbd35f7c010c09f994549ac04e9",
+    "bytes": 150649,
+    "descargado": "2026-10-29T23:10:05+00:00"
+  },
+  {
+    "archivo": "21019_contratos_MIDS_2023_-_Proyectos_FISMDF_20_DE_DICIEMBRE_DE_2023.pdf",
+    "url": "https://atlixco.gob.mx/Documentos/2024-2027/MIDS_2023_-_Proyectos_FISMDF_20_DE_DICIEMBRE_DE_2023.pdf",
+    "sha256": "d730564e51c5da13b1839132f5db87dc2342b4db1fc35ab1156ea79cd552abc0",
+    "bytes": 2272805,
+    "descargado": "2026-10-29T23:13:23+00:00"
+  },
+  {
+    "archivo": "21019_contratos_MIDS_2024_-_Proyectos_FISMDF_DESGLOSE.pdf",
+    "url": "https://atlixco.gob.mx/Documentos/2024-2027/MIDS_2024_-_Proyectos_FISMDF_DESGLOSE.pdf",
+    "sha256": "17c75e7f4e23cb7fc2d77e3d80c2f2889669221e77b3e92a9988f8f617eb7a44",
+    "bytes": 1682063,
+    "descargado": "2026-10-29T23:14:45+00:00"
+  },
+  {
+    "archivo": "21019_contratos_SOLICITUD_DE_APOYO.pdf",
+    "url": "https://atlixco.gob.mx/Documentos/2024-2027/SOLICITUD_DE_APOYO.pdf",
+    "sha256": "49875caaaf2416cd7ebafc9d6acde740df73026ff16775e55045b30f6a29efbc",
+    "bytes": 184950,
+    "descargado": "2026-10-29T23:15:46+00:00"
+  },
+  {
+    "archivo": "21019_contratos_MIDS.html",
+    "url": "https://atlixco.gob.mx/Pages/Transparencia/MIDS",
+    "sha256": "f451ae935034d596170c9e2ee268096f2234ef972d4122795c9988c51fa74267",
+    "bytes": 20238,
+    "descargado": "2026-10-29T23:15:52+00:00"
+  },
+  {
+    "archivo": "21019_pmd_PMD.html",
+    "url": "https://atlixco.gob.mx/Pages/Transparencia/PMD",
+    "sha256": "8905d166ad2ef1a6ec0f17f5045a47b2edd98b1a357a1eeae36a2e4a48270063",
+    "bytes": 40177,
+    "descargado": "2026-10-29T23:15:53+00:00"
+  },
+  {
+    "archivo": "21019_pmd_PYPI_3T_2016.pdf",
+    "url": "http://transparencia.Atlixco.gob.mx/Atlixco/armonizacion-contable/2016/3er_trimestre/3.INFORMACION_PROGRAMATICA/PYPI_3T_2016.pdf",
+    "sha256": "51c999164ff042ef4df2d660129d3ae510a567447ef967fdade31ab10a158d83",
+    "bytes": 63598,
+    "descargado": "2026-10-29T23:15:54+00:00"
+  },
+  {
+    "archivo": "21019_pmd_F6c_Estado_Analitico_de_Egresos-LDF_Finalidad_y_Funcion.pdf",
+    "url": "https://cuentapublica.puebla.gob.mx/images/doc_cuentapublica/00-Cuenta_Publica_2021/TOMO_VII/Entidades_Paraestatales/27-ITS_de_Atlixco/5Ley_de_Disciplina_Financiera/F6c_Estado_Analitico_de_Egresos-LDF_Finalidad_y_Funcion.pdf",
+    "sha256": "c1010726218f26110135a585855bbc6e6196bdd6360b430a2e950ef712f424f9",
+    "bytes": 147382,
+    "descargado": "2026-10-29T23:15:54+00:00"
+  },
+  {
+    "archivo": "21019_pmd_GACETA_FEBRERO_-_JULIO_2025.pdf",
+    "url": "https://transparencia.atlixco.gob.mx/Admin24-27/2025/Gaceta/GACETA_FEBRERO_-_JULIO_2025.pdf",
+    "sha256": "74a2663ca3e77e368dd75473ac87322bf541dfbf00e3b428aa7490901cbdd003",
+    "bytes": 3895672,
+    "descargado": "2026-10-29T23:16:45+00:00"
+  },
+  {
+    "archivo": "21019_pmd_GACETA_AGOSTO-DICIEMBRE_2025.pdf",
+    "url": "https://transparencia.atlixco.gob.mx/Admin24-27/2025/Gaceta/GACETA_AGOSTO-DICIEMBRE_2025.pdf",
+    "sha256": "89b23d10d1c4735e95be93f82ca8e37d850a30df8c662a420bbc092d9c4779cf",
+    "bytes": 2623333,
+    "descargado": "2026-10-29T23:17:51+00:00"
+  },
+  {
+    "archivo": "21019_pmd_F6cClasificacionFuncionalFinalidadyFuncion.pdf",
+    "url": "https://cuentapublica.puebla.gob.mx/images/doc_cuentapublica/01-cuentapublica2020sinlogos/01-Cuentapublica2020sinlogos/TOMO_VII/Entidades_Paraestatales/30-ITS_de_Atlixco/5Ley_de_Disciplina_Financiera/F6cClasificacionFuncionalFinalidadyFuncion.pdf",
+    "sha256": "b67c6b7674e13306b7b982546d879ecf7a54209143624bb744ae954d1bb22598",
+    "bytes": 198762,
+    "descargado": "2026-10-29T23:19:44+00:00"
+  },
+  {
+    "archivo": "21019_pmd_F6bLDFClasificacionAdministrativa.pdf",
+    "url": "https://cuentapublica.puebla.gob.mx/images/doc_cuentapublica/01-cuentapublica2020sinlogos/01-Cuentapublica2020sinlogos/TOMO_VII/Entidades_Paraestatales/30-ITS_de_Atlixco/5Ley_de_Disciplina_Financiera/F6bLDFClasificacionAdministrativa.pdf",
+    "sha256": "4020d2729c99cd7348512d51badca60efeeed1e633f56f4945ac0fb8c0f3b2b8",
+    "bytes": 74946,
+    "descargado": "2026-10-29T23:19:51+00:00"
+  },
+  {
+    "archivo": "21019_pmd_F6b_Estado_Analitico_de_Egresos-LDF_Clasificacion_Administrativa.pdf",
+    "url": "https://cuentapublica.puebla.gob.mx/images/doc_cuentapublica/cuentapublica2019/TOMO_VII/Entidades_Paraestatales/30-ITS_de_Atlixco/5Ley_de_Disciplina_Financiera/F6b_Estado_Analitico_de_Egresos-LDF_Clasificacion_Administrativa.pdf",
+    "sha256": "b87d3b3ebe9e87a39830b3de8ed11ed50b1cd995a9084acfb60b47190bf8b587",
+    "bytes": 68013,
+    "descargado": "2026-10-29T23:19:56+00:00"
+  },
+  {
+    "archivo": "21019_pmd_GACETA_NOVIEMBRE_2024.pdf",
+    "url": "https://transparencia.atlixco.gob.mx/Atlixco/gaceta/2024/GACETA_NOVIEMBRE_2024.pdf",
+    "sha256": "1b9ac1b2167fdd9c108641247a335f5a5495d6718174c81649da6a2409df78bd",
+    "bytes": 1132664,
+    "descargado": "2026-10-29T23:21:17+00:00"
+  },
+  {
+    "archivo": "21019_pmd_GACETA_DICIEMBRE_2024.pdf",
+    "url": "https://transparencia.atlixco.gob.mx/Atlixco/gaceta/2024/GACETA_DICIEMBRE_2024.pdf",
+    "sha256": "c6934644b9178893356aa0d5ff315e138c3a83f47b68935bd6dbf3f18c374786",
+    "bytes": 1655582,
+    "descargado": "2026-10-29T23:21:33+00:00"
+  }
+]

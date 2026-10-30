@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: polaca
+    runtime: docker
+    plan: free
+    branch: hackathon-meta
+    healthCheckPath: /salud
+    envVars:
+      - key: META_API_KEY
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: DATA_DIR
+        value: /tmp/polaca
