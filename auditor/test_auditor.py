@@ -544,6 +544,37 @@ def test_mapa_real_32_estados_y_puntos_dentro_de_su_estado():
         assert "Municipios de Puebla" in donde and "/representantes?m=21019" in donde
 
 
+def test_etiquetas_del_mapa_no_se_tocan():
+    """Atlixco y Cuernavaca quedan tan cerca que una etiqueta se mueve con guía: sus cajas no se cruzan."""
+    import re
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with municipios.conectar() as con:
+            con.execute("INSERT INTO municipios VALUES ('21019', 'Puebla', 'Atlixco', 'indexado')")
+            con.execute("INSERT INTO municipios VALUES ('17007', 'Morelos', 'Cuernavaca', 'indexado')")
+            con.execute("INSERT INTO cabeceras VALUES ('21019', 18.909282, -98.434004)")
+            con.execute("INSERT INTO cabeceras VALUES ('17007', 18.921782, -99.234897)")
+            con.commit()
+        inicio = TestClient(web.app).get("/").text
+        etiquetas = {nombre: (float(x), float(y), ancla) for x, y, ancla, nombre in re.findall(
+            r'<text class="mapa-etiqueta" x="([\d.]+)" y="([\d.]+)" text-anchor="(\w+)">([^<]+)</text>', inicio)}
+        assert set(etiquetas) == {"Atlixco", "Cuernavaca"} and 'class="mapa-guia"' in inicio
+
+        def caja(nombre):
+            x, y, ancla = etiquetas[nombre]
+            ancho = 8 * len(nombre) + 6
+            x0 = x if ancla == "start" else x - ancho if ancla == "end" else x - ancho / 2
+            return (x0, y - 11, x0 + ancho, y + 5)
+
+        a, b = caja("Atlixco"), caja("Cuernavaca")
+        assert not (a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]), (a, b)
+
+
 def test_hero_mapa_y_titular_un_solo_componente():
     """Mapa base a todo ancho, panel translúcido encima y titular AA contra el panel en claro y oscuro."""
     import re

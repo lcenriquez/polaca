@@ -190,6 +190,7 @@ main .btn, main .boton { display: flex; width: 100%; }
 .mx .pulso { fill: none; stroke: var(--accent); stroke-width: 2; pointer-events: none; animation: pulso 2.2s ease-out infinite; }
 @keyframes pulso { from { r: 10px; opacity: .75; } to { r: 26px; opacity: 0; } }
 .mx .mapa-etiqueta { font-size: 13px; font-weight: 700; fill: var(--ink); paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+.mx .mapa-guia { stroke: var(--ink); stroke-width: 1.5; opacity: .6; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .mx a .st { transition: none; } .mx .pulso { animation: none; opacity: 0; } }
 .meter { height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; } .meter i { display: block; height: 100%; background: var(--accent); min-width: 6px; }
 .step { display: flex; gap: 14px; } .n, .num { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 800; flex: none; }
@@ -1400,16 +1401,36 @@ def _mapa_html(con) -> str:
         f'<a href="/donde?estado={quote(estado)}" aria-label="{e(titulo(estado))}. Toca para buscar en este estado.">'
         f'<title>{e(titulo(estado))}</title><path class="st{" on" if revisados.get(estado) else ""}" d="{d}"/></a>'
         for estado, d in re.findall(r'<path data-estado="([^"]+)" d="([^"]+)">', texto))
-    puntos = ""
-    for m in _filas(con, """SELECT m.clave_inegi, m.nombre, m.estado, c.lat, c.lon FROM municipios m
+    filas_puntos = _filas(con, """SELECT m.clave_inegi, m.nombre, m.estado, c.lat, c.lon FROM municipios m
                             JOIN cabeceras c ON c.clave_mun = m.clave_inegi
-                            WHERE m.estado_indexacion = 'indexado' AND c.lat IS NOT NULL AND c.lon IS NOT NULL"""):
-        x, y = ox + (m["lon"] - lon0) * coseno * escala, oy + (lat1 - m["lat"]) * escala
-        ancla, lx = ("end", x - 14) if x > 560 else ("start", x + 14)
+                            WHERE m.estado_indexacion = 'indexado' AND c.lat IS NOT NULL AND c.lon IS NOT NULL
+                            ORDER BY c.lon""")
+
+    def caja(lx: float, base: float, ancla: str, nombre: str) -> tuple[float, float, float, float]:
+        ancho = 8 * len(nombre) + 6  # ancho estimado del texto de 13 px, para anticipar choques
+        x0 = lx if ancla == "start" else lx - ancho if ancla == "end" else lx - ancho / 2
+        return (x0, base - 11, x0 + ancho, base + 5)
+
+    datos = [(m, ox + (m["lon"] - lon0) * coseno * escala, oy + (lat1 - m["lat"]) * escala) for m in filas_puntos]
+    # Las cajas de los puntos también son obstáculo: una etiqueta no debe quedar bajo el punto vecino.
+    puntos, puestas = "", [(x - 10, y - 10, x + 10, y + 10) for _, x, y in datos]
+    for m, x, y in datos:
+        ancla, lx, base, guia = ("end", x - 14, y + 4, "") if x > 560 else ("start", x + 14, y + 4, "")
+
+        def choca(c) -> bool:
+            return any(c[0] < o[2] and o[0] < c[2] and c[1] < o[3] and o[1] < c[3] for o in puestas)
+
+        if choca(caja(lx, base, ancla, m["nombre"])):  # etiqueta pegada a otra: abajo del punto, con guía
+            ancla, lx, base = "middle", x, y + 32
+            guia = f'<line class="mapa-guia" x1="{x:.1f}" y1="{y + 12:.1f}" x2="{x:.1f}" y2="{y + 20:.1f}"/>'
+            if choca(caja(lx, base, ancla, m["nombre"])):  # ni abajo cabe: arriba del punto
+                ancla, lx, base = "middle", x, y - 24
+                guia = f'<line class="mapa-guia" x1="{x:.1f}" y1="{y - 12:.1f}" x2="{x:.1f}" y2="{y - 20:.1f}"/>'
+        puestas.append(caja(lx, base, ancla, m["nombre"]))
         puntos += (f'<a href="/representantes?m={e(m["clave_inegi"])}"><title>{e(m["nombre"])}, {e(m["estado"])} — Revisado</title>'
-                   f'<circle class="pulso" cx="{x:.1f}" cy="{y:.1f}" r="10"/>'
+                   f'{guia}<circle class="pulso" cx="{x:.1f}" cy="{y:.1f}" r="10"/>'
                    f'<circle class="punto" cx="{x:.1f}" cy="{y:.1f}" r="10"/>'
-                   f'<text class="mapa-etiqueta" x="{lx:.1f}" y="{y + 4:.1f}" text-anchor="{ancla}">{e(m["nombre"])}</text></a>')
+                   f'<text class="mapa-etiqueta" x="{lx:.1f}" y="{base:.1f}" text-anchor="{ancla}">{e(m["nombre"])}</text></a>')
     return (f'<div class="mapa-base"><svg class="mx" viewBox="{vista}" role="img" aria-label="Mapa de México: toca un estado para buscar ahí; '
             f'los puntos son los municipios ya revisados">{estados}{puntos}</svg>'
             f'<div class="mapa-pie"><span><b>{revisados_n}</b> de {total_mun:,} municipios revisados</span>'
