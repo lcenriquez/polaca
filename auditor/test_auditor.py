@@ -466,6 +466,27 @@ def test_chip_ubicacion_sin_municipio_no_va_a_atlixco():
     assert '<a class="place" href="/donde">' in con and "Atlixco, Pue." in con
 
 
+def test_acabado_visual_estatico():
+    """Fuente OFL local con swap, ilustraciones CC0 servidas y estados de carga sin servicios externos."""
+    import web
+    from fastapi.testclient import TestClient
+    assert "@font-face" in web.CSS and "Atkinson Hyperlegible" in web.CSS and "font-display: swap" in web.CSS
+    assert "/static/fonts/" in web.CSS and "fonts.googleapis" not in web.CSS and "fonts.gstatic" not in web.CSS
+    assert "prefers-reduced-motion" in web.CSS and "Buscando…" in web.JS
+    cliente = TestClient(web.app)
+    for ruta in ("/static/fonts/AtkinsonHyperlegible-Regular.ttf", "/static/fonts/AtkinsonHyperlegible-Bold.ttf",
+                 "/static/ilustraciones/bienvenida.svg", "/static/ilustraciones/vacio.svg",
+                 "/static/ilustraciones/gobierno.svg", "/static/mapa-mexico.svg"):
+        r = cliente.get(ruta)
+        assert r.status_code == 200 and len(r.content) > 100, ruta
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        inicio = cliente.get("/").text
+        assert "bienvenida.svg" in inicio and "Buscando…" in inicio and "onsubmit" in inicio
+
+
 def test_mapa_real_32_estados_y_puntos_dentro_de_su_estado():
     """El SVG generado pesa <80 KB, trae los 32 estados y el punto de Atlixco cae dentro de Puebla."""
     import re

@@ -26,6 +26,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageDraw, ImageFont
 
 import cruzar
@@ -37,8 +38,12 @@ import municipios
 from extraer import plano
 
 app = FastAPI(title="POLACA")
+app.mount("/static", StaticFiles(directory=Path(__file__).resolve().parent / "static"), name="static")
 
 CSS = """
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("/static/fonts/AtkinsonHyperlegible-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("/static/fonts/AtkinsonHyperlegible-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+body, .btn, .boton, .seg button, .filters button, .search input, input, select, textarea, button { font-family: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif; }
 :root { color-scheme: light; --bg:#f7f6fb; --surface:#fff; --surface-2:#f0eef8; --ink:#1c1a2b; --muted:#5d5a73; --muted-2:#44415e; --line:#e3e0ef;
   --accent:#5b3fd1; --accent-ink:#fff; --accent-soft:#ece8fc; --ok:#1e7a4c; --ok-soft:#e3f4ea; --warn:#8a5a00; --warn-soft:#fdf3dc;
   --shadow:0 1px 2px #1c1a2b0f,0 8px 24px #1c1a2b0f; --r:18px;
@@ -46,11 +51,11 @@ CSS = """
   --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; }
 @media (prefers-color-scheme: dark) {
 :root:not([data-theme="light"]) { color-scheme: dark; --bg:#121019; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --muted-2:#d6d2e6; --line:#2f2c40;
-  --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:none; --r:18px;
+  --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:0 1px 2px #0008,0 8px 24px #0006; --r:18px;
   --card:#1c1a27; --accent-tx:#9d8cff; --aviso-bg:#352a12; --aviso-line:#f2c46b; --aviso-ink:#f7e3ac; --copy-bg:#252233; --dash:#4a4568;
   --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; } }
 :root[data-theme="dark"] { color-scheme: dark; --bg:#121019; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --muted-2:#d6d2e6; --line:#2f2c40;
-  --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:none; --r:18px;
+  --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:0 1px 2px #0008,0 8px 24px #0006; --r:18px;
   --card:#1c1a27; --accent-tx:#9d8cff; --aviso-bg:#352a12; --aviso-line:#f2c46b; --aviso-ink:#f7e3ac; --copy-bg:#252233; --dash:#4a4568;
   --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; }
 * { box-sizing: border-box; margin: 0; }
@@ -92,6 +97,12 @@ nav.bottom a svg.i { width: 24px; height: 24px; }
 @media (min-width: 768px) { nav.bottom { display: none; } }
 .lbl { font: 700 12px/1 system-ui; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
 .card, .tarjeta { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; box-shadow: var(--shadow); }
+.card, .tarjeta, .regcard, .tile, .btn, .boton, .place, .sugg a, .list a { transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease, background-color .18s ease; }
+@media (hover: hover) { .tile:hover, .regcard:hover { transform: translateY(-2px); box-shadow: var(--shadow); } .sugg a:hover, .list a:hover { background: var(--surface-2); } }
+.ilu { width: 100%; max-width: 240px; height: auto; }
+.skel i { display: block; height: 14px; border-radius: 7px; background: var(--surface-2); margin: 10px 0; animation: p 1.4s infinite; }
+button:disabled { opacity: .65; cursor: wait; }
+@media (prefers-reduced-motion: reduce) { .card, .tarjeta, .regcard, .tile, .btn, .boton, .place, .sugg a, .list a, .skel i { transition: none; animation: none; } }
 .btn, .boton { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 22px; border-radius: 14px; background: var(--accent); color: var(--accent-ink); font: 700 17px system-ui; border: 0; text-decoration: none; cursor: pointer; }
 .btn.ghost, .boton.ghost { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
 main .btn, main .boton { display: flex; width: 100%; }
@@ -259,6 +270,7 @@ function ponerTema(t){ try{ if(t === 'system'){ localStorage.removeItem('tema');
 function filtrarTemaBtn(btn, tema){ document.querySelectorAll('.filters button').forEach(function(b){ b.classList.toggle('on', b === btn); }); var g = document.querySelector('.reggrid'); if(g){ g.classList.toggle('filtrando', !!tema); g.querySelectorAll('[data-tema]').forEach(function(el){ el.classList.toggle('on', !!tema && el.getAttribute('data-tema') === tema); }); } var r = document.querySelector('.ring'); if(r){ r.classList.toggle('filtrando', !!tema); r.querySelectorAll('.nodo').forEach(function(el){ var ts = el.getAttribute('data-temas') || el.getAttribute('data-tema') || ''; el.classList.toggle('on', !!tema && ts.split('|').indexOf(tema) !== -1); }); } }
 function expandirRegidores(){ document.querySelectorAll('.regcard.mas').forEach(function(el){ el.hidden = false; }); }
 function verMasRegidores(btn){ expandirRegidores(); btn.remove(); }
+function buscando(f){ var b = f.querySelector('button[type=submit]'); if(b){ b.disabled = true; b.textContent = 'Buscando…'; } var s = document.getElementById('lista-resultados'); if(s) s.setAttribute('aria-busy', 'true'); return true; }
 async function compartir(url, texto){ try{ var r = await fetch(url); var b = await r.blob(); var f = new File([b], 'tarjeta.png', {type: 'image/png'}); if(navigator.canShare && navigator.canShare({files: [f]})){ await navigator.share({files: [f], text: texto}); return; } }catch(err){} var a = document.createElement('a'); a.href = url; a.download = 'tarjeta.png'; a.click(); }
 </script>"""
 
@@ -519,7 +531,8 @@ def _vacio(icono_: str, titulo: str, texto: str, acciones: list) -> str:
     """Tarjeta de estado vacío (sección F del mockup): icono, una explicación y 1 o 2 acciones."""
     botones = "".join(f'<a class="btn{" ghost" if fantasma else ""}" href="{e(href)}">{e(texto_)}</a>'
                       for href, texto_, fantasma in acciones)
-    return (f'<div class="empty"><span class="ico">{icono(icono_, "Dibujo decorativo")}</span>'
+    return (f'<div class="empty"><img class="ilu" src="/static/ilustraciones/vacio.svg" alt="" width="240" height="160">'
+            f'<span class="ico">{icono(icono_, "Dibujo decorativo")}</span>'
             f'<h3>{e(titulo)}</h3><p class="small muted">{e(texto)}</p>'
             f'<div class="acts">{botones}</div></div>')
 
@@ -996,7 +1009,9 @@ def representantes(junta: int = 0, m: str = "21019"):
 <p><a class="btn ghost" href="/acuerdos">Ver los acuerdos</a></p></div>"""
                  + inspector_html + '</div>')
     if len(nodos) > 1:
-        derecha = (f'<div class="card sticky" style="text-align:center">{visual}'
+        derecha = (f'<div class="card sticky" style="text-align:center">'
+                   '<img class="ilu" src="/static/ilustraciones/gobierno.svg" alt="Ilustración de las personas de tu gobierno" width="240" height="160" style="max-width:180px">'
+                   f'{visual}'
                    '<p class="small muted">Más cerca del centro = más cerca de ti.</p></div>')
     else:
         derecha = _vacio("ppl", "Todavía no podemos dibujar tu gobierno",
@@ -1261,7 +1276,7 @@ def _buscador_html(q: str, resultados: list[dict], action: str = "/") -> tuple[s
                       f'<span><b>{e(r["nom_loc"])}</b><br><span class="small muted">{e(r["nom_mun"])}, {e(r["nom_ent"])}</span></span>'
                       f'<small class="chip {clase}">{texto_chip}</small></a>')
         sugg = (f'<div class="card sugg" id="lista-resultados">{items}</div>' if items else _sin_resultados(q))
-    buscador = (f'<form method="get" action="{action}"><label class="search">{icono("srch", "Dibujo de una lupa")}'
+    buscador = (f'<form method="get" action="{action}" onsubmit="return buscando(this)"><label class="search">{icono("srch", "Dibujo de una lupa")}'
                 f'<input name="q" type="search" value="{e(q)}" placeholder="Escribe tu localidad o municipio" '
                 'aria-label="Busca tu localidad o municipio">'
                 '<button class="btn" type="submit" style="min-height:48px;width:auto">Buscar</button></label></form>')
@@ -1318,6 +1333,7 @@ def inicio(q: str = ""):
     cuerpo = f"""<div class="hero">
 <div style="display:flex;flex-direction:column;gap:18px">
 <span class="chip" style="align-self:flex-start">{icono("globe", "Dibujo de un globo terráqueo")}Para todo México</span>
+<img class="ilu" src="/static/ilustraciones/bienvenida.svg" alt="Ilustración de vecinas y vecinos conversando" width="240" height="160" style="max-width:200px">
 <h1>¿Quién gobierna donde vives?</h1>
 <p class="muted" style="font-size:20px">Conoce a tus autoridades, revisa lo que hacen con documentos oficiales y aprende qué puedes hacer tú. La política no te ignora. ¿La ignoras tú?</p>
 <div>{buscador}{sugg}</div>
@@ -1672,7 +1688,8 @@ def indexando(clave: str):
               f'<p class="sub">{e(estado)}</p>'
               f'{resumen}'
               f'<div class="card"><h3>Última revisión</h3><div class="feed" id="eventos">{feed}</div>'
-              '<p class="debil" id="en-vivo">Conectando con el avance en vivo…</p></div>'
+              f'{"<div class=\"skel\" aria-hidden=\"true\"><i></i><i></i><i></i></div>" if m["estado_indexacion"] == "indexando" else ""}'
+              '<p class="debil" id="en-vivo" aria-live="polite">Conectando con el avance en vivo…</p></div>'
               f'{anteriores_html}'
               + enlace
               + f"""<script>

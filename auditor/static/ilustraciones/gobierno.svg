@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" role="img" aria-label="Personas de tu gobierno en un edificio público">
+<path d="M30 142V74l90-34 90 34v68z" fill="#ece8fc" stroke="#5b3fd1" stroke-width="4"/>
+<path d="M52 142V88h36v54M102 142V88h36v54M152 142V88h36v54" fill="none" stroke="#5b3fd1" stroke-width="4"/>
+<circle cx="70" cy="122" r="10" fill="#c2410c"/><circle cx="120" cy="122" r="10" fill="#0e7490"/><circle cx="170" cy="122" r="10" fill="#4d7c0f"/>
+</svg>

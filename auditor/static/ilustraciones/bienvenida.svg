@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" role="img" aria-label="Vecinas y vecinos conversando">
+<circle cx="60" cy="52" r="20" fill="#5b3fd1"/><path d="M28 140c0-30 14-44 32-44s32 14 32 44z" fill="#5b3fd1"/>
+<circle cx="122" cy="44" r="23" fill="#0e7490"/><path d="M84 140c2-36 16-52 38-52s36 16 38 52z" fill="#0e7490"/>
+<circle cx="182" cy="54" r="19" fill="#c2410c"/><path d="M152 140c0-28 13-42 30-42s30 14 30 42z" fill="#c2410c"/>
+<rect x="98" y="104" width="46" height="30" rx="8" fill="#fff" stroke="#1c1a2b" stroke-width="3"/>
+<path d="M108 114h26M108 123h18" stroke="#1c1a2b" stroke-width="3" stroke-linecap="round"/>
+</svg>
