@@ -14,8 +14,9 @@ from pathlib import Path
 from openai import OpenAI
 
 RAIZ = Path(__file__).resolve().parent.parent
-CACHE = RAIZ / "datos" / "cache"
-LOG_COSTOS = RAIZ / "datos" / "costos.jsonl"
+DATA_DIR = Path(os.environ.get("DATA_DIR", RAIZ / "datos"))  # mismo criterio que extraer.DATA_DIR
+CACHE = DATA_DIR / "cache"
+LOG_COSTOS = DATA_DIR / "costos.jsonl"
 
 # Documentos públicos → Contributor (Meta puede entrenar con ellos, 12x más barato).
 # Fotos ciudadanas → Standard (no se usan para entrenar).

@@ -1,13 +1,14 @@
 """Descarga las fuentes públicas a datos/raw/ y registra URL, fecha y sha256."""
 import hashlib
 import json
+import os
 import sys
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-RAW = RAIZ / "datos" / "raw"
+RAW = Path(os.environ.get("DATA_DIR", RAIZ / "datos")) / "raw"  # en Fly: el volumen /data
 
 FUENTES = [
     "https://transparencia.atlixco.gob.mx/Admin24-27/2025/Gaceta/GACETA_AGOSTO-DICIEMBRE_2025.pdf",

@@ -2051,9 +2051,9 @@ async def evidencia_subir(foto: UploadFile = File(...), objeto: str = Form(...))
         ruta_mascara, ruta_superpuesta = evidencia.guardar_salidas(limpia, seg, base)
         with _con() as con:
             sugerencias = evidencia.sugerir(con, objeto, seg)
-            id_ = evidencia.guardar(con, str(limpia.relative_to(extraer.RAIZ)), objeto, evidencia.resumen_sam(seg),
-                                    str(ruta_mascara.relative_to(extraer.RAIZ)) if ruta_mascara else None,
-                                    str(ruta_superpuesta.relative_to(extraer.RAIZ)) if ruta_superpuesta else None,
+            id_ = evidencia.guardar(con, str(limpia.relative_to(extraer.DATA_DIR)), objeto, evidencia.resumen_sam(seg),
+                                    str(ruta_mascara.relative_to(extraer.DATA_DIR)) if ruta_mascara else None,
+                                    str(ruta_superpuesta.relative_to(extraer.DATA_DIR)) if ruta_superpuesta else None,
                                     None, None, sugerencias)
     finally:
         origen.unlink(missing_ok=True)

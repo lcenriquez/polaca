@@ -27,7 +27,7 @@ import llm
 import extraer
 import presupuesto
 
-EVIDENCIA = extraer.RAIZ / "datos" / "evidencia"
+EVIDENCIA = extraer.DATA_DIR / "evidencia"
 
 ESQUEMA = {
     "type": "object",
@@ -244,9 +244,9 @@ def main():
         seg = segmentar(limpia, args.objeto)
         ruta_mascara, ruta_superpuesta = guardar_salidas(limpia, seg, base)
         sugerencias = [] if (args.acuerdo or args.partida) else sugerir(con, args.objeto, seg)
-        id_ = guardar(con, str(limpia.relative_to(extraer.RAIZ)), args.objeto, resumen_sam(seg),
-                      str(ruta_mascara.relative_to(extraer.RAIZ)) if ruta_mascara else None,
-                      str(ruta_superpuesta.relative_to(extraer.RAIZ)) if ruta_superpuesta else None,
+        id_ = guardar(con, str(limpia.relative_to(extraer.DATA_DIR)), args.objeto, resumen_sam(seg),
+                      str(ruta_mascara.relative_to(extraer.DATA_DIR)) if ruta_mascara else None,
+                      str(ruta_superpuesta.relative_to(extraer.DATA_DIR)) if ruta_superpuesta else None,
                       args.acuerdo, args.partida, sugerencias)
 
     print(f"Evidencia {id_}: '{args.objeto}' — {len(seg['objetos'])} objeto(s) segmentado(s).")

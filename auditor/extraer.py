@@ -12,6 +12,7 @@ import argparse
 import base64
 import io
 import json
+import os
 import re
 import sqlite3
 import unicodedata
@@ -23,8 +24,10 @@ from pypdf import PdfReader, PdfWriter
 import llm
 
 RAIZ = Path(__file__).resolve().parent.parent
-RAW = RAIZ / "datos" / "raw"
-DB = RAIZ / "datos" / "auditor.db"
+# Todo lo persistente vive en DATA_DIR (en Fly: /data, el volumen). Sin la variable, la carpeta datos/ del repo.
+DATA_DIR = Path(os.environ.get("DATA_DIR", RAIZ / "datos"))
+RAW = DATA_DIR / "raw"
+DB = DATA_DIR / "auditor.db"
 TRAMO = 20
 
 
@@ -270,7 +273,7 @@ def main():
     with conectar() as con:
         guardar(con, args.archivo, total, acuerdos, (ini, fin))
     estados = {e: sum(a["verificacion"] == e for a in acuerdos) for e in ("ok", "sin_texto", "no_encontrado")}
-    print(f"{len(acuerdos)} acuerdos, verificación de fragmento: {estados} → {DB.relative_to(RAIZ)}")
+    print(f"{len(acuerdos)} acuerdos, verificación de fragmento: {estados} → {DB}")
     print("Gasto acumulado:", llm.resumen_costos())
 
 
