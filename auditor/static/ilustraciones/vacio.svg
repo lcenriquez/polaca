@@ -1,6 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" role="img" aria-label="Una persona buscando con una lupa">
-<circle cx="96" cy="50" r="22" fill="#0e7490"/><path d="M58 142c2-34 16-50 38-50s36 16 38 50z" fill="#0e7490"/>
-<circle cx="164" cy="66" r="26" fill="none" stroke="#5b3fd1" stroke-width="9"/>
-<path d="M183 86l26 26" stroke="#5b3fd1" stroke-width="11" stroke-linecap="round"/>
-<path d="M152 66h24M164 54v24" stroke="#5b3fd1" stroke-width="5" stroke-linecap="round" opacity=".45"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-label="Una persona buscando documentos con una lupa">
+<rect x="14" y="176" width="292" height="18" rx="9" fill="#ece8fc"/>
+<rect x="36" y="86" width="86" height="104" rx="10" fill="#f2c46b"/><rect x="52" y="106" width="54" height="10" rx="5" fill="#8a5a00"/><rect x="52" y="126" width="54" height="10" rx="5" fill="#b45309"/><rect x="52" y="146" width="36" height="10" rx="5" fill="#b45309"/>
+<rect x="52" y="66" width="86" height="104" rx="10" fill="#fdf3dc"/><rect x="68" y="86" width="54" height="10" rx="5" fill="#8a5a00"/><rect x="68" y="106" width="54" height="10" rx="5" fill="#b45309"/><rect x="68" y="126" width="36" height="10" rx="5" fill="#b45309"/>
+<circle cx="196" cy="56" r="28" fill="#e0ac69"/><path d="M196 26a28 28 0 0 1 28 28c-7-13-15-18-28-18s-21 5-28 18a28 28 0 0 1 28-30z" fill="#1c1a2b"/>
+<path d="M150 196c2-52 18-76 46-76 20 0 34 12 40 34l-24 10c-4-10-8-14-16-14-12 0-18 16-20 46z" fill="#4d7c0f"/>
+<path d="M236 154l24-10 22 52H248z" fill="#3c6210"/>
+<circle cx="248" cy="96" r="34" fill="#9d8cff"/><circle cx="248" cy="96" r="24" fill="#ece8fc"/>
+<path d="M272 120l30 34c6 7 4 16-3 20s-15 2-19-5l-22-38z" fill="#5b3fd1"/>
+<rect x="160" y="86" width="34" height="16" rx="8" fill="#be123c"/><circle cx="286" cy="52" r="16" fill="#0e7490"/>
+<path d="M280 52h12M286 46v12" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
 </svg>

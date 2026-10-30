@@ -1,5 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" role="img" aria-label="Personas de tu gobierno en un edificio público">
-<path d="M30 142V74l90-34 90 34v68z" fill="#ece8fc" stroke="#5b3fd1" stroke-width="4"/>
-<path d="M52 142V88h36v54M102 142V88h36v54M152 142V88h36v54" fill="none" stroke="#5b3fd1" stroke-width="4"/>
-<circle cx="70" cy="122" r="10" fill="#c2410c"/><circle cx="120" cy="122" r="10" fill="#0e7490"/><circle cx="170" cy="122" r="10" fill="#4d7c0f"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-label="Personas de tu gobierno frente a un edificio público">
+<rect x="14" y="188" width="292" height="16" rx="8" fill="#ece8fc"/>
+<path d="M160 18l118 44H42z" fill="#5b3fd1"/><rect x="52" y="62" width="216" height="18" rx="6" fill="#4a32a8"/>
+<rect x="66" y="80" width="188" height="108" fill="#ece8fc"/>
+<rect x="82" y="92" width="26" height="96" fill="#9d8cff"/><rect x="122" y="92" width="26" height="96" fill="#9d8cff"/><rect x="172" y="92" width="26" height="96" fill="#9d8cff"/><rect x="212" y="92" width="26" height="96" fill="#9d8cff"/>
+<rect x="140" y="118" width="40" height="70" rx="6" fill="#8a5a00"/><circle cx="172" cy="154" r="4" fill="#f2c46b"/>
+<circle cx="160" cy="44" r="12" fill="#f2c46b"/>
+<circle cx="102" cy="150" r="15" fill="#8d5524"/><path d="M78 202c1-26 9-38 24-38s23 12 24 38z" fill="#c2410c"/>
+<circle cx="160" cy="142" r="17" fill="#f1c27d"/><path d="M134 202c1-30 10-44 26-44s25 14 26 44z" fill="#0e7490"/>
+<circle cx="218" cy="150" r="15" fill="#ffdbac"/><path d="M194 202c1-26 9-38 24-38s23 12 24 38z" fill="#4d7c0f"/>
+<rect x="148" y="104" width="24" height="18" rx="4" fill="#be123c"/>
 </svg>

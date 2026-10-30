@@ -127,7 +127,7 @@ nav.bottom a svg.i { width: 24px; height: 24px; }
 .card, .tarjeta { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; box-shadow: var(--shadow); }
 .card, .tarjeta, .regcard, .tile, .btn, .boton, .place, .sugg a, .list a { transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease, background-color .18s ease; }
 @media (hover: hover) { .tile:hover, .regcard:hover { transform: translateY(-2px); box-shadow: var(--shadow); } .sugg a:hover, .list a:hover { background: var(--surface-2); } }
-.ilu { width: 100%; max-width: 240px; height: auto; }
+.ilu { width: 100%; max-width: 320px; height: auto; }
 .skel i { display: block; height: 14px; border-radius: 7px; background: var(--surface-2); margin: 10px 0; animation: p 1.4s infinite; }
 button:disabled { opacity: .65; cursor: wait; }
 @media (prefers-reduced-motion: reduce) { .card, .tarjeta, .regcard, .tile, .btn, .boton, .place, .sugg a, .list a, .skel i { transition: none; animation: none; } }

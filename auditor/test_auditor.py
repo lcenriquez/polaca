@@ -479,6 +479,10 @@ def test_acabado_visual_estatico():
                  "/static/ilustraciones/gobierno.svg", "/static/mapa-mexico.svg"):
         r = cliente.get(ruta)
         assert r.status_code == 200 and len(r.content) > 100, ruta
+    for nombre in ("bienvenida", "vacio", "gobierno"):  # figuras rellenas y multicolor, no de trazo
+        import re
+        svg = (Path(__file__).parent / "static" / "ilustraciones" / f"{nombre}.svg").read_text(encoding="utf-8")
+        assert len(set(re.findall(r'fill="(#[0-9a-f]{6})"', svg))) >= 5 and 'viewBox="0 0 320 220"' in svg
     with tempfile.TemporaryDirectory() as d:
         extraer.DB = Path(d) / "t.db"
         extraer.RAW = Path(d)
