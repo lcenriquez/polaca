@@ -102,6 +102,38 @@ def test_subida_maximo_10mb():
         assert r.status_code == 400
 
 
+def test_salud():
+    with tempfile.TemporaryDirectory() as d:
+        r = _cliente(d).get("/salud")
+        assert r.status_code == 200 and r.json() == {"estado": "ok"}
+        assert r.headers["x-content-type-options"] == "nosniff"
+
+
+def test_admin_requiere_token_largo():
+    import web
+    previo = os.environ.get("ADMIN_TOKEN")
+    with tempfile.TemporaryDirectory() as d:
+        cliente = _cliente(d)
+        try:
+            os.environ.pop("ADMIN_TOKEN", None)
+            assert cliente.get("/admin").status_code == 404  # sin token configurado, /admin no existe
+            assert cliente.post("/admin/decision", data={"token": "x", "solicitud": 1,
+                                                         "decision": "rechazar"}).status_code == 404
+            os.environ["ADMIN_TOKEN"] = "corto"
+            assert cliente.get("/admin").status_code == 404  # menos de 32 caracteres: igual
+            os.environ["ADMIN_TOKEN"] = "t" * 32
+            web._hits.clear()
+            r = cliente.get("/admin")
+            assert r.status_code == 200 and "token" in r.text.lower()  # activo: pide el token
+            assert cliente.post("/admin/decision", data={"token": "malo", "solicitud": 1,
+                                                         "decision": "rechazar"}).status_code == 403
+        finally:
+            if previo is None:
+                os.environ.pop("ADMIN_TOKEN", None)
+            else:
+                os.environ["ADMIN_TOKEN"] = previo
+
+
 if __name__ == "__main__":
     for nombre, f in list(globals().items()):
         if nombre.startswith("test_"):

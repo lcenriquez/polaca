@@ -19,7 +19,7 @@ primary_region = "qro"
     interval = "15s"
     method = "GET"
     timeout = "5s"
-    path = "/"
+    path = "/salud"
 
 [[mounts]]
   source = "polaca_data"

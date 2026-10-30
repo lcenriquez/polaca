@@ -69,6 +69,11 @@ def _fijar(resp: HTMLResponse, clave: str | None) -> HTMLResponse:
     return resp
 
 
+@app.get("/salud")
+def salud():
+    return {"estado": "ok"}  # health check de Fly: responde sin tocar la base
+
+
 def _nombre_municipio(con, clave: str | None) -> tuple[str, str] | None:
     if not clave:
         return None
@@ -1583,13 +1588,20 @@ def _lanzar_indexador(clave: str):
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def _admin_activo() -> bool:
+    """Sin ADMIN_TOKEN de al menos 32 caracteres, /admin no existe: responde 404."""
+    return len(os.environ.get("ADMIN_TOKEN", "")) >= 32
+
+
 def _token_ok(token: str) -> bool:
     esperado = os.environ.get("ADMIN_TOKEN", "")
-    return bool(esperado) and bool(token) and secrets.compare_digest(token, esperado)
+    return _admin_activo() and bool(token) and secrets.compare_digest(token, esperado)
 
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin(token: str = ""):
+    if not _admin_activo():
+        return HTMLResponse("<p>No se encontró la página.</p>", status_code=404)
     if not _token_ok(token):
         cuerpo = ('<p>Esta página es solo para el equipo que aprueba nuevas revisiones de municipios.</p>'
                   '<form method="get" action="/admin"><label for="token">Token de administración</label>'
@@ -1623,6 +1635,8 @@ def admin(token: str = ""):
 
 @app.post("/admin/decision")
 def admin_decision(token: str = Form(""), solicitud: int = Form(0), decision: str = Form("")):
+    if not _admin_activo():
+        return HTMLResponse("<p>No se encontró la página.</p>", status_code=404)
     if not _token_ok(token):
         return HTMLResponse("<p>Token no válido.</p>", status_code=403)
     with _con() as con:

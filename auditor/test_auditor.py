@@ -740,7 +740,7 @@ def test_solicitud_sin_aprobacion_no_dispara_agente():
         lanzadas = []
         original = web._lanzar_indexador
         web._lanzar_indexador = lanzadas.append
-        os.environ["ADMIN_TOKEN"] = "token-de-prueba"
+        os.environ["ADMIN_TOKEN"] = "token-de-prueba-de-32-caracteres-ok"
         try:
             cliente = TestClient(web.app, raise_server_exceptions=False)
             r = cliente.post("/solicitar/15054", follow_redirects=False)
@@ -751,13 +751,13 @@ def test_solicitud_sin_aprobacion_no_dispara_agente():
             assert lanzadas == []
             with municipios.conectar() as con:
                 sid = con.execute("SELECT id FROM solicitudes WHERE estado = 'pendiente'").fetchone()[0]
-            cliente.post("/admin/decision", data={"token": "token-de-prueba", "solicitud": sid,
+            cliente.post("/admin/decision", data={"token": "token-de-prueba-de-32-caracteres-ok", "solicitud": sid,
                                                   "decision": "rechazar"})
             assert lanzadas == []  # rechazar tampoco
             cliente.post("/solicitar/15054", follow_redirects=False)
             with municipios.conectar() as con:
                 sid = con.execute("SELECT id FROM solicitudes WHERE estado = 'pendiente'").fetchone()[0]
-            cliente.post("/admin/decision", data={"token": "token-de-prueba", "solicitud": sid,
+            cliente.post("/admin/decision", data={"token": "token-de-prueba-de-32-caracteres-ok", "solicitud": sid,
                                                   "decision": "aprobar"})
             assert lanzadas == ["15054"]  # solo la aprobación humana lo dispara
             with municipios.conectar() as con:
