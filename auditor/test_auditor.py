@@ -488,7 +488,7 @@ def test_acabado_visual_estatico():
         extraer.RAW = Path(d)
         (Path(d) / "manifiesto.json").write_text("[]")
         inicio = cliente.get("/").text
-        assert "bienvenida.svg" in inicio and "Buscando…" in inicio and "onsubmit" in inicio
+        assert "hero-panel" in inicio and "Buscando…" in inicio and "onsubmit" in inicio
 
 
 def test_mapa_real_32_estados_y_puntos_dentro_de_su_estado():
@@ -530,7 +530,7 @@ def test_mapa_real_32_estados_y_puntos_dentro_de_su_estado():
         assert "Puebla — 1 municipio revisado" in inicio and 'href="/donde?estado=Puebla"' in inicio
         assert 'class="st on"' in inicio and 'class="pulso"' in inicio and 'class="punto"' in inicio
         assert ">Atlixco</text>" in inicio and "Natural Earth" in inicio and "INEGI" in inicio
-        assert "minmax(0,.75fr) minmax(0,1.25fr)" in web.CSS  # el mapa ocupa ≥60% del héroe en escritorio
+        assert 'class="mapa-pie"' in inicio and "<b>1</b> de 1 municipios revisados" in inicio
 
         def lum(hexa):
             rgb = [int(hexa[i:i + 2], 16) / 255 for i in (1, 3, 5)]
@@ -542,6 +542,56 @@ def test_mapa_real_32_estados_y_puntos_dentro_de_su_estado():
             assert (claro + 0.05) / (oscuro + 0.05) >= 3.0, (fondo, tinte)  # tinte visible 3:1 en claro y oscuro
         donde = TestClient(web.app).get("/donde", params={"estado": "Puebla"}).text
         assert "Municipios de Puebla" in donde and "/representantes?m=21019" in donde
+
+
+def test_hero_mapa_y_titular_un_solo_componente():
+    """Mapa base a todo ancho, panel translúcido encima y titular AA contra el panel en claro y oscuro."""
+    import re
+    import web
+    from fastapi.testclient import TestClient
+    css = web.CSS
+    assert ".hero { position: relative; min-width: 0; }" in css and "overflow-x: clip" in css
+    assert "font-size: clamp(2.25rem, 6vw, 4.5rem)" in css and "line-height: .98" in css
+    assert "background: var(--panel)" in css and "backdrop-filter: blur(14px)" in css
+    assert "margin: -68px 10px 0" in css  # móvil: el panel monta el borde inferior del mapa
+    escritorio = css.split("@media (min-width: 900px)", 1)[1]
+    assert ".hero .mx { min-height: 70vh; }" in escritorio
+    assert ".hero-panel { position: absolute; left: 24px;" in escritorio  # sobre el Pacífico/Baja, no el centro
+
+    def variables(bloque):
+        return dict(re.findall(r"(--[a-z0-9-]+):([^;]+);", bloque))
+
+    def rgb(valor):
+        if valor.startswith("#"):
+            return tuple(int(valor[i:i + 2], 16) for i in (1, 3, 5))
+        n = [float(v) for v in re.findall(r"[\d.]+", valor)]
+        return tuple(n[:3]) + (n[3],)
+
+    def lum(color):
+        canales = [v / 255 for v in color[:3]]
+        canales = [v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4 for v in canales]
+        return 0.2126 * canales[0] + 0.7152 * canales[1] + 0.0722 * canales[2]
+
+    bloques = (css.split(":root {", 1)[1].split("}", 1)[0],
+               css.split(':root:not([data-theme="light"]) {', 1)[1].split("}", 1)[0],
+               css.split(':root[data-theme="dark"] {', 1)[1].split("}", 1)[0])
+    for bloque in bloques:
+        v = variables(bloque)
+        panel, tinta = rgb(v["--panel"]), rgb(v["--ink"])
+        for fondo in (rgb(v["--bg"]), rgb(v["--mapa"])):  # el panel translúcido se ve sobre fondo y sobre el tinte
+            a = panel[3]
+            efectivo = tuple(a * p + (1 - a) * f for p, f in zip(panel[:3], fondo))
+            claro, oscuro = sorted((lum(efectivo), lum(tinta)), reverse=True)
+            assert (claro + 0.05) / (oscuro + 0.05) >= 4.5, (v["--panel"], v["--bg"])  # WCAG AA
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        inicio = TestClient(web.app).get("/").text
+        assert inicio.index('class="hero"') < inicio.index('class="mapa-base"') < inicio.index('class="hero-panel"')
+        panel = inicio[inicio.index('class="hero-panel"'):inicio.index('class="grid g3"')]
+        assert "<h1>¿Quién<br>gobierna<br>donde vives?</h1>" in panel and '<form method="get" action="/"' in panel
+        assert 'class="mapa-pie"' in inicio and "municipios revisados" in inicio
 
 
 def test_sin_municipio_por_defecto_redirige_y_cookie_recuerda():

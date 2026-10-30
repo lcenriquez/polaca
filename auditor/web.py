@@ -88,16 +88,16 @@ body, .btn, .boton, .seg button, .filters button, .search input, input, select, 
   --accent:#5b3fd1; --accent-ink:#fff; --accent-soft:#ece8fc; --ok:#1e7a4c; --ok-soft:#e3f4ea; --warn:#8a5a00; --warn-soft:#fdf3dc;
   --shadow:0 1px 2px #1c1a2b0f,0 8px 24px #1c1a2b0f; --r:18px;
   --card:#fff; --accent-tx:#5b3fd1; --aviso-bg:#fdf3dc; --aviso-line:#8a5a00; --aviso-ink:#5c3d00; --copy-bg:#f0eef8; --dash:#c9c3e6;
-  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; --mapa:#8a76d9; }
+  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; --mapa:#8a76d9; --panel:rgba(255,255,255,.87); }
 @media (prefers-color-scheme: dark) {
 :root:not([data-theme="light"]) { color-scheme: dark; --bg:#12101a; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --muted-2:#d6d2e6; --line:#2f2c40;
   --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:0 1px 2px #0008,0 8px 24px #0006; --r:18px;
   --card:#1c1a27; --accent-tx:#9d8cff; --aviso-bg:#352a12; --aviso-line:#f2c46b; --aviso-ink:#f7e3ac; --copy-bg:#252233; --dash:#4a4568;
-  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; --mapa:#7563b8; } }
+  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; --mapa:#7563b8; --panel:rgba(18,16,26,.85); } }
 :root[data-theme="dark"] { color-scheme: dark; --bg:#12101a; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --muted-2:#d6d2e6; --line:#2f2c40;
   --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:0 1px 2px #0008,0 8px 24px #0006; --r:18px;
   --card:#1c1a27; --accent-tx:#9d8cff; --aviso-bg:#352a12; --aviso-line:#f2c46b; --aviso-ink:#f7e3ac; --copy-bg:#252233; --dash:#4a4568;
-  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; --mapa:#7563b8; }
+  --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; --mapa:#7563b8; --panel:rgba(18,16,26,.85); }
 * { box-sizing: border-box; margin: 0; }
 body { font: 18px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); overflow-x: clip; padding-bottom: 84px; }
 @media (min-width: 768px) { body { padding-bottom: 0; } }
@@ -153,8 +153,27 @@ main .btn, main .boton { display: flex; width: 100%; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .grid { display: grid; gap: 16px; grid-template-columns: minmax(0,1fr); }
 @media (min-width: 768px) { .g2 { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } .g3 { grid-template-columns: repeat(3,minmax(0,1fr)); } .g-side { grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); align-items: start; } }
-.hero { display: grid; gap: 28px; align-items: center; grid-template-columns: minmax(0,1fr); }
-@media (min-width: 900px) { .hero { grid-template-columns: minmax(0,.75fr) minmax(0,1.25fr); } }
+.hero { position: relative; min-width: 0; }
+.mapa-base { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); }
+.hero-panel { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 14px; margin: -68px 10px 0; padding: 22px; border: 1px solid var(--line); border-radius: 24px; background: var(--panel); box-shadow: var(--shadow); backdrop-filter: blur(14px) saturate(1.15); -webkit-backdrop-filter: blur(14px) saturate(1.15); }
+.hero-panel h1 { font-size: clamp(2.25rem, 6vw, 4.5rem); line-height: .98; letter-spacing: -.03em; margin: 0; }
+.hero-sub { color: var(--muted); font-size: 19px; line-height: 1.4; }
+.hero-panel .aviso { font-size: 15px; }
+.mapa-pie { position: absolute; right: 10px; bottom: 62px; z-index: 1; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; max-width: min(430px, calc(100% - 20px)); padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--ink); font-size: 12px; line-height: 1.25; text-align: right; pointer-events: none; }
+.mapa-pie b { font-size: 16px; }
+.mapa-fuente { color: var(--muted); }
+@media (max-width: 899px) {
+  .mapa-pie { bottom: 76px; }
+  .hero-panel { padding: 18px; gap: 12px; }
+  .hero-panel .chip { display: none; }
+  .hero-sub { font-size: 17px; line-height: 1.35; }
+}
+@media (min-width: 900px) {
+  .hero { min-height: 70vh; }
+  .hero .mx { min-height: 70vh; }
+  .hero-panel { position: absolute; left: 24px; top: 50%; transform: translateY(-50%); width: min(500px, 44%); margin: 0; padding: 26px; }
+  .mapa-pie { bottom: 10px; }
+}
 .search { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 2px solid var(--accent); border-radius: 16px; padding: 6px 6px 6px 16px; box-shadow: var(--shadow); }
 .search input { flex: 1; border: 0; background: transparent; font: 18px system-ui; color: var(--ink); min-height: 48px; outline: none; min-width: 0; width: auto; }
 .sugg { margin-top: 8px; padding: 6px; }
@@ -1368,6 +1387,10 @@ def _mapa_html(con) -> str:
         return ""  # sin el SVG generado no se inventa un contorno a mano
     revisados = {f["estado"]: f["n"] for f in _filas(
         con, "SELECT estado, count(*) n FROM municipios WHERE estado_indexacion = 'indexado' GROUP BY estado")}
+    conteo = _filas(con, """SELECT count(*) total,
+                            sum(CASE WHEN estado_indexacion = 'indexado' THEN 1 ELSE 0 END) rev
+                            FROM municipios""")[0]
+    total_mun, revisados_n = conteo["total"] or 0, conteo["rev"] or 0
 
     def titulo(estado: str) -> str:
         n = revisados.get(estado, 0)
@@ -1387,37 +1410,30 @@ def _mapa_html(con) -> str:
                    f'<circle class="pulso" cx="{x:.1f}" cy="{y:.1f}" r="10"/>'
                    f'<circle class="punto" cx="{x:.1f}" cy="{y:.1f}" r="10"/>'
                    f'<text class="mapa-etiqueta" x="{lx:.1f}" y="{y + 4:.1f}" text-anchor="{ancla}">{e(m["nombre"])}</text></a>')
-    return (f'<svg class="mx" viewBox="{vista}" role="img" aria-label="Mapa de México: toca un estado para buscar ahí; '
+    return (f'<div class="mapa-base"><svg class="mx" viewBox="{vista}" role="img" aria-label="Mapa de México: toca un estado para buscar ahí; '
             f'los puntos son los municipios ya revisados">{estados}{puntos}</svg>'
-            '<p class="small muted">Límites estatales: Natural Earth (dominio público). '
-            'Puntos: cabecera municipal, catálogo de INEGI.</p>')
+            f'<div class="mapa-pie"><span><b>{revisados_n}</b> de {total_mun:,} municipios revisados</span>'
+            '<span class="mapa-fuente">Límites estatales: Natural Earth (dominio público). '
+            'Puntos: cabecera municipal, catálogo de INEGI.</span></div></div>')
 
 
 @app.get("/", response_class=HTMLResponse)
 def inicio(q: str = ""):
     with _con() as con:
         resultados = municipios.buscar_localidades(con, q) if q else []
-        total_mun = con.execute("SELECT count(*) FROM municipios").fetchone()[0]
-        revisados = con.execute("SELECT count(*) FROM municipios WHERE estado_indexacion = 'indexado'").fetchone()[0]
         indexados = _filas(con, "SELECT * FROM municipios WHERE estado_indexacion = 'indexado' ORDER BY nombre")
         mapa = _mapa_html(con)
     buscador, sugg = _buscador_html(q, resultados)
-    pct = round(100 * revisados / total_mun) if total_mun else 0
     ya = "".join(f'<a href="/representantes?m={e(m["clave_inegi"])}">{icono("pin", "Dibujo de un pin de mapa")}'
                  f'{e(m["nombre"])}, {e(m["estado"])}<small class="chip ok">Revisado</small></a>' for m in indexados)
     cuerpo = f"""<div class="hero">
-<div style="display:flex;flex-direction:column;gap:18px">
+{mapa}
+<div class="hero-panel">
 <span class="chip" style="align-self:flex-start">{icono("globe", "Dibujo de un globo terráqueo")}Para todo México</span>
-<img class="ilu" src="/static/ilustraciones/bienvenida.svg" alt="Ilustración de vecinas y vecinos conversando" width="240" height="160" style="max-width:200px">
-<h1>¿Quién gobierna donde vives?</h1>
-<p class="muted" style="font-size:20px">Conoce a tus autoridades, revisa lo que hacen con documentos oficiales y aprende qué puedes hacer tú. La política no te ignora. ¿La ignoras tú?</p>
+<h1>¿Quién<br>gobierna<br>donde vives?</h1>
+<p class="hero-sub">Conoce a tus autoridades, revisa lo que hacen con documentos oficiales y aprende qué puedes hacer tú. La política no te ignora. ¿La ignoras tú?</p>
 <div>{buscador}{sugg}</div>
 <p class="aviso">Los hallazgos son discrepancias verificables entre documentos públicos, no acusaciones.</p>
-</div>
-<div class="card" style="display:flex;flex-direction:column;gap:14px">
-{mapa}
-<div><b style="font-size:28px">{revisados}</b> <span class="muted">de {total_mun:,} municipios revisados</span><div class="meter" style="margin-top:8px"><i style="width:{pct}%"></i></div></div>
-<p class="small muted">¿No está el tuyo? Pídele a Muse que lo revise: busca tu localidad aquí arriba.</p>
 </div></div>
 <div class="grid g3" style="margin-top:8px">
 <div class="step"><span class="num">1</span><div><h3>Busca dónde vives</h3><p class="small muted">Cualquier localidad del país, del catálogo oficial de INEGI. No guardamos tu respuesta.</p></div></div>
