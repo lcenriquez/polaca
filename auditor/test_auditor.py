@@ -222,7 +222,7 @@ def test_web():
             presupuesto.guardar(con, "pres.pdf", 10, [partida], (5, 6))
 
         cliente = TestClient(web.app)
-        for ruta in ["/", "/donde", "/representantes", "/temas", "/gastos", "/funcionarios",
+        for ruta in ["/", "/donde", "/representantes?m=21019", "/temas", "/gastos?m=21019", "/funcionarios",
                      "/funcionarios/ariadna-ayala-camarillo", "/acuerdos", "/acuerdos/1",
                      "/presupuesto", "/hallazgos", "/evidencia"]:
             r = cliente.get(ruta)
@@ -345,8 +345,8 @@ def test_recorrido():
 
         def visible(html_texto):
             return re.sub(r"<details.*?</details>", "", html_texto, flags=re.S)
-        for ruta in ["/", "/donde", "/representantes?junta=1", "/temas", "/temas/baches",
-                     "/revisar", "/revisar/3", "/gastos", "/actua"]:
+        for ruta in ["/", "/donde", "/representantes?junta=1&m=21019", "/temas", "/temas/baches",
+                     "/revisar", "/revisar/3", "/gastos?m=21019", "/actua?m=21019"]:
             r = cliente.get(ruta)
             assert r.status_code == 200, (ruta, r.status_code)
             assert "corrupción" not in r.text.lower() and "robo" not in r.text.lower(), ruta
@@ -354,7 +354,7 @@ def test_recorrido():
             assert "sha-256" not in v.lower() and ".pdf" not in v.lower(), ruta  # lo técnico va en detalles
             for svg in re.findall(r"<svg[^>]*>", r.text):
                 assert 'aria-label="' in svg or 'aria-hidden="true"' in svg, (ruta, svg)  # todo gráfico con texto alternativo
-        rep = cliente.get("/representantes?junta=1").text
+        rep = cliente.get("/representantes?junta=1&m=21019").text
         # Del más cercano al más lejano: presidente auxiliar, regidora, presidenta.
         assert rep.index("Dario Auxiliar") < rep.index("Cora Regidora") < rep.index("Ana Presidenta")
         assert "Persona Inventada" not in rep  # nadie aparece si no está en la base con cita
@@ -392,7 +392,7 @@ def test_monedas():
                 for c, n, m in [("1000", "Servicios Personales", 333.33),
                                 ("6000", "Inversión Pública", 333.33),
                                 ("8000", "Participaciones y Aportaciones", 333.34)]], (5, 6))
-        texto = TestClient(web.app).get("/gastos").text
+        texto = TestClient(web.app).get("/gastos", params={"m": "21019"}).text
         monedas_pintadas = len(re.findall(r'<i style="background:', texto))
         assert monedas_pintadas == 100, monedas_pintadas  # la cuadrícula pinta exactamente 100 monedas
 
@@ -529,6 +529,35 @@ def test_mapa_real_32_estados_y_puntos_dentro_de_su_estado():
         assert "Municipios de Puebla" in donde and "/representantes?m=21019" in donde
 
 
+def test_sin_municipio_por_defecto_redirige_y_cookie_recuerda():
+    """Sin ?m= ni cookie todo pide elegir en /donde; al elegir, la cookie manda en chip y rutas."""
+    import municipios
+    import web
+    from fastapi.testclient import TestClient
+    fuente = (Path(__file__).parent / "web.py").read_text(encoding="utf-8")
+    assert "21019" not in fuente and "Atlixco" not in fuente and "atlixco" not in fuente  # ningún default en el código
+    with tempfile.TemporaryDirectory() as d:
+        extraer.DB = Path(d) / "t.db"
+        extraer.RAW = Path(d)
+        (Path(d) / "manifiesto.json").write_text("[]")
+        with municipios.conectar() as con:
+            con.execute("INSERT INTO municipios VALUES ('21019', 'Puebla', 'Atlixco', 'indexado')")
+            con.execute("INSERT INTO cabeceras VALUES ('21019', 18.909282, -98.434004)")
+            con.commit()
+        cliente = TestClient(web.app, follow_redirects=False)
+        for ruta in ("/representantes", "/gastos", "/actua"):
+            r = cliente.get(ruta)
+            assert r.status_code == 303 and r.headers["location"] == "/donde", (ruta, r.status_code)
+        r = cliente.get("/municipio/21019")  # elegir en /donde guarda la cookie
+        assert "municipio=21019" in r.headers.get("set-cookie", "")
+        for ruta in ("/representantes", "/gastos", "/actua", "/"):
+            pagina_elegida = cliente.get(ruta)
+            assert pagina_elegida.status_code == 200, ruta
+            assert "Atlixco, Pue." in pagina_elegida.text, ruta  # el chip la recuerda en toda página
+        donde = cliente.get("/donde").text
+        assert "elige tu junta auxiliar" not in donde  # este municipio no tiene juntas en la base de prueba
+
+
 def test_buscador_nacional():
     """El buscador encuentra localidades con y sin acentos y distingue municipios ya revisados."""
     import municipios
@@ -588,7 +617,7 @@ def test_marca_polaca_y_conteo_real():
         inicio = cliente.get("/").text
         assert "POLACA" in inicio and "La política no te ignora" in inicio
         assert "de 2 municipios revisados" in inicio  # 2 en la tabla, 1 indexado: conteo real, no el del mockup
-        for ruta in ["/", "/donde", "/representantes", "/temas", "/gastos", "/actua",
+        for ruta in ["/", "/donde", "/representantes?m=21019", "/temas", "/gastos?m=21019", "/actua?m=21019",
                      "/municipio/15054", "/indexando/15054", "/revisar/1", "/acuerdos", "/presupuesto"]:
             r = cliente.get(ruta)
             assert r.status_code == 200, ruta
@@ -763,9 +792,9 @@ def test_temas_cortos_y_estados_vacios():
         cliente = TestClient(web.app)
         sin = cliente.get("/representantes", params={"m": "17007"}).text
         assert "Aún no revisamos Cuernavaca" in sin and "Pídele a Muse que lo revise" in sin
-        assert "Ver un ejemplo: Atlixco" in sin and "0 regidurías" not in sin and "Qué hace:</strong> </p>" not in sin
+        assert "Elige otro municipio" in sin and "Ver un ejemplo" not in sin and "0 regidurías" not in sin and "Qué hace:</strong> </p>" not in sin
         assert 'class="ring"' not in sin  # sin diagrama vacío ni secciones huecas
-        rep = cliente.get("/representantes").text
+        rep = cliente.get("/representantes", params={"m": "21019"}).text
         assert "Obras y calles" in rep and "Bienestar y niñez" in rep and "Ver todos" in rep
         assert "Bienestar, Juventud, Protección y Atención a la Niñez" not in rep  # oficial largo: solo en la ficha
         ficha = cliente.get("/revisar/2").text
@@ -855,7 +884,7 @@ def test_diagrama_interactivo_sin_nodos_inventados():
             con.execute("INSERT INTO municipios VALUES ('20999', 'Puebla', 'Nopales', 'sin_revisar')")
             con.commit()
         cliente = TestClient(web.app)
-        rep = cliente.get("/representantes?junta=1").text
+        rep = cliente.get("/representantes?junta=1&m=21019").text
         nodos = re.findall(r'<a class="p nodo"[^>]*href="([^"]+)"[^>]*aria-label="([^"]+)"', rep)
         assert nodos, rep  # el diagrama tiene personas enlazadas, no dibujos inertes
         nombres_db = {"Ana Presidenta", "Beto Síndico", "Cora Regidora", "Elena Regidora",
@@ -1135,7 +1164,7 @@ def test_presupuesto_plegable_y_sin_tarjetas_vacias():
         pres = cliente.get("/presupuesto").text
         assert pres.count('<details class="cap">') == 2 and "<table" not in pres
         assert "1000 · Sueldos del personal" in pres and "6000 · Obra pública" in pres
-        for ruta in ("/presupuesto", "/gastos"):
+        for ruta in ("/presupuesto", "/gastos?m=21019"):
             html_ruta = cliente.get(ruta).text
             assert not re.search(r'<div class="(?:card|tarjeta)[^"]*"[^>]*>\s*</div>', html_ruta), ruta
             for tarjeta in re.findall(r'<div class="(?:card|tarjeta)[^"]*"[^>]*>(.*?)</div>', html_ruta, flags=re.S):

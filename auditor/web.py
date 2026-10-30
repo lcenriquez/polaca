@@ -1,4 +1,4 @@
-"""Interfaz web de la demo del auditor de Atlixco.
+"""Interfaz web del auditor ciudadano de POLACA.
 
 Uso (desde auditor/):
     ../.venv/bin/python -m uvicorn web:app --host 127.0.0.1 --port 8000
@@ -9,6 +9,7 @@ privado, vía evidencia.py. Todo texto que viene de los PDF o de los modelos
 se escapa. Lenguaje neutral: los datos se muestran con su fuente, sin
 calificaciones.
 """
+import contextvars
 import html
 import io
 import json
@@ -40,6 +41,33 @@ from extraer import plano
 app = FastAPI(title="POLACA")
 app.mount("/static", StaticFiles(directory=Path(__file__).resolve().parent / "static"), name="static")
 
+# Municipio elegido por la persona: solo vive en su cookie, nunca en un valor por omisión.
+_MUN_COOKIE = contextvars.ContextVar("municipio_cookie", default="")
+
+
+@app.middleware("http")
+async def _recordar_municipio(request: Request, call_next):
+    _MUN_COOKIE.set(request.cookies.get("municipio", ""))
+    return await call_next(request)
+
+
+def _elegida(request: Request, m: str = "") -> str | None:
+    """Clave del municipio elegido: ?m= manda, luego la cookie; sin elección, None."""
+    return m or request.cookies.get("municipio") or None
+
+
+def _fijar(resp: HTMLResponse, clave: str | None) -> HTMLResponse:
+    if clave:
+        resp.set_cookie("municipio", clave, max_age=60 * 60 * 24 * 365, path="/", samesite="lax")
+    return resp
+
+
+def _nombre_municipio(con, clave: str | None) -> tuple[str, str] | None:
+    if not clave:
+        return None
+    filas = _filas(con, "SELECT nombre, estado FROM municipios WHERE clave_inegi = ?", (clave,))
+    return (filas[0]["nombre"], filas[0]["estado"]) if filas else None
+
 CSS = """
 @font-face { font-family: "Atkinson Hyperlegible"; src: url("/static/fonts/AtkinsonHyperlegible-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Atkinson Hyperlegible"; src: url("/static/fonts/AtkinsonHyperlegible-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
@@ -50,11 +78,11 @@ body, .btn, .boton, .seg button, .filters button, .search input, input, select, 
   --card:#fff; --accent-tx:#5b3fd1; --aviso-bg:#fdf3dc; --aviso-line:#8a5a00; --aviso-ink:#5c3d00; --copy-bg:#f0eef8; --dash:#c9c3e6;
   --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; }
 @media (prefers-color-scheme: dark) {
-:root:not([data-theme="light"]) { color-scheme: dark; --bg:#121019; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --muted-2:#d6d2e6; --line:#2f2c40;
+:root:not([data-theme="light"]) { color-scheme: dark; --bg:#12101a; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --muted-2:#d6d2e6; --line:#2f2c40;
   --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:0 1px 2px #0008,0 8px 24px #0006; --r:18px;
   --card:#1c1a27; --accent-tx:#9d8cff; --aviso-bg:#352a12; --aviso-line:#f2c46b; --aviso-ink:#f7e3ac; --copy-bg:#252233; --dash:#4a4568;
   --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; } }
-:root[data-theme="dark"] { color-scheme: dark; --bg:#121019; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --muted-2:#d6d2e6; --line:#2f2c40;
+:root[data-theme="dark"] { color-scheme: dark; --bg:#12101a; --surface:#1c1a27; --surface-2:#252233; --ink:#efedf7; --muted:#a9a5bd; --muted-2:#d6d2e6; --line:#2f2c40;
   --accent:#9d8cff; --accent-ink:#141024; --accent-soft:#2a2547; --ok:#5fd39a; --ok-soft:#173226; --warn:#f2c46b; --warn-soft:#352a12; --shadow:0 1px 2px #0008,0 8px 24px #0006; --r:18px;
   --card:#1c1a27; --accent-tx:#9d8cff; --aviso-bg:#352a12; --aviso-line:#f2c46b; --aviso-ink:#f7e3ac; --copy-bg:#252233; --dash:#4a4568;
   --c1:#5b3fd1; --c2:#c2410c; --c3:#0e7490; --c4:#a21caf; --c5:#4d7c0f; --c6:#b45309; --c7:#475569; --c8:#be123c; --c9:#0f766e; }
@@ -309,6 +337,13 @@ def _lugar_chip(lugar: str | None) -> str:
 
 def pagina(titulo: str, cuerpo: str, paso: int | None = None, seccion: str | None = None,
            sin_titulo: bool = False, lugar: str | None = None) -> HTMLResponse:
+    if lugar is None and _MUN_COOKIE.get():  # el chip muestra el municipio de la cookie en toda página
+        try:
+            with _con() as con:
+                mun = _nombre_municipio(con, _MUN_COOKIE.get())
+            lugar = f"{mun[0]}, {mun[1]}" if mun else None
+        except Exception:
+            lugar = None
     items = [("/", "home", "Inicio", "inicio"), ("/representantes", "ppl", "Tu gobierno", "gobierno"),
              ("/gastos", "coin", "Gastos", "gastos"), ("/actua", "mega", "Actúa", "actua")]
     topmenu = '<nav class="topmenu" aria-label="Principal">' + "".join(
@@ -541,11 +576,11 @@ def _sin_resultados(q: str) -> str:
     return _vacio("srch", f"No encontramos “{q}”",
                   "Revisa cómo se escribe o busca tu municipio en lugar de tu colonia.",
                   [("/donde", "Buscar por municipio", False),
-                   ("/representantes?m=21019", "Ver un ejemplo: Atlixco", True)])
+                   ("/", "Ver el mapa de municipios", True)])
 
 
-def _gob(con, tabla: str, clave: str | None = "21019") -> list[dict]:
-    """Filas con cita verificada de un municipio (Atlixco por omisión; null = dato anterior al esquema).
+def _gob(con, tabla: str, clave: str | None = None) -> list[dict]:
+    """Filas con cita verificada de un municipio (null = dato anterior al esquema).
 
     clave=None devuelve las de TODOS los municipios: hace falta al buscar a una
     persona por id, porque su ficha no sabe de qué municipio viene el enlace."""
@@ -738,19 +773,26 @@ def compartir_hallazgo(id_: int):
 
 
 @app.get("/gastos", response_class=HTMLResponse)
-def gastos():
+def gastos(request: Request, m: str = ""):
     """Pantalla 6 del recorrido: el gasto del año en 100 monedas (mayor residuo, suma exacta 100)."""
+    clave = _elegida(request, m)
+    if not clave:
+        return RedirectResponse("/donde", status_code=303)
     with _con() as con:
-        partidas = [p for p in cruzar._partidas(con) if p["monto_mxn"]]
+        partidas = [p for p in cruzar._partidas(con)
+                    if p["monto_mxn"] and p.get("municipio_id") in (clave, None)]
         urls = _urls(con)
+        mun = _nombre_municipio(con, clave)
+    nombre = mun[0] if mun else "tu municipio"
     monedas = monedas_100(partidas)
     if not monedas:
-        return pagina("En qué se gasta", _vacio(
+        return _fijar(pagina("En qué se gasta", _vacio(
             "coin", "Todavía no tenemos el gasto con montos",
             "Sí sabemos que el gasto sale del Presupuesto de Egresos, pero en las fuentes revisadas "
             "todavía no hay partidas con monto para repartir en 100 monedas.",
             [("/actua", "Pide el presupuesto por transparencia", False),
-             ("/evidencia", "Ayúdanos a revisar más", True)]), seccion="gastos")
+             ("/evidencia", "Ayúdanos a revisar más", True)]), seccion="gastos",
+            lugar=f"{mun[0]}, {mun[1]}" if mun else None), clave)
     total = sum(p["monto_mxn"] for p in partidas)
     orden = sorted(partidas, key=lambda p: -monedas[p["id"]])
     color = {p["id"]: PALETA_MONEDAS[i % len(PALETA_MONEDAS)] for i, p in enumerate(orden)}
@@ -762,7 +804,7 @@ def gastos():
     oficiales = "".join(f'<div><strong>{e(p["capitulo"] or "")} · {e(p["nombre"])}</strong>'
                         f'<br>{_dinero(p["monto_mxn"])} ({e(en_palabras(p["monto_mxn"]))}): {monedas[p["id"]]} de cada 100 pesos.'
                         f'{fuente_html(p["archivo"], p["pagina"], p["fragmento"], urls)}</div>' for p in orden)
-    cuerpo = (f'<div><p class="sub">En 2026 Atlixco planea gastar</p>'
+    cuerpo = (f'<div><p class="sub">En 2026 {e(nombre)} planea gastar</p>'
               f'<p class="big">{e(en_palabras(total).removesuffix(" de pesos"))}</p>'
               f'<p class="sub">de pesos. Imagina que fueran 100 monedas:</p></div>'
               f'<div class="card"><p class="small">{e(aria)}</p><div class="coins" role="img" aria-label="{e(aria)}">{circulos}</div>'
@@ -770,7 +812,8 @@ def gastos():
               f'<p class="sub" style="font-size:16px">Los nombres en palabras sencillas de arriba son una explicación '
               f'general. El nombre oficial de cada grupo de gasto, su monto exacto y su fuente están aquí:</p>'
               f'<details class="cap"><summary>Nombres oficiales y montos</summary>{oficiales}</details>')
-    return pagina("En qué se gasta", cuerpo, seccion="gastos")
+    return _fijar(pagina("En qué se gasta", cuerpo, seccion="gastos",
+                         lugar=f"{mun[0]}, {mun[1]}" if mun else None), clave)
 
 
 # Temas del Paso 3: (clave, icono, título, comisión, es orientación general)
@@ -830,7 +873,11 @@ def _rol_corto(fila) -> str:
 
 
 @app.get("/representantes", response_class=HTMLResponse)
-def representantes(junta: int = 0, m: str = "21019"):
+def representantes(request: Request, junta: int = 0, m: str = ""):
+    clave_elegida = _elegida(request, m)
+    if not clave_elegida:
+        return RedirectResponse("/donde", status_code=303)
+    m = clave_elegida
     with _con() as con:
         funcionarios = _gob(con, "funcionarios", m)
         juntas = _gob(con, "juntas_auxiliares", m)
@@ -851,9 +898,9 @@ def representantes(junta: int = 0, m: str = "21019"):
         cuerpo = _vacio("spark", f"Aún no revisamos {mun['nombre']}",
                         "Por eso todavía no sabemos quiénes integran su Cabildo. Muse puede buscar los "
                         "documentos oficiales y leerlos por ti; cada dato llevará su fuente.",
-                        [accion, ("/representantes?m=21019", "Ver un ejemplo: Atlixco", True)])
-        return pagina("Estas personas trabajan para ti", cuerpo, paso=2,
-                      lugar=f'{mun["nombre"]}, {mun["estado"]}')
+                        [accion, ("/donde", "Elige otro municipio", True)])
+        return _fijar(pagina("Estas personas trabajan para ti", cuerpo, paso=2,
+                             lugar=f'{mun["nombre"]}, {mun["estado"]}'), m)
     elegida = next((j for j in juntas if j["id"] == junta), None)
     nivel_comunidad, nivel_presidencia = [], []
     if elegida:
@@ -862,7 +909,7 @@ def representantes(junta: int = 0, m: str = "21019"):
             f"Presidente auxiliar de {elegida['nombre']}: la autoridad de tu junta auxiliar",
             elegida["presidente"] or elegida["nombre"],
             f_aux["funcion"] if f_aux else "Atiende los asuntos de su junta auxiliar.",
-            elegida, _buscar_fila(contactos, "atención ciudadana", "ayuntamiento de atlixco"), urls,
+            elegida, _buscar_fila(contactos, "atención ciudadana"), urls,
             f"/actua?para={elegida['nombre']}", "Lo más cercano a ti", data_id=f"j{elegida['id']}"))
     f_insp = _buscar_fila(funciones, "inspector")
     # Junta auxiliar e inspectoría son figuras de Puebla: solo salen si este
@@ -888,7 +935,7 @@ def representantes(junta: int = 0, m: str = "21019"):
         nivel_presidencia.append(_tarjeta_persona(
             "Síndico municipal: representa legalmente al municipio", sindico["nombre"],
             f_sin["funcion"] if f_sin else "", sindico,
-            _buscar_fila(contactos, "atención ciudadana", "ayuntamiento de atlixco"), urls,
+            _buscar_fila(contactos, "atención ciudadana"), urls,
             f"/revisar/{sindico['id']}", "Representa a todo el municipio", "a3", data_id=str(sindico["id"])))
     presidenta = _buscar_fila(funcionarios, "presidenta municipal", "presidente municipal")
     if presidenta:
@@ -1050,7 +1097,7 @@ def representantes(junta: int = 0, m: str = "21019"):
     with _con() as con:
         mun = _filas(con, "SELECT nombre, estado FROM municipios WHERE clave_inegi = ?", (m,))
     lugar = f'{mun[0]["nombre"]}, {mun[0]["estado"]}' if mun else None
-    return pagina("Estas personas trabajan para ti", cuerpo, paso=2, lugar=lugar)
+    return _fijar(pagina("Estas personas trabajan para ti", cuerpo, paso=2, lugar=lugar), m)
 
 
 def _temas_grid(seleccion=""):
@@ -1066,15 +1113,16 @@ def temas():
 
 
 @app.get("/temas/{clave}", response_class=HTMLResponse)
-def tema(clave: str):
+def tema(request: Request, clave: str):
     elegido = next((t for t in TEMAS if t[0] == clave), None)
     if not elegido:
         return HTMLResponse("<p>No se encontró el tema.</p>", status_code=404)
     _, ic, titulo, nombre_comision, orientacion = elegido
+    clave_mun = _elegida(request)
     with _con() as con:
-        comisiones = _gob(con, "comisiones")
-        funcionarios = _gob(con, "funcionarios")
-        funciones = _gob(con, "funciones_cargo")
+        comisiones = _gob(con, "comisiones", clave_mun)
+        funcionarios = _gob(con, "funcionarios", clave_mun)
+        funciones = _gob(con, "funciones_cargo", clave_mun)
         urls = _urls(con)
     comision = _buscar_fila(comisiones, nombre_comision.replace("De ", "", 1)) if nombre_comision else None
     regidor = _buscar_fila(funcionarios, comision["nombre"].replace("De ", "", 1)) if comision else None
@@ -1100,7 +1148,7 @@ def tema(clave: str):
 @app.get("/revisar", response_class=HTMLResponse)
 def revisar():
     with _con() as con:
-        funcionarios = _gob(con, "funcionarios", None)  # todos los municipios revisados, no solo Atlixco
+        funcionarios = _gob(con, "funcionarios", None)  # todos los municipios revisados
         juntas = _gob(con, "juntas_auxiliares", None)
         try:
             municipios = {m["clave_inegi"]: m for m in _filas(con, "SELECT * FROM municipios")}
@@ -1133,7 +1181,7 @@ def revisar():
 def revisar_persona(id_: int):
     with _con() as con:
         # Por id y de cualquier municipio: el enlace viene de la página del
-        # municipio de la persona, no necesariamente de Atlixco.
+        # municipio de la persona, no de un municipio fijo.
         funcionarios = _gob(con, "funcionarios", None)
         urls = _urls(con)
         f = next((x for x in funcionarios if x["id"] == id_), None)
@@ -1145,7 +1193,7 @@ def revisar_persona(id_: int):
         hallazgos_n = (con.execute("SELECT count(*) FROM hallazgos WHERE acuerdo_id IN (%s)"
                                    % ",".join("?" * len(ids)), ids).fetchone()[0] if ids else 0)
         n_docs = _n_documentos(con)
-        funciones = _gob(con, "funciones_cargo", f.get("municipio_id") or "21019")
+        funciones = _gob(con, "funciones_cargo", f.get("municipio_id"))
         evidencias = _filas(con, "SELECT * FROM evidencias ORDER BY id DESC LIMIT 3")
     plano_cargo = plano(f["cargo"])
     claves = ("presidenta municipal", "presidente municipal") if \
@@ -1216,8 +1264,16 @@ def revisar_persona(id_: int):
 
 
 @app.get("/actua", response_class=HTMLResponse)
-def actua(para: str = "", tema: str = ""):
-    asunto = tema or (f"el trabajo de {para}" if para else "el gasto y las decisiones de tu Ayuntamiento")
+def actua(request: Request, para: str = "", tema: str = "", m: str = ""):
+    clave = _elegida(request, m)
+    if not clave:
+        return RedirectResponse("/donde", status_code=303)
+    with _con() as con:
+        mun = _nombre_municipio(con, clave)
+    nombre = mun[0] if mun else None
+    asunto = tema or (f"el trabajo de {para}" if para else
+                      (f"el gasto y las decisiones del Ayuntamiento de {nombre}" if nombre
+                       else "el gasto y las decisiones de tu Ayuntamiento"))
     with _con() as con:
         urls = _urls(con)
         try:
@@ -1245,7 +1301,7 @@ def actua(para: str = "", tema: str = ""):
               '<div class="step"><span class="n">2</span><div><b>Entra a la Plataforma de Transparencia</b>'
               '<p style="font-size:16px">Crea tu cuenta con tu correo.</p></div></div>'
               '<div class="step"><span class="n">3</span><div><b>Pega y envía</b>'
-              '<p style="font-size:16px">Elige tu Ayuntamiento.</p></div></div>'
+              f'<p style="font-size:16px">{"Elige el Ayuntamiento de " + e(nombre) + "." if nombre else "Elige tu Ayuntamiento."}</p></div></div>'
               '<div class="step"><span class="n">4</span><div><b>Espera tu respuesta</b>'
               '<p style="font-size:16px">Te llega a tu correo.</p></div></div></div>'
               + boton + sesion_html
@@ -1254,7 +1310,8 @@ def actua(para: str = "", tema: str = ""):
                 f'una foto, por ejemplo un bache o una luminaria apagada.</span></div>'
                 '<p><a class="btn ghost" href="/evidencia">Sube una foto</a></p>'
               + rutas)
-    return pagina("Pide información", cuerpo, seccion="actua")
+    return _fijar(pagina("Pide información", cuerpo, seccion="actua",
+                         lugar=f"{mun[0]}, {mun[1]}" if mun else None), clave)
 
 
 def _chip_estado(estado_indexacion: str) -> tuple[str, str]:
@@ -1355,9 +1412,11 @@ def inicio(q: str = ""):
 
 
 @app.get("/donde", response_class=HTMLResponse)
-def donde(q: str = "", estado: str = ""):
+def donde(request: Request, q: str = "", estado: str = ""):
+    clave_cookie = request.cookies.get("municipio") or None
     with _con() as con:
-        juntas = _gob(con, "juntas_auxiliares")
+        juntas = _gob(con, "juntas_auxiliares", clave_cookie) if clave_cookie else []
+        mun_cookie = _nombre_municipio(con, clave_cookie)
         urls = _urls(con)
         cobertura = _cobertura_html(cruzar.cobertura(con))
         resultados = municipios.buscar_localidades(con, q) if q else []
@@ -1377,8 +1436,15 @@ def donde(q: str = "", estado: str = ""):
                           f'{icono("pin", "Dibujo de un pin de mapa")}{e(r["nom_loc"])} — {e(r["nom_mun"])}, {e(r["nom_ent"])}</a>')
         resultados_html = (f'<div class="card list" id="lista-resultados">{items}</div>' if items else _sin_resultados(q))
     opciones = "".join(
-        f'<a href="/representantes?junta={j["id"]}" data-nombre="{e(j["nombre"])} {e(j["presidente"] or "")}">'
+        f'<a href="/representantes?junta={j["id"]}&m={e(clave_cookie or "")}" data-nombre="{e(j["nombre"])} {e(j["presidente"] or "")}">'
         f'{icono("pin", "Dibujo de un pin de mapa")}{e(j["nombre"])}</a>' for j in juntas)
+    juntas_html = ""
+    if mun_cookie and juntas:  # solo tras elegir un municipio que sí tiene juntas en sus fuentes
+        juntas_html = f"""<h2>Si vives en {e(mun_cookie[0])}, elige tu junta auxiliar</h2>
+<div class="card list" id="lista-juntas">
+<a href="/representantes?m={e(clave_cookie or "")}" data-nombre="{e(municipios.sin_acentos(mun_cookie[0] + " centro colonias cabecera"))}">{icono("pin", "Dibujo de un pin de mapa")}{e(mun_cookie[0])} centro y colonias</a>
+{opciones}</div>
+<p class="debil">Las colonias que atiende cada junta no están en la fuente oficial revisada; por eso la lista es por junta auxiliar.</p>"""
     def _tec(m):
         guardado = (f' · <a href="/fuentes/{e(m["archivo"])}">Documento guardado</a>'
                     if m["archivo"].rsplit(".", 1)[-1].lower() in ("pdf", "html") else "")
@@ -1408,11 +1474,7 @@ def donde(q: str = "", estado: str = ""):
 {buscador}{sugg}{estado_html}
 <h2>Municipios que ya revisamos</h2>
 {('<div class="card list">' + ya + '</div>') if ya else _vacio("spark", "Aún no revisamos ningún municipio", "Cuando Muse revise el primero, con aprobación de una persona del equipo, aparecerá aquí.", [("/", "Busca tu municipio", False)])}
-<h2>Si vives en Atlixco, elige tu junta auxiliar</h2>
-<div class="card list" id="lista-juntas">
-<a href="/representantes" data-nombre="atlixco centro colonias cabecera">{icono("pin", "Dibujo de un pin de mapa")}Atlixco centro y colonias</a>
-{opciones}</div>
-<p class="debil">Las colonias que atiende cada junta no están en la fuente oficial revisada; por eso la lista es por junta auxiliar.</p>
+{juntas_html}
 <details class="tarjeta"><summary><strong>Detalles técnicos y fuentes revisadas</strong></summary>{tecnicos}{cobertura}</details>"""
     return pagina("¿Dónde vives?", cuerpo, paso=1)
 
@@ -1471,9 +1533,9 @@ def municipio(clave: str):
                   f'<div class="kpi">{icono("chk", "Dibujo de una palomita")}<div class="small">Verifica cada cita</div></div></div>'
                   + f'<div class="btnrow"><form method="post" action="/solicitar/{e(clave)}">'
                     f'<button class="btn" type="submit">{icono("spark", "Dibujo de una estrella")}Pídele a Muse que lo revise</button></form>'
-                    '<a class="btn ghost" href="/representantes?m=21019">Ver un ejemplo: Atlixco</a></div>'
+                    '<a class="btn ghost" href="/donde">Elige otro municipio</a></div>'
                     '</div>' + despues + '</div>')
-    return pagina(f'{m["nombre"]}, {m["estado"]}', cuerpo, seccion="inicio", sin_titulo=True, lugar=lugar)
+    return _fijar(pagina(f'{m["nombre"]}, {m["estado"]}', cuerpo, seccion="inicio", sin_titulo=True, lugar=lugar), clave)
 
 
 @app.post("/solicitar/{clave}")
@@ -1656,7 +1718,7 @@ def indexando(clave: str):
         "spark", "Todavía no hay pasos de esta revisión",
         "Cuando una persona del equipo apruebe la solicitud, aquí verás paso a paso lo que Muse encuentra.",
         [(f"/municipio/{clave}", "Ver el municipio", False),
-         ("/representantes?m=21019", "Ver un ejemplo: Atlixco", True)])
+         ("/donde", "Elige otro municipio", True)])
     anteriores_html = ""
     if anteriores:
         anteriores_html = (f'<details class="anteriores"><summary>Revisiones anteriores ({len(anteriores)})</summary>'
@@ -1826,7 +1888,7 @@ def acuerdo(id_: int):
         urls = _urls(con)
         glos = _glosario(con)
         resumen = _resumen_html(con, "acuerdo", id_, urls)
-        rutas = _rutas_html(con, f"el acuerdo «{a['acuerdo'][:120]}» del Ayuntamiento de Atlixco", urls)
+        rutas = _rutas_html(con, f"el acuerdo «{a['acuerdo'][:120]}» de tu Ayuntamiento", urls)
     personas = "".join(f"<li>{e(p['nombre'])} — {e(p['cargo'] or 'sin cargo registrado')}</li>"
                        for p in json.loads(a["propuesto_por"])) or "<li>Sin proponentes registrados en la fuente revisada; puedes pedir ese dato por transparencia.</li>"
     detalle_menciones = "".join(
@@ -1846,13 +1908,15 @@ Proveedor: {e(a['proveedor'] or 'sin dato')}</p>
 
 
 @app.get("/presupuesto", response_class=HTMLResponse)
-def presupuesto_():
+def presupuesto_(request: Request):
     with _con() as con:
         partidas = cruzar._partidas(con)
         urls = _urls(con)
         glos = _glosario(con)
         resumenes = {p["id"]: _resumen_html(con, "partida", p["id"], urls) for p in partidas}
-        rutas = _rutas_html(con, "el Presupuesto de Egresos 2026 del Ayuntamiento de Atlixco", urls)
+        mun = _nombre_municipio(con, _elegida(request))
+        rutas = _rutas_html(con, (f"el Presupuesto de Egresos 2026 del Ayuntamiento de {mun[0]}" if mun
+                                  else "el Presupuesto de Egresos 2026 de tu municipio"), urls)
     grupos: dict[str, list] = {}
     for p in partidas:
         grupos.setdefault(p["capitulo"] or "sin capítulo", []).append(p)
@@ -1919,7 +1983,7 @@ def hallazgo(id_: int):
 {fuente_html(h['archivo_presupuesto'], h['pagina_presupuesto'], h['fragmento_presupuesto'], urls)}
 <h2>Cita del acuerdo</h2>{fuente_html(h['archivo_acuerdo'], h['pagina_acuerdo'], h['fragmento_acuerdo'], urls)}{rutas}""" \
         + _compartir_html(f"/compartir/hallazgo/{h['id']}.png",
-                          f"Diferencia entre documentos públicos de Atlixco: {h['descripcion'][:180]} "
+                          f"Diferencia entre documentos públicos: {h['descripcion'][:180]} "
                           f"Fuente: {h['archivo_presupuesto']}, p. {h['pagina_presupuesto']}")
     return pagina(h["tipo"], cuerpo)
 
