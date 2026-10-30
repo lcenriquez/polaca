@@ -456,6 +456,16 @@ def test_tarjeta_png_y_ceros():
         assert cliente.get("/compartir/hallazgo/99.png").status_code == 404
 
 
+def test_chip_ubicacion_sin_municipio_no_va_a_atlixco():
+    """Sin municipio elegido el chip pregunta y abre /donde; con municipio, lo abrevia y también abre /donde."""
+    import web
+    sin = web.pagina("x", "y").body.decode()
+    assert '<a class="place" href="/donde">' in sin and "¿Dónde vives?" in sin
+    assert "Atlixco" not in sin.split('class="place"', 1)[1].split("</a>", 1)[0]
+    con = web.pagina("x", "y", lugar="Atlixco, Puebla").body.decode()
+    assert '<a class="place" href="/donde">' in con and "Atlixco, Pue." in con
+
+
 def test_buscador_nacional():
     """El buscador encuentra localidades con y sin acentos y distingue municipios ya revisados."""
     import municipios

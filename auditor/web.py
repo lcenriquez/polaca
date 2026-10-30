@@ -297,7 +297,7 @@ def pagina(titulo: str, cuerpo: str, paso: int | None = None, seccion: str | Non
     topmenu = '<nav class="topmenu" aria-label="Principal">' + "".join(
         f'<a href="{h}" class="{"on" if k == seccion else ""}">{t}</a>'
         for h, ic, t, k in items) + "</nav>"
-    chip = (f'<a class="place" href="/"><svg class="i" aria-hidden="true"><use href="#i-pin"/></svg>'
+    chip = (f'<a class="place" href="/donde"><svg class="i" aria-hidden="true"><use href="#i-pin"/></svg>'
             f'<span class="place-t">{e(_lugar_chip(lugar))}</span></a>')
     a11y = ('<details class="a11y"><summary class="iconbtn" aria-label="Accesibilidad y tema">'
             '<svg class="i" aria-hidden="true"><use href="#i-a11y"/></svg></summary>'
@@ -1191,13 +1191,13 @@ def revisar_persona(id_: int):
     with _con() as con:
         mun = _filas(con, "SELECT nombre, estado FROM municipios WHERE clave_inegi = ?",
                      (f["municipio_id"],)) if f.get("municipio_id") else []
-    lugar = f'{mun[0]["nombre"]}, {mun[0]["estado"]}' if mun else "Atlixco, Puebla"
+    lugar = f'{mun[0]["nombre"]}, {mun[0]["estado"]}' if mun else None
     return pagina(f["nombre"], cuerpo, paso=4, sin_titulo=True, lugar=lugar)
 
 
 @app.get("/actua", response_class=HTMLResponse)
 def actua(para: str = "", tema: str = ""):
-    asunto = tema or (f"el trabajo de {para}" if para else "el gasto y las decisiones del Ayuntamiento de Atlixco")
+    asunto = tema or (f"el trabajo de {para}" if para else "el gasto y las decisiones de tu Ayuntamiento")
     with _con() as con:
         urls = _urls(con)
         try:
@@ -1225,7 +1225,7 @@ def actua(para: str = "", tema: str = ""):
               '<div class="step"><span class="n">2</span><div><b>Entra a la Plataforma de Transparencia</b>'
               '<p style="font-size:16px">Crea tu cuenta con tu correo.</p></div></div>'
               '<div class="step"><span class="n">3</span><div><b>Pega y envía</b>'
-              '<p style="font-size:16px">Elige "Ayuntamiento de Atlixco".</p></div></div>'
+              '<p style="font-size:16px">Elige tu Ayuntamiento.</p></div></div>'
               '<div class="step"><span class="n">4</span><div><b>Espera tu respuesta</b>'
               '<p style="font-size:16px">Te llega a tu correo.</p></div></div></div>'
               + boton + sesion_html
